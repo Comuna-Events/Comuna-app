@@ -246,6 +246,7 @@ img{ max-width:100% }
 .legend{ margin-top:10px } .lgrow{ display:flex; align-items:center; gap:14px; padding:9px 0; border-bottom:1px dashed #DCCDAE }
 .lgrow b{ display:block; font-size:15px } .lgrow span:not(.lgico):not(.cluster):not(.ticon){ display:block; font-size:13px; color:var(--muted) }
 .lgico{ width:34px; display:grid; place-items:center; flex:none } .lgico .ticon{ width:auto; height:auto; margin:0 }
+.editint{ margin-left:auto; font-size:12.5px; font-weight:700; color:var(--green); text-transform:none; letter-spacing:0; text-decoration:underline; text-underline-offset:3px }
 .lgcats{ display:flex; flex-wrap:wrap; gap:6px 12px; font-size:13px } .lgcats span{ display:inline-flex; align-items:center; gap:5px }
 .kitpts .kk{ font-family:inherit; font-size:inherit; color:inherit; font-weight:700 } .kitpts.sub2{ margin-left:18px; padding:8px 14px; font-size:13px } .kitpts.sub2 b{ font-size:17px }
 .kitpts{ display:flex; justify-content:space-between; align-items:center; background:var(--card); border-radius:14px; padding:12px 14px; margin-top:8px; font-size:14px } .kitpts b{ font-family:var(--display); font-weight:900; font-size:22px; color:var(--red) }
@@ -988,6 +989,19 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
 document.getElementById('chips').addEventListener('click',e=>{ const b=e.target.closest('[data-pick]'); if(b) openPicker(b.dataset.pick); });
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
 function countWith(w,c,t=tier){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)).length; when=ow; return n; }
+// change the interests you picked at sign-up (also drives "Your interests" on the map and the daily Top 4)
+function editInterests(){
+  const pick=new Set(S.interests||[]);
+  const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Your interests</div>
+    <h2 style="font-size:28px">What are you into?</h2><p class="sub">Pick as many as you like. The map shows these first.</p>
+    <div class="interests" id="eiList">${INTERESTS.map(t=>`<button aria-pressed="${pick.has(t)}" data-int="${t}">${t}</button>`).join('')}</div>
+    <button class="btn primary" id="eiSave" ${pick.size?'':'disabled'}>${pick.size?`Save ${pick.size} interest${pick.size>1?'s':''}`:'Pick at least one'}</button>`;
+    document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+    document.getElementById('eiList').onclick=e=>{ const b=e.target.closest('[data-int]'); if(!b) return; const t=b.dataset.int; pick.has(t)? pick.delete(t) : pick.add(t); draw(); };
+    document.getElementById('eiSave').onclick=()=>{ S.interests=INTERESTS.filter(t=>pick.has(t)); save(); dbProfile(); filter='mine'; overlay.classList.remove('on'); renderHome(); toast('Interests updated'); };
+  };
+  draw(); overlay.classList.add('on');
+}
 function openPicker(kind){
   const row=(attr,k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" ${attr}="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   let body;
@@ -995,11 +1009,12 @@ function openPicker(kind){
   else body=`<div class="psub">Kind of event</div>`
     + row('data-tier','any','<span class="ticon"></span>','Any kind',countWith(when,filter,'any'),tier==='any',true)
     + Object.keys(KINDS).map(k=>row('data-tier',k,tierIcon(k,14),`${KINDS[k].plural}<small>${KINDS[k].blurb}</small>`,countWith(when,filter,k),tier===k)).join('')
-    + `<div class="psub">Category</div>`
-    + (myCats().length? row('data-opt','mine','<span class="ticon">★</span>','Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
+    + `<div class="psub" style="display:flex;align-items:center">Category<button class="editint" id="editInt">${myCats().length?'Edit interests':'Pick interests'}</button></div>`
+    + (myCats().length? row('data-opt','mine',`<span class="ticon">${omark(15)}</span>`,'Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
     + ['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))].map(k=>row('data-opt',k,k==='All'?'<span class="ticon"></span>':catDot(k,12),k==='All'?'Everything':CATS[k].label,countWith(when,k),k===filter,k==='All')).join('');
   sheet.innerHTML=`<div class="grab"></div><div class="cat">${kind==='when'?'When':'Type of event'}</div><div class="picklist">${body}</div>`;
   overlay.classList.add('on');
+  const ei=document.getElementById('editInt'); if(ei) ei.onclick=e=>{ e.stopPropagation(); editInterests(); };
   sheet.querySelector('.picklist').onclick=e=>{ const o=e.target.closest('[data-opt],[data-tier]'); if(!o||o.disabled) return;
     if(o.dataset.tier) tier=o.dataset.tier; else if(kind==='when') when=o.dataset.opt; else filter=o.dataset.opt;
     overlay.classList.remove('on'); renderHome(); };
