@@ -176,6 +176,9 @@ img{ max-width:100% }
 #homeScreen:not(.home-list) .homehead > *{ pointer-events:auto }
 #homeScreen:not(.home-list) .chips{ padding-top:12px }
 #homeScreen:not(.home-list) .mapwrap{ position:absolute; inset:0; height:auto; min-height:0; margin:0; border-radius:0 }
+.maphelp{ position:absolute; left:10px; top:10px; z-index:5; width:34px; height:34px; border-radius:50%; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.12); font-family:var(--display); font-weight:900; font-size:19px; color:var(--green) }
+#homeScreen:not(.home-list) .maphelp{ top:auto; bottom:calc(var(--navh) + 72px) }
+.home-list .maphelp{ display:none }
 #homeScreen:not(.home-list) .mapwrap .toggle{ top:auto; bottom:calc(var(--navh) + 72px) }
 #homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 134px) }
 #homeScreen:not(.home-list) .picks{ position:absolute; left:0; right:0; bottom:calc(var(--navh) + 10px); z-index:6; flex:none; display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:0 14px; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x; cursor:grab; -webkit-overflow-scrolling:touch }
@@ -456,6 +459,7 @@ img{ max-width:100% }
       <div class="mapwrap" id="mapwrap">
         <div id="map"></div>
         <div class="toggle"><button class="on" id="tMap">Map</button><button id="tList">List</button></div>
+        <button class="maphelp" id="mapHelp" aria-label="How to read the map">?</button>
         <div class="maplabel" id="mapNote"></div>
       </div>
       <div class="picks" id="picks"></div>
@@ -884,11 +888,7 @@ function kitSlides(){
      <div class="kitpts sub2"><span>Rate it after</span><b>+10</b></div>
      <div class="kitpts"><span><b class="kk">Share it.</b> Add an event we approve, plus +25 for each person who goes</span><b>+25</b></div>
      <p class="sub" style="margin-top:12px">Every place you visit earns a stamp, and your first visit in each neighborhood earns its neighborhood stamp. Hit milestones (three neighborhoods, five visits to one spot) to unlock patches.</p>`,
-    `<div class="k">Reading the map</div><div class="h1" id="kitTitle">Shape shows how big it is.</div>
-     <div class="legend">${['popup','niche','regular','cornerstone'].map(k=>`<div class="lgrow"><span class="lgico">${tierIcon(k,28,C.ink)}</span><div><b>${KINDS[k].label}</b><span>${KINDS[k].blurb}</span></div></div>`).join('')}</div>
-     <div class="h2" style="margin:16px 0 6px;font-size:22px">Color shows what kind.</div>
-     <div class="lgcats">${Object.keys(CATS).map(k=>`<span>${catDot(k,11)}${CATS[k].short}</span>`).join('')}</div>
-     <div class="lgrow" style="margin-top:12px;border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap one to zoom in and see each event</span></div></div>`,
+    `<div class="k">Reading the map</div>${legendHtml(true)}`,
     `<div class="k">A few more things</div><div class="h1" id="kitTitle">You're all set.</div>
      <ol class="kitsteps">
       <li><div><b>Your daily Top 4</b><span>Every day we pick four things near you: a Headliner, a Staple, a Hidden Gem and a Pop-up.</span></div></li>
@@ -896,6 +896,20 @@ function kitSlides(){
       <li><div><b>Know about something cool?</b><span>Add it with the + tab. Once we approve it, it goes on the map and you get +25 points (up to 3 events a week), plus +25 for everyone who checks in. Events already on the map can't be added again.</span></div></li>
      </ol>`
   ];
+}
+// map key: shapes = tier, colors = category. In onboarding only your picked interests' colors show; the map's "?" shows them all.
+function legendHtml(mine){
+  const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label)), keys=mine&&want.length? want : Object.keys(CATS);
+  return `<div class="h1" id="kitTitle">Shape shows how big it is.</div>
+     <div class="legend">${['popup','niche','regular','cornerstone'].map(k=>`<div class="lgrow"><span class="lgico">${tierIcon(k,28,C.ink)}</span><div><b>${KINDS[k].label}</b><span>${KINDS[k].blurb}</span></div></div>`).join('')}</div>
+     <div class="h2" style="margin:16px 0 6px;font-size:22px">Color shows what kind.</div>
+     <div class="lgcats">${keys.map(k=>`<span>${catDot(k,11)}${CATS[k].label}</span>`).join('')}</div>
+     ${keys.length<Object.keys(CATS).length?`<p class="sub" style="font-size:13px;margin-top:8px">Those are your picks. Tap <b>?</b> on the map anytime for every color.</p>`:''}
+     <div class="lgrow" style="margin-top:12px;border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap one to zoom in and see each event</span></div></div>`;
+}
+function openLegend(){
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Reading the map</div>${legendHtml(false).replace('id="kitTitle"','')}`;
+  overlay.classList.add('on'); document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
 }
 function renderKit(){
   const sl=kitSlides(), last=kitStep===sl.length-1;
@@ -986,6 +1000,7 @@ function openPicker(kind){
     if(o.dataset.tier) tier=o.dataset.tier; else if(kind==='when') when=o.dataset.opt; else filter=o.dataset.opt;
     overlay.classList.remove('on'); renderHome(); };
 }
+document.getElementById('mapHelp').onclick=openLegend;
 document.getElementById('picks').addEventListener('click',e=>{ const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
 document.getElementById('tMap').onclick=()=>{ document.getElementById('homeScreen').classList.remove('home-list'); tMap.classList.add('on'); tList.classList.remove('on'); setTimeout(()=>{ map?map.resize():drawPaper(); },20); };
 document.getElementById('tList').onclick=()=>{ document.getElementById('homeScreen').classList.add('home-list'); tList.classList.add('on'); tMap.classList.remove('on'); };
