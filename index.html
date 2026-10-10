@@ -124,19 +124,16 @@ img{ max-width:100% }
 .maplabel{ position:absolute; left:14px; bottom:10px; z-index:4; font-family:var(--hand); font-size:18px; color:var(--red); pointer-events:none }
 .pin{ width:24px; height:24px; border-radius:50%; border:2.5px solid var(--paper); box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; position:relative; cursor:pointer; transform:translate(-50%,-50%); overflow:visible }
 .pin svg{ display:block }
-/* tier = pin shape (category = colour): Headliner star, Staple circle, Hidden Gem diamond, Pop-up ringed circle */
+/* tier = pin shape (category = colour), growing with the tier: Pop-up dot, Hidden Gem triangle, Staple square, Headliner starburst */
 .pin.tier-cornerstone{ width:30px; height:30px; background:none !important; border:none; box-shadow:none; filter:drop-shadow(0 3px 4px rgba(0,0,0,.3)) }
-.pin.tier-niche{ width:24px; height:24px; background:none; border:none; box-shadow:none }
-.pin.tier-niche .dia{ position:absolute; inset:3px; background:var(--c); border:2.5px solid var(--paper); border-radius:4px; transform:rotate(45deg); box-shadow:0 3px 8px rgba(0,0,0,.28) }
-.pin.tier-popup::after{ content:""; position:absolute; inset:-8px; border-radius:50%; border:2.5px solid var(--c); opacity:.55; animation:popring 2.2s ease-out infinite }
-@keyframes popring{ 0%{ transform:scale(.8); opacity:.7 } 100%{ transform:scale(1.35); opacity:0 } }
-@media (prefers-reduced-motion:reduce){ .pin.tier-popup::after{ animation:none } }
+.pin.tier-popup{ width:16px; height:16px; border-width:2px }
+.pin.tier-niche{ width:24px; height:24px; background:none !important; border:none; box-shadow:none; filter:drop-shadow(0 3px 4px rgba(0,0,0,.28)) }
+.pin.tier-regular{ width:22px; height:22px; border-radius:5px }
 .ticon{ display:inline-grid; place-items:center; width:16px; height:16px; vertical-align:-3px; margin-right:2px } .ticon i{ display:block }
 .cluster{ border-radius:50%; background:var(--green); color:var(--paper); border:2.5px solid var(--sun); box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:15px; cursor:pointer }
 .pin .chk{ position:absolute; right:-8px; top:-8px; width:16px; height:16px; border-radius:50%; background:var(--green); color:var(--paper); font-size:11px; font-weight:700; display:grid; place-items:center; border:2px solid var(--paper) }
 .mapboxgl-marker .pin{ transform:none }
 
-.pin.live{ animation:pulse 1.8s ease-out infinite }
 @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(201,83,61,.55) } 100%{ box-shadow:0 0 0 14px rgba(201,83,61,0) } }
 @media (prefers-reduced-motion:reduce){ .pin.live{ animation:none } }
 .youare{ position:absolute; transform:translate(-50%,-50%); pointer-events:none }
@@ -192,6 +189,7 @@ img{ max-width:100% }
 #homeScreen:not(.home-list) .pick .dist, #homeScreen:not(.home-list) .pick .when, #homeScreen:not(.home-list) .pick .m{ display:none }
 #homeScreen:not(.home-list) .pick .t{ -webkit-line-clamp:1; font-size:14.5px; margin:0 }
 #homeScreen:not(.home-list) .pick .m2{ display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px }
+#homeScreen:not(.home-list) .pick.hot{ outline:2.5px solid var(--green); outline-offset:-2.5px }
 #homeScreen:not(.home-list) .pick .m2 b{ color:var(--red); font-weight:700 }
 #homeScreen:not(.home-list) .pick{ flex:0 0 84%; margin:0; scroll-snap-align:center; box-shadow:0 4px 14px rgba(0,0,0,.18); pointer-events:auto }
 #homeScreen:not(.home-list) .endnote, #homeScreen:not(.home-list) .demo-tag{ display:none }
@@ -498,7 +496,7 @@ img{ max-width:100% }
 
     <!-- PROFILE -->
     <section class="screen" data-s="profile">
-      <div class="topbar"><div class="h1" style="color:var(--green)">You</div></div>
+      <div class="topbar"><div class="h1" style="color:var(--green)">Profile</div><button class="pill" data-go="passport">&larr; Passport</button></div>
       <div class="scroll">
         <div class="prof"><div class="avatar" id="pfAvatar">M</div><div><div style="font-weight:700;font-size:19px" id="pfName">Mitchell K.</div><div class="sub" id="pfHood">Silver Lake · exploring since January</div></div></div>
         <div class="stats3"><div><b id="pfStamps">3</b>stamps</div><div><b id="pfVisits">18</b>check-ins</div><div><b id="pfStreak">4</b>week streak</div></div>
@@ -911,7 +909,7 @@ recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classLi
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList.remove('on'); });
 
 /* ---------- home ---------- */
-let filter='All', when='any', tier='any';
+let filter='All', when='week', tier='any';
 // time filter: next occurrence falls today / within 7 days / within 30 days (rolling windows)
 const WHEN=[['any','Anytime'],['tonight','Tonight'],['week','This week'],['month','This month']];
 function inWindow(ev){
@@ -926,6 +924,29 @@ function picks(){
   let list=events.filter(ev=> (filter==='All' || ev.category===filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev)).sort((a,b)=>a.mi-b.mi);
   return list;                                    // all of LA, closest first
 }
+function cardHtml(ev){
+    const done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
+    return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,18)}${done?'<span class="chk">&check;</span>':''}</div>
+      <div><div class="when">${ev.live?'\u{1F534} ':''}${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</b> · ${ev.venue}${inn&&!done?' · Saved':''}</div></div>
+      <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
+// after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
+let userMoved=false;
+function cardsForView(){
+  if(!map || !userMoved || document.getElementById('homeScreen').classList.contains('home-list')) return;
+  const b=map.getBounds(), c=map.getCenter(), inB=lastPins.filter(ev=>b.contains([ev.lng,ev.lat]))
+    .sort((x,y)=>Math.hypot(x.lng-c.lng,x.lat-c.lat)-Math.hypot(y.lng-c.lng,y.lat-c.lat));
+  const el=document.getElementById('picks');
+  el.innerHTML = inB.length? inB.slice(0,40).map(cardHtml).join('') : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">No events in this area</div><div class="m2" style="display:block">Zoom out or change the When / Type filter</div></div></div>`;
+  el.scrollLeft=0;
+}
+// pointing at a pin brings its card to the front
+function showCard(ev){
+  const el=document.getElementById('picks'); if(!el) return;
+  let card=el.querySelector(`[data-ev="${ev.id}"]`);
+  if(!card){ el.insertAdjacentHTML('afterbegin',cardHtml(ev)); card=el.firstElementChild; }
+  el.querySelectorAll('.pick.hot').forEach(x=>x.classList.remove('hot')); card.classList.add('hot');
+  el.scrollTo({left:card.offsetLeft-14,behavior:'smooth'});
+}
 function inView(ev){ return true; }   // the map always frames all of LA
 function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
@@ -933,11 +954,7 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
   document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when"><small>When</small>${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type"><small>Type</small>${cl}<i>▾</i></button>`;
   const P=picks();
-  document.getElementById('picks').innerHTML = P.map((ev,i)=>{
-    const done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
-    return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,18)}${done?'<span class="chk">&check;</span>':''}</div>
-      <div><div class="when">${ev.live?'\u{1F534} ':''}${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</b> · ${ev.venue}${inn&&!done?' · Saved':''}</div></div>
-      <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }).join('')
+  document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
     + `<div class="endnote">that's the list. go have fun.</div><div class="demo-tag">${usingDemo?'Demo events · connect the Google Sheet to go live':'Live events from the Comuna sheet'}</div>`;
   const first=P[0]; document.getElementById('mapNote').textContent = first ? (first.live? `${first.title.split(' ').slice(0,2).join(' ')}: ${first.startsIn}` : '') : '';
   placePins(P);
@@ -972,10 +989,11 @@ function starSVG(d,c,stroke='#F3E7D1'){ let p=''; for(let i=0;i<16;i++){ const r
 // small tier glyph for tabs, badges and the legend
 function tierIcon(k,size=14,c=C.green){ const s=size;
   if(k==='cornerstone') return `<span class="ticon">${starSVG(s+4,c,'none')}</span>`;
-  if(k==='niche') return `<span class="ticon"><i style="width:${s*.62}px;height:${s*.62}px;background:${c};transform:rotate(45deg);border-radius:2px"></i></span>`;
-  if(k==='popup') return `<span class="ticon"><i style="width:${s*.5}px;height:${s*.5}px;background:${c};border-radius:50%;box-shadow:0 0 0 2px var(--paper),0 0 0 3.5px ${c}"></i></span>`;
-  return `<span class="ticon"><i style="width:${s*.62}px;height:${s*.62}px;background:${c};border-radius:50%"></i></span>`; }
-function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev); el.className='pin tier-'+k+(ev.live&&!done?' live':''); el.style.setProperty('--c',CATS[catKey(ev.category)].bg); if(k==='cornerstone') el.innerHTML=starSVG(30,CATS[catKey(ev.category)].bg); else if(k==='niche') el.innerHTML='<i class="dia"></i>'; else el.style.background='var(--c)'; el.innerHTML+=(done?'<span class="chk">&check;</span>':''); el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+KINDS[k].label); el.tabIndex=0; el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
+  if(k==='niche') return `<span class="ticon">${triSVG(s*.9,c,'none')}</span>`;
+  if(k==='popup') return `<span class="ticon"><i style="width:${s*.45}px;height:${s*.45}px;background:${c};border-radius:50%"></i></span>`;
+  return `<span class="ticon"><i style="width:${s*.68}px;height:${s*.68}px;background:${c};border-radius:2px"></i></span>`; }
+function triSVG(d,c,stroke='#F3E7D1'){ return `<svg width="${d}" height="${d}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;overflow:visible"><path d="M12 2.5 L22 20.5 H2 Z" fill="${c}" stroke="${stroke}" stroke-width="2.6" stroke-linejoin="round"/></svg>`; }
+function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev); el.className='pin tier-'+k+(ev.live&&!done?' live':''); el.style.setProperty('--c',CATS[catKey(ev.category)].bg); if(k==='cornerstone') el.innerHTML=starSVG(30,CATS[catKey(ev.category)].bg); else if(k==='niche') el.innerHTML=triSVG(24,CATS[catKey(ev.category)].bg); else el.style.background='var(--c)'; el.innerHTML+=(done?'<span class="chk">&check;</span>':''); el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+KINDS[k].label); el.tabIndex=0; el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
    Recomputed after every pan/zoom, so bubbles split apart as you zoom. At street level (zoom 15+) nothing
    clusters; events sharing an address fan out in a small ring so each one can be tapped. */
@@ -995,14 +1013,15 @@ function drawClusters(){
       return; }
     const el=document.createElement('div'); el.className='cluster'; el.textContent=n; const d=Math.min(52,30+Math.sqrt(n)*4); el.style.width=el.style.height=d+'px';
     el.setAttribute('role','button'); el.setAttribute('aria-label',n+' events here, zoom in'); el.tabIndex=0;
-    const zoomIn=e=>{ e&&e.stopPropagation(); const b=new mapboxgl.LngLatBounds(); g.list.forEach(ev=>b.extend([ev.lng,ev.lat]));
+    const zoomIn=e=>{ e&&e.stopPropagation(); userMoved=true; const b=new mapboxgl.LngLatBounds(); g.list.forEach(ev=>b.extend([ev.lng,ev.lat]));
       map.fitBounds(b,{padding:80,maxZoom:Math.max(map.getZoom()+2,STREET_ZOOM+0.5),duration:500}); };
     el.onclick=zoomIn; el.onkeydown=e=>{ if(e.key==='Enter') zoomIn(); };
     markers.push(new mapboxgl.Marker({element:el}).setLngLat(map.unproject([g.x,g.y])).addTo(map)); });
 }
 function placePins(P){
   if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you;
-    if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',drawClusters); }
+    if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); cardsForView(); });
+      ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent) userMoved=true; })); }
     if(!markers.you){ const y=youEl(30); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
     const b=new mapboxgl.LngLatBounds(); P.filter(inView).forEach(e=>b.extend([e.lng,e.lat])); b.extend([origin().lng,origin().lat]); map.fitBounds(b,{padding:48,maxZoom:15,duration:600});
   } else drawPaper();
