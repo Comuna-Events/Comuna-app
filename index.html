@@ -240,6 +240,10 @@ img{ max-width:100% }
 .kitsteps{ margin:12px 0 0; padding:0; list-style:none; counter-reset:k } .kitsteps li{ counter-increment:k; display:grid; grid-template-columns:34px 1fr; gap:10px; padding:10px 0; border-bottom:1px dashed #DCCDAE; font-size:14px }
 .kitsteps li:last-child{ border:0 } .kitsteps li::before{ content:counter(k); width:30px; height:30px; border-radius:50%; background:var(--sun); color:var(--green); font-family:var(--display); font-weight:900; font-size:17px; display:grid; place-items:center }
 .kitsteps b{ display:block; color:var(--ink) } .kitsteps span{ color:var(--muted); font-size:13px }
+.legend{ margin-top:10px } .lgrow{ display:flex; align-items:center; gap:14px; padding:9px 0; border-bottom:1px dashed #DCCDAE }
+.lgrow b{ display:block; font-size:15px } .lgrow span:not(.lgico):not(.cluster):not(.ticon){ display:block; font-size:13px; color:var(--muted) }
+.lgico{ width:34px; display:grid; place-items:center; flex:none } .lgico .ticon{ width:auto; height:auto; margin:0 }
+.lgcats{ display:flex; flex-wrap:wrap; gap:6px 12px; font-size:13px } .lgcats span{ display:inline-flex; align-items:center; gap:5px }
 .kitpts .kk{ font-family:inherit; font-size:inherit; color:inherit; font-weight:700 } .kitpts.sub2{ margin-left:18px; padding:8px 14px; font-size:13px } .kitpts.sub2 b{ font-size:17px }
 .kitpts{ display:flex; justify-content:space-between; align-items:center; background:var(--card); border-radius:14px; padding:12px 14px; margin-top:8px; font-size:14px } .kitpts b{ font-family:var(--display); font-weight:900; font-size:22px; color:var(--red) }
 .kitart{ display:flex; justify-content:center; align-items:center; gap:4px; margin:10px 0 2px }
@@ -880,6 +884,11 @@ function kitSlides(){
      <div class="kitpts sub2"><span>Rate it after</span><b>+10</b></div>
      <div class="kitpts"><span><b class="kk">Share it.</b> Add an event we approve, plus +25 for each person who goes</span><b>+25</b></div>
      <p class="sub" style="margin-top:12px">Every place you visit earns a stamp, and your first visit in each neighborhood earns its neighborhood stamp. Hit milestones (three neighborhoods, five visits to one spot) to unlock patches.</p>`,
+    `<div class="k">Reading the map</div><div class="h1" id="kitTitle">Shape shows how big it is.</div>
+     <div class="legend">${['popup','niche','regular','cornerstone'].map(k=>`<div class="lgrow"><span class="lgico">${tierIcon(k,28,C.ink)}</span><div><b>${KINDS[k].label}</b><span>${KINDS[k].blurb}</span></div></div>`).join('')}</div>
+     <div class="h2" style="margin:16px 0 6px;font-size:22px">Color shows what kind.</div>
+     <div class="lgcats">${Object.keys(CATS).map(k=>`<span>${catDot(k,11)}${CATS[k].short}</span>`).join('')}</div>
+     <div class="lgrow" style="margin-top:12px;border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap one to zoom in and see each event</span></div></div>`,
     `<div class="k">A few more things</div><div class="h1" id="kitTitle">You're all set.</div>
      <ol class="kitsteps">
       <li><div><b>Your daily Top 4</b><span>Every day we pick four things near you: a Headliner, a Staple, a Hidden Gem and a Pop-up.</span></div></li>
