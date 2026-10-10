@@ -830,7 +830,7 @@ suNext.onclick=()=>{
   // real users start with an empty passport (the demo profile is only for showing the app before sign-up)
   Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[], redeemed:[], alertsRead:false });
   S.signedUp=true; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=new Date().toISOString().slice(0,10); save(); renderNames(); dbProfile();
-  history=[]; S.kitSeen=false; save(); go('home'); setTimeout(openKit,400);
+  history=[]; S.kitSeen=false; save(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
 };
 function shortName(){ const p=(S.name||'').split(' ').filter(Boolean); return p.length? p[0]+(p[1]?` ${p[p.length-1][0].toUpperCase()}.`:'') : 'You'; }
 function renderNames(){ const n=shortName(); document.getElementById('passName').textContent=`${n} · Los Angeles`; document.getElementById('pfName').textContent=n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`; }
@@ -932,7 +932,10 @@ recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classLi
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList.remove('on'); });
 
 /* ---------- home ---------- */
-let filter='All', when='week', tier='any';
+// category filter: 'All', one category key, or 'mine' (the interests you picked at sign-up, the default)
+const myCats=()=>Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label));
+const catOK=(ev,c)=> c==='All' || (c==='mine'? myCats().includes(ev.category) : ev.category===c);
+let filter=myCats().length?'mine':'All', when='week', tier='any';
 // time filter: next occurrence falls today / within 7 days / within 30 days (rolling windows)
 const WHEN=[['any','Anytime'],['tonight','Tonight'],['week','This week'],['month','This month']];
 function inWindow(ev){
@@ -944,7 +947,7 @@ function inWindow(ev){
 function enrich(){ const o=origin(); events.forEach(ev=>{ ev.mi=miles(o,ev); ev.hood=hoodOf(ev).name; }); }
 function picks(){
   enrich();
-  let list=events.filter(ev=> (filter==='All' || ev.category===filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev)).sort((a,b)=>a.mi-b.mi);
+  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev)).sort((a,b)=>a.mi-b.mi);
   return list;                                    // all of LA, closest first
 }
 function cardHtml(ev){
@@ -974,7 +977,7 @@ function inView(ev){ return true; }   // the map always frames all of LA
 function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
-  const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
+  const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
   document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when"><small>When</small>${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type"><small>Type</small>${cl}<i>▾</i></button>`;
   const P=picks();
   document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
@@ -984,7 +987,7 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
 }
 document.getElementById('chips').addEventListener('click',e=>{ const b=e.target.closest('[data-pick]'); if(b) openPicker(b.dataset.pick); });
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
-function countWith(w,c,t=tier){ const ow=when; when=w; const n=events.filter(ev=>(c==='All'||ev.category===c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)).length; when=ow; return n; }
+function countWith(w,c,t=tier){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)).length; when=ow; return n; }
 function openPicker(kind){
   const row=(attr,k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" ${attr}="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   let body;
@@ -993,6 +996,7 @@ function openPicker(kind){
     + row('data-tier','any','<span class="ticon"></span>','Any kind',countWith(when,filter,'any'),tier==='any',true)
     + Object.keys(KINDS).map(k=>row('data-tier',k,tierIcon(k,14),`${KINDS[k].plural}<small>${KINDS[k].blurb}</small>`,countWith(when,filter,k),tier===k)).join('')
     + `<div class="psub">Category</div>`
+    + (myCats().length? row('data-opt','mine','<span class="ticon">★</span>','Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
     + ['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))].map(k=>row('data-opt',k,k==='All'?'<span class="ticon"></span>':catDot(k,12),k==='All'?'Everything':CATS[k].label,countWith(when,k),k===filter,k==='All')).join('');
   sheet.innerHTML=`<div class="grab"></div><div class="cat">${kind==='when'?'When':'Type of event'}</div><div class="picklist">${body}</div>`;
   overlay.classList.add('on');
@@ -1756,7 +1760,7 @@ function loadSheet(){
 /* ---------- demo chrome ---------- */
 const jumps=[['onb1','Intro'],['home','Map'],['plans','Plans'],['passport','Passport'],['alerts','Alerts'],['host','Host view']];
 document.getElementById('jump').innerHTML=jumps.map(j=>`<button data-go="${j[0]}">${j[1]}</button>`).join('');
-document.getElementById('restart').onclick=()=>{ try{ localStorage.removeItem('comuna_v3'); }catch(e){} load(); filter='All'; history=[]; current=''; go('onb1',false); renderHome(); updateDot(); toast('Demo reset'); };
+document.getElementById('restart').onclick=()=>{ try{ localStorage.removeItem('comuna_v3'); }catch(e){} load(); filter=myCats().length?'mine':'All'; history=[]; current=''; go('onb1',false); renderHome(); updateDot(); toast('Demo reset'); };
 
 /* ---------- PWA: service worker registration ---------- */
 if("serviceWorker" in navigator){
