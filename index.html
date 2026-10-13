@@ -227,7 +227,7 @@ img{ max-width:100% }
 /* ---------- stamp modal ---------- */
 .recmodal{ position:absolute; inset:0; z-index:55; display:none; align-items:flex-end; background:rgba(38,37,31,.5) }
 .recmodal.on{ display:flex }
-.recmodal .box{ background:var(--paper); width:100%; max-height:86%; overflow-y:auto; border-radius:26px 26px 0 0; padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px)) }
+.recmodal .box{ background:var(--paper); width:100%; max-height:86%; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; border-radius:26px 26px 0 0; padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px)) }
 .recmodal .k{ font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red) }
 .recmodal .h1{ color:var(--green); margin:6px 0 4px }
 .recmodal .why{ font-size:11px; color:var(--muted); margin-top:2px }
@@ -1595,6 +1595,13 @@ document.getElementById('postEvent').onclick=()=>toast('Posting opens in the nex
 function syncHeadH(){ const h=document.querySelector('#homeScreen .homehead'); if(h&&h.offsetHeight) document.getElementById('homeScreen').style.setProperty('--headh',(h.offsetHeight-6)+'px'); }
 window.addEventListener('resize',syncHeadH); setTimeout(syncHeadH,0);
 
+/* ---------- pop-ups (Top 4, starter kit): drag up/down with a mouse too; touch and trackpads already scroll ---------- */
+document.querySelectorAll('.recmodal .box').forEach(box=>{ let down=false, y0=0, s0=0, moved=false;
+  box.addEventListener('pointerdown',e=>{ if(e.pointerType!=='mouse' || box.scrollHeight<=box.clientHeight) return; down=true; moved=false; y0=e.clientY; s0=box.scrollTop; });
+  window.addEventListener('pointermove',e=>{ if(!down) return; const dy=e.clientY-y0; if(Math.abs(dy)>4){ moved=true; box.style.cursor='grabbing'; } box.scrollTop=s0-dy; });
+  window.addEventListener('pointerup',()=>{ if(!down) return; down=false; box.style.cursor=''; });
+  box.addEventListener('click',e=>{ if(moved){ e.stopPropagation(); e.preventDefault(); moved=false; } },true);
+});
 /* ---------- picks row: drag with a mouse too (touch already swipes natively) ---------- */
 (function(){
   const row=document.getElementById('picks'); let down=false, x0=0, s0=0, moved=false;
