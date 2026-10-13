@@ -122,13 +122,10 @@ img{ max-width:100% }
 .mapwrap .toggle button{ padding:6px 12px; border-radius:30px; font-size:12.5px; font-weight:700 }
 .mapwrap .toggle button.on{ background:var(--green); color:var(--paper) }
 .maplabel{ position:absolute; left:14px; bottom:10px; z-index:4; font-family:var(--hand); font-size:18px; color:var(--red); pointer-events:none }
-.pin{ width:24px; height:24px; border-radius:50%; border:2.5px solid var(--paper); box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; position:relative; cursor:pointer; transform:translate(-50%,-50%); overflow:visible }
+.pin{ width:28px; height:28px; border-radius:50%; background:var(--green); border:2.5px solid var(--paper); box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; position:relative; cursor:pointer; transform:translate(-50%,-50%); overflow:visible }
+.pin.big{ width:40px; height:40px; box-shadow:0 0 0 3px var(--sun),0 4px 10px rgba(0,0,0,.32); z-index:2 }
 .pin svg{ display:block }
 /* tier = pin shape (category = colour), growing with the tier: Pop-up dot, Hidden Gem triangle, Staple square, Headliner starburst */
-.pin.tier-cornerstone{ width:30px; height:30px; background:none !important; border:none; box-shadow:none; filter:drop-shadow(0 3px 4px rgba(0,0,0,.3)) }
-.pin.tier-popup{ width:16px; height:16px; border-width:2px }
-.pin.tier-niche{ width:24px; height:24px; background:none !important; border:none; box-shadow:none; filter:drop-shadow(0 3px 4px rgba(0,0,0,.28)) }
-.pin.tier-regular{ width:22px; height:22px; border-radius:5px }
 .ticon{ display:inline-grid; place-items:center; width:16px; height:16px; vertical-align:-3px; margin-right:2px } .ticon i{ display:block }
 .cluster{ border-radius:50%; background:var(--green); color:var(--paper); border:2.5px solid var(--sun); box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:15px; cursor:pointer }
 .pin .chk{ position:absolute; right:-8px; top:-8px; width:16px; height:16px; border-radius:50%; background:var(--green); color:var(--paper); font-size:11px; font-weight:700; display:grid; place-items:center; border:2px solid var(--paper) }
@@ -187,8 +184,8 @@ img{ max-width:100% }
 #homeScreen:not(.home-list) .picks::-webkit-scrollbar{ display:none }
 /* map view: slim one-line cards so more of the map shows */
 .pick .m2{ display:none }
-#homeScreen:not(.home-list) .pick{ grid-template-columns:22px 1fr; gap:10px; padding:9px 14px; border-radius:14px }
-#homeScreen:not(.home-list) .pick .n{ width:22px; height:22px }
+#homeScreen:not(.home-list) .pick{ grid-template-columns:30px 1fr; gap:10px; padding:9px 14px; border-radius:14px }
+#homeScreen:not(.home-list) .pick .n{ width:30px; height:30px }
 #homeScreen:not(.home-list) .pick .dist, #homeScreen:not(.home-list) .pick .when, #homeScreen:not(.home-list) .pick .m{ display:none }
 #homeScreen:not(.home-list) .pick .t{ -webkit-line-clamp:1; font-size:14.5px; margin:0 }
 #homeScreen:not(.home-list) .pick .m2{ display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px }
@@ -247,7 +244,7 @@ img{ max-width:100% }
 .lgrow b{ display:block; font-size:15px } .lgrow span:not(.lgico):not(.cluster):not(.ticon){ display:block; font-size:13px; color:var(--muted) }
 .lgico{ width:34px; display:grid; place-items:center; flex:none } .lgico .ticon{ width:auto; height:auto; margin:0 }
 .editint{ margin-left:auto; font-size:12.5px; font-weight:700; color:var(--green); text-transform:none; letter-spacing:0; text-decoration:underline; text-underline-offset:3px }
-.lgcats{ display:flex; flex-wrap:wrap; gap:6px 12px; font-size:13px } .lgcats span{ display:inline-flex; align-items:center; gap:5px }
+.lgcats{ display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; font-size:13.5px; margin-top:8px } .lgcats > span{ display:inline-flex; align-items:center; gap:8px }
 .kitpts .kk{ font-family:inherit; font-size:inherit; color:inherit; font-weight:700 } .kitpts.sub2{ margin-left:18px; padding:8px 14px; font-size:13px } .kitpts.sub2 b{ font-size:17px }
 .kitpts{ display:flex; justify-content:space-between; align-items:center; background:var(--card); border-radius:14px; padding:12px 14px; margin-top:8px; font-size:14px } .kitpts b{ font-family:var(--display); font-weight:900; font-size:22px; color:var(--red) }
 .kitart{ display:flex; justify-content:center; align-items:center; gap:4px; margin:10px 0 2px }
@@ -634,7 +631,24 @@ const CATS = {
 // older saved check-ins used these category names
 const CAT_ALIAS = { art:'music', games:'sports' };
 const catKey=k=> CATS[k]? k : (CAT_ALIAS[k]||'community');
-function catDot(k,d){ return `<span aria-hidden="true" style="display:block;flex:none;width:${d}px;height:${d}px;border-radius:50%;background:${CATS[catKey(k)].bg}"></span>`; }
+const CAT_ICON={
+  music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  food:'<path d="M7 2v20M4 2v6a3 3 0 0 0 6 0V2M17 22V2c-2.5 1-4 3.5-4 7v4h4"/>',
+  wellness:'<path d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 8 3.5c0 6.1-8 11-8 11z"/><path d="M4.6 12.5h3.9l1.5-3 2.5 6 1.6-3h5.3"/>',
+  workshops:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
+  social:'<circle cx="12" cy="7" r="2.6"/><circle cx="5.5" cy="9" r="2"/><circle cx="18.5" cy="9" r="2"/><path d="M7 19.5c0-3 2.2-5.5 5-5.5s5 2.5 5 5.5"/><path d="M2 18.5c0-2.3 1.5-4 3.5-4 1 0 1.8.3 2.4.9M22 18.5c0-2.3-1.5-4-3.5-4-1 0-1.8.3-2.4.9"/>',
+  outdoors:'<path d="M3 20l6-11 4 7 3-4 5 8z"/><circle cx="17" cy="6" r="2"/>',
+  markets:'<path d="M4.5 11h15l-1.4 10H5.9z"/><circle cx="9.5" cy="8" r="2.6"/><path d="M14.5 11V6"/><path d="M14.5 6.8c1-2 3-2.6 4.6-2.1-.6 1.9-2.5 2.7-4.6 2.1z"/>',
+  comedy:'<path d="M4 4.5c5.3-1.7 10.7-1.7 16 0V11a8 8 0 0 1-16 0z"/><path d="M7.3 9.3q1.7-1.6 3.4 0M13.3 9.3q1.7-1.6 3.4 0"/><path d="M8 13.3q4 4.2 8 0"/>',
+  film:'<rect x="3.5" y="11.5" width="17" height="9.5" rx="1.2"/><path d="M3.5 15h17"/><path d="M7.5 11.5 5.5 15M11.5 11.5 9.5 15M15.5 11.5 13.5 15M19.5 11.5 17.5 15"/><path d="M3.5 11.5 3 8.2 19 3.6l.9 3.2z"/><path d="M7.6 7 9.4 9.8M11.6 5.9l1.8 2.8M15.6 4.7l1.8 2.8"/>',
+  immersive:'<path d="M3 8.5h18v7a1.5 1.5 0 0 1-1.5 1.5h-4.3L13 14.5h-2L8.8 17H4.5A1.5 1.5 0 0 1 3 15.5z"/><path d="M3 11h-1.5v3H3M21 11h1.5v3H21"/><path d="M18.5 1.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/>',
+  nightlife:'<path d="M4 4h16l-8 9z"/><path d="M12 13v7M8 20.5h8"/><path d="M13.5 3.5l3.5-2.5"/><circle cx="12.8" cy="6.6" r="1.4"/>',
+  community:'<path d="M3 11l9-7 9 7v10H3z"/><path d="M12 18.6s-3.9-2.3-3.9-4.9A2 2 0 0 1 12 12.4a2 2 0 0 1 3.9 1.3c0 2.6-3.9 4.9-3.9 4.9z"/>',
+  sports:'<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8M9 18h6"/>'
+};
+// category mark: a brand-green circle with the category's icon (the map, cards, filters and key all use it)
+const catIcon=(k,s,c='#F3E7D1')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_ICON[catKey(k)]||''}</svg>`;
+function catDot(k,d){ d=Math.max(d,18); return `<span aria-hidden="true" style="display:grid;place-items:center;flex:none;width:${d}px;height:${d}px;border-radius:50%;background:${C.green}">${catIcon(k,Math.round(d*.56))}</span>`; }
 /* ---------- place types: each gets its own passport page ---------- */
 // Event tiers. Internal keys stay the same so existing saved passports keep working; only names and meaning changed.
 const KINDS = {
@@ -836,7 +850,7 @@ function maybeDailyPicks(){
   const today=new Date().toDateString(); if(S.lastPicksDay===today) return;
   const picks=dailyPicks(); if(!picks.length) return;
   S.lastPicksDay=today; save();
-  const row=ev=>`<button class="pick" data-rec="${ev.id}"><div class="n">${tierIcon(kindOf(ev),28,CATS[catKey(ev.category)].bg)}</div>
+  const row=ev=>`<button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
     <div><div class="when">${KINDS[kindOf(ev)].label}</div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:''}</div></div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
   const first=(S.name||'').split(' ')[0];
@@ -881,15 +895,15 @@ function kitSlides(){
      </ol>`
   ];
 }
-// map key: shapes = tier, colors = category. In onboarding only your picked interests' colors show; the map's "?" shows them all.
+// map key: every pin is a green circle with its category's icon; Headliners are bigger with a gold ring.
+// In onboarding only your picked interests show; the map's "?" shows them all.
 function legendHtml(mine){
   const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label)), keys=mine&&want.length? want : Object.keys(CATS);
-  return `<div class="h1" id="kitTitle">Shape shows how big it is.</div>
-     <div class="legend">${['popup','niche','regular','cornerstone'].map(k=>`<div class="lgrow"><span class="lgico">${tierIcon(k,28,C.ink)}</span><div><b>${KINDS[k].label}</b><span>${KINDS[k].blurb}</span></div></div>`).join('')}</div>
-     <div class="h2" style="margin:16px 0 6px;font-size:22px">Color shows what kind.</div>
-     <div class="lgcats">${keys.map(k=>`<span>${catDot(k,11)}${CATS[k].label}</span>`).join('')}</div>
-     ${keys.length<Object.keys(CATS).length?`<p class="sub" style="font-size:13px;margin-top:8px">Those are your picks. Tap <b>?</b> on the map anytime for every color.</p>`:''}
-     <div class="lgrow" style="margin-top:12px;border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap one to zoom in and see each event</span></div></div>`;
+  return `<div class="h1" id="kitTitle">The icon shows what kind.</div>
+     <div class="lgcats">${keys.map(k=>`<span>${catDot(k,26)}${CATS[k].label}</span>`).join('')}</div>
+     ${keys.length<Object.keys(CATS).length?`<p class="sub" style="font-size:13px;margin-top:8px">Those are your picks. Tap <b>?</b> on the map anytime for every icon.</p>`:''}
+     <div class="lgrow" style="margin-top:14px"><span class="lgico"><span class="pin big" style="position:static;transform:none;width:34px;height:34px;cursor:default">${catIcon('music',18)}</span></span><div><b>Bigger with a gold ring = Headliner</b><span>${KINDS.cornerstone.blurb}</span></div></div>
+     <div class="lgrow" style="border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap one to zoom in and see each event</span></div></div>`;
 }
 function openLegend(){
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Reading the map</div>${legendHtml(false).replace('id="kitTitle"','')}`;
@@ -936,7 +950,7 @@ function picks(){
 }
 function cardHtml(ev){
     const done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
-    return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,18)}${done?'<span class="chk">&check;</span>':''}</div>
+    return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?'<span class="chk">&check;</span>':''}</div>
       <div><div class="when">${ev.live?'\u{1F534} ':''}${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</b> · ${ev.venue}${inn&&!done?' · Saved':''}</div></div>
       <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
 // after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
@@ -1012,16 +1026,12 @@ const tMap=document.getElementById('tMap'), tList=document.getElementById('tList
 
 /* ---------- map: Mapbox if reachable, Paper map otherwise ---------- */
 let map=null, markers=[], paperDrawn=false;
-function starSVG(d,c,stroke='#F3E7D1'){ let p=''; for(let i=0;i<16;i++){ const r=i%2?d*.27:d*.47, a=Math.PI*i/8-Math.PI/2; p+=(i?'L':'M')+(r*Math.cos(a)).toFixed(1)+' '+(r*Math.sin(a)).toFixed(1); }
-  return `<svg width="${d}" height="${d}" viewBox="${-d/2} ${-d/2} ${d} ${d}" aria-hidden="true" style="display:block;overflow:visible"><path d="${p}Z" fill="${c}" stroke="${stroke}" stroke-width="2.4" stroke-linejoin="round"/></svg>`; }
 // small tier glyph for tabs, badges and the legend
-function tierIcon(k,size=14,c=C.green){ const s=size;
-  if(k==='cornerstone') return `<span class="ticon">${starSVG(s+4,c,'none')}</span>`;
-  if(k==='niche') return `<span class="ticon">${triSVG(s*.9,c,'none')}</span>`;
-  if(k==='popup') return `<span class="ticon"><i style="width:${s*.45}px;height:${s*.45}px;background:${c};border-radius:50%"></i></span>`;
-  return `<span class="ticon"><i style="width:${s*.68}px;height:${s*.68}px;background:${c};border-radius:2px"></i></span>`; }
-function triSVG(d,c,stroke='#F3E7D1'){ return `<svg width="${d}" height="${d}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;overflow:visible"><path d="M12 2.5 L22 20.5 H2 Z" fill="${c}" stroke="${stroke}" stroke-width="2.6" stroke-linejoin="round"/></svg>`; }
-function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev); el.className='pin tier-'+k+(ev.live&&!done?' live':''); el.style.setProperty('--c',CATS[catKey(ev.category)].bg); if(k==='cornerstone') el.innerHTML=starSVG(30,CATS[catKey(ev.category)].bg); else if(k==='niche') el.innerHTML=triSVG(24,CATS[catKey(ev.category)].bg); else el.style.background='var(--c)'; el.innerHTML+=(done?'<span class="chk">&check;</span>':''); el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+KINDS[k].label); el.tabIndex=0; el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
+function tierIcon(k,size=14){ return k==='cornerstone'? `<span class="ticon"><i style="width:${size*.8}px;height:${size*.8}px;border-radius:50%;background:${C.green};box-shadow:0 0 0 2px ${C.sun}"></i></span>` : `<span class="ticon"></span>`; }
+function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev), big=k==='cornerstone';
+  el.className='pin'+(big?' big':''); el.innerHTML=catIcon(ev.category,big?21:15)+(done?'<span class="chk">&check;</span>':'');
+  el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+CATS[catKey(ev.category)].label+(big?', Headliner':'')); el.tabIndex=0;
+  el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
    Recomputed after every pan/zoom, so bubbles split apart as you zoom. At street level (zoom 15+) nothing
    clusters; events sharing an address fan out in a small ring so each one can be tapped. */
@@ -1292,7 +1302,7 @@ function nextWhen(ev){
 // blue "Verified by Comuna" check: events from cities, real businesses and established organizers (Verified column in the Sheet)
 const vCheck=(ev,sz=16)=>ev&&ev.verified?`<svg class="vcheck" width="${sz}" height="${sz}" viewBox="0 0 24 24" role="img" aria-label="Verified by Comuna"><path fill="#2F6FDB" d="M12 1.5l2.6 1.9 3.2-.1 1 3 2.6 1.9-1 3 1 3-2.6 1.9-1 3-3.2-.1L12 22.5l-2.6-1.9-3.2.1-1-3L2.6 15.8l1-3-1-3 2.6-1.9 1-3 3.2.1z"/><path d="M7.5 12.2l3 3 6-6.2" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`:'';
 function badges(ev){
-  const b=[]; if(ev.community) b.push('Community pick'); if(ev.kind && KINDS[ev.kind]) b.push(tierIcon(ev.kind,12)+KINDS[ev.kind].label); if(/free/i.test(ev.price)) b.push('Free'); else if(/donation|pay-what/i.test(ev.price)) b.push('Pay what you can'); else if(/paid/i.test(ev.price)) b.push('Paid');
+  const b=[]; if(ev.community) b.push('Community pick'); if(/free/i.test(ev.price)) b.push('Free'); else if(/donation|pay-what/i.test(ev.price)) b.push('Pay what you can'); else if(/paid/i.test(ev.price)) b.push('Paid');
   if(ev.age) b.push(ev.age); if(/indoor/i.test(ev.setting)) b.push('Indoor'); else if(/outdoor/i.test(ev.setting)) b.push('Outdoor'); else if(/both/i.test(ev.setting)) b.push('Indoor + outdoor');
   if(ev.rsvpReq) b.push('RSVP required'); return b;
 }
@@ -1321,7 +1331,7 @@ function openSheet(id){
     <div class="cat" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${CATS[catKey(ev.category)].label} · ${ev.area||ev.hood}</div>
     <h2>${ev.title}${vCheck(ev,22)}</h2>${ev.verified?`<div class="vnote">${vCheck(ev,14)} Verified by Comuna: a real venue, organization or established host</div>`:''}
     <div class="sub">${ev.venue}</div>
-    <div class="tierline">${tierIcon(kindOf(ev),14)}<span><b>${KINDS[kindOf(ev)].label}:</b> ${KINDS[kindOf(ev)].blurb}</span></div>
+    <div class="tierline">${kindOf(ev)==='cornerstone'?tierIcon('cornerstone',14):''}<span><b>${KINDS[kindOf(ev)].label}:</b> ${KINDS[kindOf(ev)].blurb}</span></div>
     ${badges(ev).length?`<div class="badges">${badges(ev).map(x=>`<span>${x}</span>`).join('')}</div>`:''}
     <div class="facts"><div class="fact"><div class="k">${ev.start&&!/one-off/i.test(ev.rec||'')?'Next':'When'}</div><div class="v">${ev.start?nextWhen(ev):(ev.time||'Soon')}</div>${ev.start&&ev.recDetail&&!/one-off/i.test(ev.rec)?`<div class="more">${ev.recDetail}</div>`:''}</div><div class="fact"><div class="k">How far</div><div class="v">${mins(ev.mi)} min · ${ev.mi.toFixed(1)} mi</div></div></div>
     ${ev.going?`<div class="goingrow">${ev.going} interested on Comuna</div>`:''}
