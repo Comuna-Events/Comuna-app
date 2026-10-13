@@ -632,7 +632,7 @@ const CATS = {
 const CAT_ALIAS = { art:'music', games:'sports' };
 const catKey=k=> CATS[k]? k : (CAT_ALIAS[k]||'community');
 const CAT_ICON={
-  music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  music:'<g transform="translate(.6 .4)"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></g>',
   food:'<path d="M7 2v20M4 2v6a3 3 0 0 0 6 0V2M17 22V2c-2.5 1-4 3.5-4 7v4h4"/>',
   wellness:'<path d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 8 3.5c0 6.1-8 11-8 11z"/><path d="M4.6 12.5h3.9l1.5-3 2.5 6 1.6-3h5.3"/>',
   workshops:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
@@ -1005,9 +1005,7 @@ function openPicker(kind){
   const row=(attr,k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" ${attr}="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   let body;
   if(kind==='when') body=WHEN.map(([k,l])=>row('data-opt',k,'',l,countWith(k,filter),k===when,k==='any')).join('');
-  else body=`<div class="psub">Kind of event</div>`
-    + row('data-tier','any','<span class="ticon"></span>','Any kind',countWith(when,filter,'any'),tier==='any',true)
-    + Object.keys(KINDS).map(k=>row('data-tier',k,tierIcon(k,14),`${KINDS[k].plural}<small>${KINDS[k].blurb}</small>`,countWith(when,filter,k),tier===k)).join('')
+  else body=``
     + `<div class="psub" style="display:flex;align-items:center">Category<button class="editint" id="editInt">${myCats().length?'Edit interests':'Pick interests'}</button></div>`
     + (myCats().length? row('data-opt','mine',`<span class="ticon">${omark(15)}</span>`,'Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
     + ['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))].map(k=>row('data-opt',k,k==='All'?'<span class="ticon"></span>':catDot(k,12),k==='All'?'Everything':CATS[k].label,countWith(when,k),k===filter,k==='All')).join('');
