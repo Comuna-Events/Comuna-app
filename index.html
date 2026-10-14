@@ -126,7 +126,7 @@ img{ max-width:100% }
 .pin svg{ display:block }
 /* tier = pin shape (category = colour), growing with the tier: Pop-up dot, Hidden Gem triangle, Staple square, Headliner starburst */
 .ticon{ display:inline-grid; place-items:center; width:16px; height:16px; vertical-align:-3px; margin-right:2px } .ticon i{ display:block }
-.cluster{ border-radius:50%; background:var(--green); color:var(--paper); border:2.5px solid var(--sun); box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:15px; cursor:pointer }
+.cluster{ border-radius:50%; background:var(--card); color:var(--green); border:2px solid var(--green); box-shadow:0 2px 6px rgba(0,0,0,.18); display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:15px; cursor:pointer }
 .pin .chk{ position:absolute; right:-8px; top:-8px; width:16px; height:16px; border-radius:50%; background:var(--green); color:var(--paper); font-size:11px; font-weight:700; display:grid; place-items:center; border:2px solid var(--paper) }
 .mapboxgl-marker .pin{ transform:none }
 
@@ -177,6 +177,11 @@ img{ max-width:100% }
 .home-list .maphelp{ display:none }
 #homeScreen:not(.home-list) .mapwrap .toggle{ top:auto; bottom:calc(var(--navh) + 72px) }
 #homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 134px) }
+/* first view: today's Top 4 as pins, other events as quiet dots, one pill to show everything */
+.morepill{ position:absolute; z-index:5; left:50%; transform:translateX(-50%); top:calc(var(--headh,170px) + 4px); background:var(--card); border-radius:30px; padding:8px 14px; font-size:12.5px; font-weight:700; color:var(--ink); box-shadow:0 2px 8px rgba(0,0,0,.14); white-space:nowrap }
+.morepill b{ color:var(--green) }
+.home-list .morepill{ display:none }
+.edot{ position:absolute; width:11px; height:11px; border-radius:50%; border:1.5px solid var(--paper); transform:translate(-50%,-50%); opacity:.85; cursor:pointer; padding:0 }
 #homeScreen:not(.home-list) .picks{ position:absolute; left:0; right:0; bottom:calc(var(--navh) + 10px); z-index:6; flex:none; display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:0 14px; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x; cursor:grab; -webkit-overflow-scrolling:touch }
 #homeScreen:not(.home-list) .picks.dragging{ scroll-snap-type:none; cursor:grabbing }
 #homeScreen:not(.home-list) .picks::-webkit-scrollbar{ display:none }
@@ -458,6 +463,7 @@ img{ max-width:100% }
         <div id="map"></div>
         <div class="toggle"><button class="on" id="tMap">Map</button><button id="tList">List</button></div>
         <button class="maphelp" id="mapHelp" aria-label="How to read the map">?</button>
+        <button class="morepill" id="morePill" hidden></button>
         <div class="maplabel" id="mapNote"></div>
       </div>
       <div class="picks" id="picks"></div>
@@ -850,6 +856,7 @@ function dailyPicks(){
 }
 function maybeDailyPicks(){
   if(S.kitSeen===false) return;   // the starter kit goes first; it hands off to these picks when closed
+  if(focus && dailyPicks().length) return;   // the map opens on the Top 4, so no pop-up
   const today=new Date().toDateString(); if(S.lastPicksDay===today) return;
   const picks=dailyPicks(); if(!picks.length) return;
   S.lastPicksDay=today; save();
@@ -970,19 +977,34 @@ function showCard(ev){
   el.querySelectorAll('.pick.hot').forEach(x=>x.classList.remove('hot')); card.classList.add('hot');
   el.scrollTo({left:card.offsetLeft-14,behavior:'smooth'});
 }
-function inView(ev){ return true; }   // the map always frames all of LA
+function inView(ev){ return true; }
+/* First view: frame today's Top 4 close to you, show other events as small dots, and let one tap show everything.
+   FOCUS_EVERY_OPEN true = the map opens this way every time; false = only until you first tap "Show all". */
+const FOCUS_EVERY_OPEN=true;
+let focus=FOCUS_EVERY_OPEN || !S.mapExpanded;
+// the header floats over the top of the map and the cards over the bottom: frame events in the space between
+function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
+  return { t:(head?head.offsetHeight:150)+(focus?36:0), b:(nav.height? app.bottom-nav.top : 70)+80 }; }
+function mapView(){
+  const P=picks(), top=focus? dailyPicks() : [], ids=new Set(top.map(e=>e.id));
+  if(top.length) return { P, top, pins:top, dots:P.filter(e=>!ids.has(e.id)), frame:top };
+  const near=P.filter(e=>e.mi<=NEARBY_MILES*2);   // start in your part of town; zoom out for the rest of LA
+  return { P, top, pins:P, dots:[], frame:near.length>=3? near : P };
+}
 function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
   const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
   document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when" aria-label="When: ${wl}">${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type" aria-label="Type: ${cl}">${cl}<i>▾</i></button>`;
-  const P=picks();
-  document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
+  const V=mapView(), P=V.P;
+  const mp=document.getElementById('morePill'); mp.hidden=!V.top.length;
+  if(V.top.length) mp.innerHTML=`Today's Top 4 · <b>Show all ${P.length}</b>`;
+  document.getElementById('picks').innerHTML = V.top.length? V.top.map(cardHtml).join('') : P.map(cardHtml).join('')
     + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
       : eventsState==='error'? `<button class="pick" id="retryEvents" style="grid-template-columns:1fr"><div><div class="t">Couldn't load events</div><div class="m2" style="display:block">Check your connection, then tap to try again</div></div></button>`
       : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches these filters</div><div class="m2" style="display:block">Try Anytime or Everything</div></div></div>`);
   const first=P[0]; document.getElementById('mapNote').textContent = first ? (first.live? `${first.title.split(' ').slice(0,2).join(' ')}: ${first.startsIn}` : '') : '';
-  placePins(P);
+  placePins(V);
 }
 document.getElementById('chips').addEventListener('click',e=>{ const b=e.target.closest('[data-pick]'); if(b) openPicker(b.dataset.pick); });
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
@@ -1013,9 +1035,10 @@ function openPicker(kind){
   const ei=document.getElementById('editInt'); if(ei) ei.onclick=e=>{ e.stopPropagation(); editInterests(); };
   sheet.querySelector('.picklist').onclick=e=>{ const o=e.target.closest('[data-opt],[data-tier]'); if(!o||o.disabled) return;
     if(o.dataset.tier) tier=o.dataset.tier; else if(kind==='when') when=o.dataset.opt; else filter=o.dataset.opt;
-    overlay.classList.remove('on'); renderHome(); };
+    focus=false; overlay.classList.remove('on'); renderHome(); };
 }
 document.getElementById('mapHelp').onclick=openLegend;
+document.getElementById('morePill').onclick=()=>{ focus=false; S.mapExpanded=true; save(); renderHome(); };
 document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadSheet(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
 document.getElementById('tMap').onclick=()=>{ document.getElementById('homeScreen').classList.remove('home-list'); tMap.classList.add('on'); tList.classList.remove('on'); setTimeout(()=>{ map?map.resize():drawPaper(); },20); };
 document.getElementById('tList').onclick=()=>{ document.getElementById('homeScreen').classList.add('home-list'); tList.classList.add('on'); tMap.classList.remove('on'); };
@@ -1046,19 +1069,30 @@ function drawClusters(){
       g.list.forEach((ev,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n;
         markers.push(new mapboxgl.Marker({element:pinEl(ev),offset:[Math.round(ring*Math.cos(a)),Math.round(ring*Math.sin(a))]}).setLngLat([ev.lng,ev.lat]).addTo(map)); });
       return; }
-    const el=document.createElement('div'); el.className='cluster'; el.textContent=n; const d=Math.min(52,30+Math.sqrt(n)*4); el.style.width=el.style.height=d+'px';
+    const el=document.createElement('div'); el.className='cluster'; el.textContent=n>20?'20+':n; const d=Math.min(40,26+Math.sqrt(n)*3); el.style.width=el.style.height=d+'px';
     el.setAttribute('role','button'); el.setAttribute('aria-label',n+' events here, zoom in'); el.tabIndex=0;
     const zoomIn=e=>{ e&&e.stopPropagation(); userMoved=true; const b=new mapboxgl.LngLatBounds(); g.list.forEach(ev=>b.extend([ev.lng,ev.lat]));
       map.fitBounds(b,{padding:80,maxZoom:Math.max(map.getZoom()+2,STREET_ZOOM+0.5),duration:500}); };
     el.onclick=zoomIn; el.onkeydown=e=>{ if(e.key==='Enter') zoomIn(); };
     markers.push(new mapboxgl.Marker({element:el}).setLngLat(map.unproject([g.x,g.y])).addTo(map)); });
 }
-function placePins(P){
-  if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you;
+// other events in the first view: small dots in their group's color, tap one to open it
+function setDots(list){
+  const data={ type:'FeatureCollection', features:list.map(ev=>({ type:'Feature', properties:{ id:ev.id, c:CATS[catKey(ev.category)].bg }, geometry:{ type:'Point', coordinates:[ev.lng,ev.lat] } })) };
+  if(!map.getSource('focus-dots')){
+    map.addSource('focus-dots',{ type:'geojson', data });
+    map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':.85, 'circle-stroke-color':'#F3E7D1', 'circle-stroke-width':1.5 } });
+    map.on('click','focus-dots',e=>{ const f=e.features&&e.features[0]; if(f) openSheet(+f.properties.id); });
+    map.on('mouseenter','focus-dots',()=>map.getCanvas().style.cursor='pointer'); map.on('mouseleave','focus-dots',()=>map.getCanvas().style.cursor='');
+  } else map.getSource('focus-dots').setData(data);
+}
+function placePins(V){
+  const P=V.pins;
+  if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you; setDots(V.dots);
     if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); cardsForView(); });
       ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent) userMoved=true; })); }
     if(!markers.you){ const y=youEl(30); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
-    const b=new mapboxgl.LngLatBounds(); P.filter(inView).forEach(e=>b.extend([e.lng,e.lat])); b.extend([origin().lng,origin().lat]); map.fitBounds(b,{padding:48,maxZoom:15,duration:600});
+    const b=new mapboxgl.LngLatBounds(); V.frame.forEach(e=>b.extend([e.lng,e.lat])); b.extend([origin().lng,origin().lat]); const ins=mapInsets(); map.fitBounds(b,{padding:{top:ins.t+20,bottom:ins.b+20,left:40,right:40},maxZoom:V.top.length?14:15,duration:600});
   } else drawPaper();
 }
 /* Brand Guide v2 "Paper" map style, applied on top of Mapbox Light.
@@ -1118,7 +1152,8 @@ function tryMapbox(){
 function rebuildMap(){ if(map){ if(markers.you){ markers.you.remove(); markers.you=null; } map.flyTo({center:[origin().lng,origin().lat],zoom:13.3,duration:800}); } }
 
 function rng(seed){ return ()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }; }
-function projector(w,h,P){
+function projector(w,h,P,ins){
+  if(ins){ const f=projector(w,h-ins.t-ins.b,P); return p=>{ const q=f(p); return { x:q.x, y:q.y+ins.t }; }; }
   const o=origin(); const pts=[o,...P.filter(inView)];
   let la0=Math.min(...pts.map(p=>p.lat)), la1=Math.max(...pts.map(p=>p.lat)), lo0=Math.min(...pts.map(p=>p.lng)), lo1=Math.max(...pts.map(p=>p.lng));
   const k=Math.cos(o.lat*Math.PI/180); let dLa=Math.max(la1-la0,.012), dLo=Math.max((lo1-lo0)*k,.012);
@@ -1128,7 +1163,7 @@ function projector(w,h,P){
 }
 const LANDMARKS=[ {n:'Silver Lake Reservoir',lat:34.0925,lng:-118.2616,t:'water',rx:.9,ry:.5}, {n:'Echo Park Lake',lat:34.0726,lng:-118.2606,t:'water',rx:.45,ry:.3}, {n:'Elysian Park',lat:34.0806,lng:-118.2436,t:'park',rx:1.2,ry:1.0}, {n:'Griffith Park',lat:34.1300,lng:-118.2950,t:'park',rx:2.2,ry:1.4} ];
 function paintPaper(host,w,h,P,opts={}){
-  const R=rng(7), proj=projector(w,h,P);
+  const R=rng(7), proj=projector(w,h,P,opts.ins);
   const pxPerMi = Math.abs(proj({lat:origin().lat,lng:origin().lng+0.0185}).x - proj(origin()).x) || 60;
   let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><rect width="${w}" height="${h}" fill="#EFE2C8"/>`;
   LANDMARKS.forEach(L=>{ const p=proj(L); if(p.x<-200||p.x>w+200||p.y<-200||p.y>h+200) return; s+=`<ellipse cx="${p.x}" cy="${p.y}" rx="${L.rx*pxPerMi*.5}" ry="${L.ry*pxPerMi*.5}" fill="${L.t==='water'?'#AFC0D8':'#C9D4B5'}"/>`; });
@@ -1141,13 +1176,14 @@ function paintPaper(host,w,h,P,opts={}){
   s+='</svg>';
   host.innerHTML=s;
   const o=proj(origin()); const you=document.createElement('div'); you.className='youare'; you.style.left=o.x+'px'; you.style.top=o.y+'px'; you.innerHTML=omark(30); host.appendChild(you);
-  if(!opts.noPins) P.forEach((ev,i)=>{ if(!inView(ev)) return; const p=proj(ev); const el=pinEl(ev,i); el.style.position='absolute'; el.style.left=p.x+'px'; el.style.top=p.y+'px'; host.appendChild(el); });
+  (opts.dots||[]).forEach(ev=>{ const p=proj(ev); if(p.x<0||p.x>w||p.y<0||p.y>h) return; const d=document.createElement('button'); d.className='edot'; d.style.background=CATS[catKey(ev.category)].bg; d.style.left=p.x+'px'; d.style.top=p.y+'px'; d.setAttribute('aria-label',ev.title); d.onclick=()=>openSheet(ev.id); host.appendChild(d); });
+  if(!opts.noPins) (opts.pins||P).forEach((ev,i)=>{ if(!inView(ev)) return; const p=proj(ev); const el=pinEl(ev,i); el.style.position='absolute'; el.style.left=p.x+'px'; el.style.top=p.y+'px'; host.appendChild(el); });
 }
 function drawPaper(){
   if(map) return;
   const wrap=document.getElementById('map'); const w=wrap.clientWidth, h=wrap.clientHeight; if(!w||!h) return;
   let host=wrap.querySelector('.paper-map'); if(!host){ host=document.createElement('div'); host.className='paper-map'; wrap.appendChild(host); }
-  enrich(); paintPaper(host,w,h,picks());
+  enrich(); const V=mapView(); paintPaper(host,w,h,V.frame,{ pins:V.pins, dots:V.dots, ins:mapInsets() });
 }
 // sign-up map: a real Mapbox overview of LA in the brand style, with every event as a dot. Look-only (no pan/zoom).
 // Falls back to the drawn Paper map if Mapbox can't load.
