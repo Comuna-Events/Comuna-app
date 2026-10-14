@@ -109,9 +109,10 @@ img{ max-width:100% }
 .field:focus{ outline:none; border-color:var(--green) }
 .flabel{ font-size:13px; font-weight:700; color:var(--muted); margin-top:16px; display:block }
 .interests{ display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 20px }
-.interests button{ border:1.5px solid var(--ink); border-radius:30px; padding:9px 14px; font-size:14px; font-weight:500 }
+.interests button{ width:100%; text-align:left; border:1.5px solid var(--ink); border-radius:16px; padding:12px 16px; font-size:15px; font-weight:700 }
 .vcheck{ display:inline-block; vertical-align:-0.12em; margin-left:6px; flex:none }
 .interests button[aria-pressed="true"]{ background:var(--green); border-color:var(--green); color:var(--paper) }
+.interests small{ display:block; font-size:12px; font-weight:400; opacity:.75; margin-top:2px }
 
 /* ---------- home ---------- */
 .mapwrap{ position:relative; height:44%; min-height:250px; margin:6px 14px 0; border-radius:22px; overflow:hidden; background:var(--paper-2) }
@@ -121,7 +122,7 @@ img{ max-width:100% }
 .mapwrap .toggle button.on{ background:var(--paper-2); color:var(--ink) } .mapwrap .toggle button{ color:var(--muted) }
 .maplabel{ position:absolute; left:14px; bottom:10px; z-index:4; font-family:var(--hand); font-size:18px; color:var(--red); pointer-events:none }
 .pin{ width:28px; height:28px; border-radius:50%; background:var(--green); border:none; box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; position:relative; cursor:pointer; transform:translate(-50%,-50%); overflow:visible }
-.pin.big{ width:40px; height:40px; box-shadow:0 0 0 3px var(--sun),0 4px 10px rgba(0,0,0,.32); z-index:2 }
+.pin.big{ width:40px; height:40px; box-shadow:0 0 0 2px var(--paper),0 0 0 5px var(--sun),0 4px 10px rgba(0,0,0,.32); z-index:2 }  /* cream gap keeps the gold ring visible on a mustard pin */
 .pin svg{ display:block }
 /* tier = pin shape (category = colour), growing with the tier: Pop-up dot, Hidden Gem triangle, Staple square, Headliner starburst */
 .ticon{ display:inline-grid; place-items:center; width:16px; height:16px; vertical-align:-3px; margin-right:2px } .ticon i{ display:block }
@@ -612,7 +613,8 @@ const HOODS = [
 
 /* ---------- categories: each gets a colored dot ---------- */
 // Brand Guide v2 core colors (Signal Red, Ink, Comuna Green, Map Blue, Sun) plus deeper and lighter tints of them, one per category.
-const CATS = {
+/* the detailed categories in the Sheet; the event page still shows these */
+const SUBCATS = {
   music:     { label:'Music & Arts',             short:'Music & Arts', bg:'#4B66A8', ex:'concerts, gallery nights, art walks' },
   food:      { label:'Food & Drink',             short:'Food',         bg:'#C9533D', ex:'food festivals, tastings, night markets' },
   wellness:  { label:'Health & Wellness',        short:'Wellness',     bg:'#244D3A', ex:'free yoga, sound baths, meditation' },
@@ -627,27 +629,27 @@ const CATS = {
   community: { label:'Community & Civic',        short:'Community',    bg:'#6B675A', ex:'neighborhood festivals, parades, cleanups' },
   sports:    { label:'Sports & Games',           short:'Sports',       bg:'#E3B94F', ex:'trivia, game nights, pickleball, big games' }
 };
+// What people see: four kinds of outing, one brand color each. Every Sheet category belongs to one of them.
+const CATS = {
+  shows:   { label:'Shows & Nightlife',   short:'Shows',   bg:'#4B66A8', fg:'#F3E7D1', ex:'concerts, comedy, movies, DJ nights' },
+  food:    { label:'Food & Markets',      short:'Food',    bg:'#C9533D', fg:'#F3E7D1', ex:'tastings, food festivals, farmers and flea markets' },
+  active:  { label:'Active & Outdoors',   short:'Active',  bg:'#244D3A', fg:'#F3E7D1', ex:'run clubs, yoga, hikes, pickup games' },
+  classes: { label:'Classes & Community', short:'Classes', bg:'#D6A638', fg:'#26251F', ex:'workshops, talks, meetups, neighborhood events' }
+};
+const SUB_GROUP = { music:'shows', comedy:'shows', film:'shows', immersive:'shows', nightlife:'shows', food:'food', markets:'food',
+  wellness:'active', outdoors:'active', sports:'active', workshops:'classes', social:'classes', community:'classes' };
 // older saved check-ins used these category names
 const CAT_ALIAS = { art:'music', games:'sports' };
-const catKey=k=> CATS[k]? k : (CAT_ALIAS[k]||'community');
+const catKey=k=> CATS[k]? k : (SUB_GROUP[CAT_ALIAS[k]||k]||'classes');
 const CAT_ICON={
-  music:'<g transform="translate(.6 .4)"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></g>',
+  shows:'<path d="M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v1.6a2.4 2.4 0 0 0 0 4.8V16a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 16v-1.6a2.4 2.4 0 0 0 0-4.8V8A1.5 1.5 0 0 1 4 6.5z"/><path d="M12 8.9v0M12 12v0M12 15.1v0" stroke-width="1.7"/>',
   food:'<path d="M7 2v20M4 2v6a3 3 0 0 0 6 0V2M17 22V2c-2.5 1-4 3.5-4 7v4h4"/>',
-  wellness:'<path d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 8 3.5c0 6.1-8 11-8 11z"/><path d="M4.6 12.5h3.9l1.5-3 2.5 6 1.6-3h5.3"/>',
-  workshops:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
-  social:'<circle cx="12" cy="7" r="2.6"/><circle cx="5.5" cy="9" r="2"/><circle cx="18.5" cy="9" r="2"/><path d="M7 19.5c0-3 2.2-5.5 5-5.5s5 2.5 5 5.5"/><path d="M2 18.5c0-2.3 1.5-4 3.5-4 1 0 1.8.3 2.4.9M22 18.5c0-2.3-1.5-4-3.5-4-1 0-1.8.3-2.4.9"/>',
-  outdoors:'<path d="M3 20l6-11 4 7 3-4 5 8z"/><circle cx="17" cy="6" r="2"/>',
-  markets:'<path d="M4.5 11h15l-1.4 10H5.9z"/><circle cx="9.5" cy="8" r="2.6"/><path d="M14.5 11V6"/><path d="M14.5 6.8c1-2 3-2.6 4.6-2.1-.6 1.9-2.5 2.7-4.6 2.1z"/>',
-  comedy:'<path d="M4 4.5c5.3-1.7 10.7-1.7 16 0V11a8 8 0 0 1-16 0z"/><path d="M7.3 9.3q1.7-1.6 3.4 0M13.3 9.3q1.7-1.6 3.4 0"/><path d="M8 13.3q4 4.2 8 0"/>',
-  film:'<rect x="3.5" y="11.5" width="17" height="9.5" rx="1.2"/><path d="M3.5 15h17"/><path d="M7.5 11.5 5.5 15M11.5 11.5 9.5 15M15.5 11.5 13.5 15M19.5 11.5 17.5 15"/><path d="M3.5 11.5 3 8.2 19 3.6l.9 3.2z"/><path d="M7.6 7 9.4 9.8M11.6 5.9l1.8 2.8M15.6 4.7l1.8 2.8"/>',
-  immersive:'<path d="M3 8.5h18v7a1.5 1.5 0 0 1-1.5 1.5h-4.3L13 14.5h-2L8.8 17H4.5A1.5 1.5 0 0 1 3 15.5z"/><path d="M3 11h-1.5v3H3M21 11h1.5v3H21"/><path d="M18.5 1.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/>',
-  nightlife:'<path d="M4 4h16l-8 9z"/><path d="M12 13v7M8 20.5h8"/><path d="M13.5 3.5l3.5-2.5"/><circle cx="12.8" cy="6.6" r="1.4"/>',
-  community:'<path d="M3 11l9-7 9 7v10H3z"/><path d="M12 18.6s-3.9-2.3-3.9-4.9A2 2 0 0 1 12 12.4a2 2 0 0 1 3.9 1.3c0 2.6-3.9 4.9-3.9 4.9z"/>',
-  sports:'<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8M9 18h6"/>'
+  active:'<path d="M7 2c1.7 0 2.7 2.2 2.7 4.9 0 2.6-1 4.6-2.7 4.6S4.3 9.5 4.3 6.9C4.3 4.2 5.3 2 7 2z"/><path d="M5.6 13.9h2.8v1.8a1.4 1.4 0 0 1-2.8 0z"/><g transform="translate(9.6 4)"><path d="M7 2c1.7 0 2.7 2.2 2.7 4.9 0 2.6-1 4.6-2.7 4.6S4.3 9.5 4.3 6.9C4.3 4.2 5.3 2 7 2z"/><path d="M5.6 13.9h2.8v1.8a1.4 1.4 0 0 1-2.8 0z"/></g>',
+  classes:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>'
 };
-// category mark: a brand-green circle with the category's icon (the map, cards, filters and key all use it)
-const catIcon=(k,s,c='#F3E7D1')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_ICON[catKey(k)]||''}</svg>`;
-function catDot(k,d){ d=Math.max(d,18); return `<span aria-hidden="true" style="display:grid;place-items:center;flex:none;width:${d}px;height:${d}px;border-radius:50%;background:${C.green}">${catIcon(k,Math.round(d*.56))}</span>`; }
+// category mark: a circle in the group's color with its icon (the map, cards, filters and key all use it)
+const catIcon=(k,s,c=CATS[catKey(k)].fg)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_ICON[catKey(k)]||''}</svg>`;
+function catDot(k,d){ d=Math.max(d,18); return `<span aria-hidden="true" style="display:grid;place-items:center;flex:none;width:${d}px;height:${d}px;border-radius:50%;background:${CATS[catKey(k)].bg}">${catIcon(k,Math.round(d*.56))}</span>`; }
 /* ---------- place types: each gets its own passport page ---------- */
 // Event tiers. Internal keys stay the same so existing saved passports keep working; only names and meaning changed.
 const KINDS = {
@@ -659,7 +661,7 @@ const KINDS = {
 // sheet Tier column: new names or the old ones (Cornerstone / Regular / Niche / Pop-Up)
 function tierKey(t){ t=String(t||''); return /headlin|corner/i.test(t)?'cornerstone' : /hidden|gem|niche/i.test(t)?'niche' : /pop/i.test(t)?'popup' : /staple|regular/i.test(t)?'regular' : ''; }
 // Sheet column "place_type" sets this; otherwise guess from the category.
-function kindOf(p){ if(KINDS[p.kind]) return p.kind; return {immersive:'popup',workshops:'niche',film:'niche'}[catKey(p.cat||p.category)]||'regular'; }
+function kindOf(p){ if(KINDS[p.kind]) return p.kind; return {immersive:'popup',workshops:'niche',film:'niche'}[p.sub||p.cat||p.category]||'regular'; }
 
 /* ---------- demo events (used when the Sheet can't be reached) ---------- */
 // events come from the Comuna Google Sheet (plus approved community events and the feed). Nothing fake is shown while it loads.
@@ -671,7 +673,10 @@ let eventsState = 'loading';   // 'loading' | 'live' | 'error'
 // Every check-in stamps a PLACE. Neighborhood, city and state stamps are earned from the places you've been.
 const START = { places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[], redeemed:[], alertsRead:false, nb:'Silver Lake', loc:null, name:'', interests:[], joined:new Date().toISOString().slice(0,10) };
 let S;
-function load(){ try{ const r=localStorage.getItem('comuna_v3'); S = r? Object.assign(JSON.parse(JSON.stringify(START)), JSON.parse(r)) : JSON.parse(JSON.stringify(START)); }catch(e){ S=JSON.parse(JSON.stringify(START)); } }
+function load(){ try{ const r=localStorage.getItem('comuna_v3'); S = r? Object.assign(JSON.parse(JSON.stringify(START)), JSON.parse(r)) : JSON.parse(JSON.stringify(START)); }catch(e){ S=JSON.parse(JSON.stringify(START)); }
+  // interests saved before the four groups used the detailed category names
+  const toGroup=t=>{ const k=Object.keys(SUBCATS).find(k=>SUBCATS[k].label===t); return k? CATS[catKey(k)].label : t; };
+  S.interests=[...new Set((S.interests||[]).map(toGroup))].filter(t=>Object.values(CATS).some(c=>c.label===t)); }
 function save(){ try{ localStorage.setItem('comuna_v3', JSON.stringify(S)); }catch(e){} }
 load();
 // older builds saved a sample passport (18 check-ins, 4 wk streak, 1,240 points) for people who hadn't signed up yet
@@ -813,7 +818,7 @@ document.getElementById('allowLoc').addEventListener('click',()=>{
 /* sign-up: interests */
 const INTERESTS=Object.values(CATS).map(c=>c.label), INT_EX=Object.fromEntries(Object.values(CATS).map(c=>[c.label,c.ex]));
 const intNext=document.getElementById('intNext');
-function renderInterests(){ const mine=S.interests||[]; document.getElementById('interestList').innerHTML=INTERESTS.map(t=>`<button aria-pressed="${mine.includes(t)}" data-int="${t}">${t}</button>`).join(''); intNext.disabled=!mine.length; intNext.textContent=mine.length?`Continue with ${mine.length}`:'Pick at least one'; }
+function renderInterests(){ const mine=S.interests||[]; document.getElementById('interestList').innerHTML=INTERESTS.map(t=>`<button aria-pressed="${mine.includes(t)}" data-int="${t}">${t}<small>${INT_EX[t]}</small></button>`).join(''); intNext.disabled=!mine.length; intNext.textContent=mine.length?`Continue with ${mine.length}`:'Pick at least one'; }
 document.getElementById('interestList').addEventListener('click',e=>{ const b=e.target.closest('[data-int]'); if(!b) return; const t=b.dataset.int, m=S.interests=S.interests||[]; m.includes(t)? m.splice(m.indexOf(t),1) : m.push(t); save(); renderInterests(); });
 intNext.onclick=()=>go('onb4');
 
@@ -893,10 +898,10 @@ function kitSlides(){
 // In onboarding only your picked interests show (and no cluster row); the map's "?" shows everything.
 function legendHtml(mine){
   const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label)), keys=mine&&want.length? want : Object.keys(CATS);
-  return `<div class="h1" id="kitTitle">The icon shows what kind.</div>
+  return `<div class="h1" id="kitTitle">The color shows what kind.</div>
      <div class="lgcats">${keys.map(k=>`<span>${catDot(k,26)}${CATS[k].label}</span>`).join('')}</div>
-     ${keys.length<Object.keys(CATS).length?`<p class="sub" style="font-size:13px;margin-top:8px">Those are your picks. Tap <b>?</b> on the map anytime for every icon.</p>`:''}
-     <div class="lgrow" style="margin-top:14px"><span class="lgico"><span class="pin big" style="position:static;transform:none;width:34px;height:34px;cursor:default">${catIcon('music',18)}</span></span><div><b>Bigger with a gold ring = Headliner</b><span>${KINDS.cornerstone.blurb}</span></div></div>
+     ${keys.length<Object.keys(CATS).length?`<p class="sub" style="font-size:13px;margin-top:8px">Those are your picks. Tap <b>?</b> on the map anytime for all four.</p>`:''}
+     <div class="lgrow" style="margin-top:14px"><span class="lgico"><span class="pin big" style="position:static;transform:none;width:34px;height:34px;cursor:default;background:${CATS.shows.bg}">${catIcon('shows',18)}</span></span><div><b>Bigger with a gold ring = Headliner</b><span>${KINDS.cornerstone.blurb}</span></div></div>
      ${mine?'':`<div class="lgrow" style="border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap to zoom in</span></div></div>`}`;
 }
 function openLegend(){
@@ -1021,7 +1026,7 @@ let map=null, markers=[], paperDrawn=false;
 // small tier glyph for tabs, badges and the legend
 function tierIcon(k,size=14){ return k==='cornerstone'? `<span class="ticon"><i style="width:${size*.8}px;height:${size*.8}px;border-radius:50%;background:${C.green};box-shadow:0 0 0 2px ${C.sun}"></i></span>` : `<span class="ticon"></span>`; }
 function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev), big=k==='cornerstone';
-  el.className='pin'+(big?' big':''); el.innerHTML=catIcon(ev.category,big?21:15)+(done?'<span class="chk">&check;</span>':'');
+  el.className='pin'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,big?21:15)+(done?'<span class="chk">&check;</span>':'');
   el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+CATS[catKey(ev.category)].label+(big?', Headliner':'')); el.tabIndex=0;
   el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
@@ -1250,7 +1255,7 @@ async function loadSubmissions(){
     const { data, error } = await sb.from('event_submissions').select('*').eq('status','approved'); if(error) throw error;
     // user-submitted text is escaped before it reaches the page, and only http(s) links are kept
     communityEvents=(data||[]).filter(r=>r.lat!=null && okLink(r.link)).map(r=>({ id:200000+r.id, eid:'SUB-'+r.id, community:true, title:escH(r.title), venue:escH(r.venue), address:escH(r.address),
-      lat:r.lat, lng:r.lng, category:CATS[r.category]? r.category : 'community', kind:/one/i.test(r.recurrence||'')? 'popup' : 'regular', area:'', host:r.is_host? escH(r.venue) : 'Shared by a neighbor',
+      lat:r.lat, lng:r.lng, sub:SUBCATS[r.category]? r.category : '', category:catKey(r.category), kind:/one/i.test(r.recurrence||'')? 'popup' : 'regular', area:'', host:r.is_host? escH(r.venue) : 'Shared by a neighbor',
       desc:escH(r.description||''), source:okLink(r.link), price:r.price||'', rec:r.recurrence==='One-time'?'One-off':(r.recurrence||''), start:parseDay(r.event_date), t0:r.start_time? String(r.start_time).slice(0,5) : '', t1:r.end_time? String(r.end_time).slice(0,5) : '',
       time:'', going:0, fromGroup:0, live:false, startsIn:'' }));
     events=events.filter(x=>!x.community).concat(communityEvents);
@@ -1329,7 +1334,7 @@ function openSheet(id){
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
     : `<button class="btn primary" id="rsvpBtn">${needsRsvp(ev)?'RSVP':'Interested'}</button>`;
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
-    <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${CATS[catKey(ev.category)].label} · ${ev.area||ev.hood}</div>
+    <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label} · ${ev.area||ev.hood}</div>
     <h2>${ev.verified? ev.title.replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : ev.title}</h2>
     <div class="evwhen">${ev.start?nextWhen(ev):(ev.time||'Soon')}</div>
     <a class="evwhere" href="${directionsUrl(ev)}" target="_blank" rel="noopener">${ev.venue} <span>· ${mins(ev.mi)} min away</span></a>
@@ -1413,7 +1418,7 @@ function savePts(ev){ const d=new Date().toDateString(); if(!S.saveDay||S.saveDa
 function checkIn(ev,dist){
   const hood=hoodByName(ev.hood), city=cityOf(hood);
   const hadHood=!!visitedHoods()[hood.name], hadCity=!!visitedCities()[city], hadCat=Object.values(S.places).some(p=>catKey(p.cat)===ev.category);
-  const pl=S.places[ev.venue] || (S.places[ev.venue]={n:0,cat:ev.category,kind:kindOf(ev),lat:ev.lat,lng:ev.lng});
+  const pl=S.places[ev.venue] || (S.places[ev.venue]={n:0,cat:ev.category,sub:ev.sub||'',kind:kindOf(ev),lat:ev.lat,lng:ev.lng});
   const firstPlace=pl.n===0; pl.n++;
   const earned=[[PTS.checkin,'checked in']]; if(firstPlace) earned.push([PTS.firstPlace,'first time here']); if(S.rsvp.includes(ev.id)) earned.push([PTS.savedFirst,'you said you\'d go']);
   const total=earned.reduce((a,x)=>a+x[0],0);
@@ -1518,7 +1523,7 @@ let passTab='cornerstone';
 const PATCHES=[ {img:'patches/first-stamp.webp',t:'FIRST STAMP',s:'WELCOME',sc:'hills',ok:()=>Object.keys(S.places).length>=1},
   {img:'patches/three-hoods.webp',t:'THREE HOODS',s:'EXPLORER',sc:'lake',ok:()=>Object.keys(visitedHoods()).length>=3},
   {img:'patches/regular.webp',t:'REGULAR',s:'5 VISITS, 1 PLACE',sc:'hills',ok:()=>Object.values(S.places).some(p=>p.n>=5)},
-  {img:'patches/tried-everything.webp',t:'ALL 13 KINDS',s:'TRIED EVERYTHING',sc:'night',ok:()=>new Set(Object.values(S.places).map(p=>catKey(p.cat))).size>=13},
+  {img:'patches/tried-everything.webp',t:'ALL 13 KINDS',s:'TRIED EVERYTHING',sc:'night',ok:()=>new Set(Object.values(S.places).map(p=>p.sub||p.cat)).size>=13},
   {img:'patches/coast-to-lake.webp',t:'COAST TO LAKE',s:'SANTA MONICA',sc:'beach',ok:()=>!!visitedCities()['Santa Monica']},
   {img:'patches/scout.webp',t:'SCOUT',s:'3 EVENTS ADDED',sc:'lake',ok:()=>(S.subCredited||[]).length>=3} ];
 // locked patches stay a surprise: a stitched "?" instead of the real design
@@ -1763,10 +1768,10 @@ function loadSheet(){
     await mapLimit(rows,6,async r=>{ const c=await geocode([r['street address'],r['city']||'Los Angeles',r['zip'],'CA'].filter(Boolean).join(', ')); if(c){ r.lng=c[0]; r.lat=c[1]; } });
     rows=rows.filter(r=>r.lat!=null);
     if(!rows.length) throw 0;
-    const catMap=c=>{ c=c||''; if(CATS[c.trim().toLowerCase()]) return c.trim().toLowerCase();
-      const hit=Object.keys(CATS).find(k=>CATS[k].label.toLowerCase()===c.trim().toLowerCase()); if(hit) return hit;
+    const catMap=c=>{ c=c||''; const lc=c.trim().toLowerCase(); if(SUBCATS[lc]||CATS[lc]) return lc;
+      const hit=Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===lc)||Object.keys(CATS).find(k=>CATS[k].label.toLowerCase()===lc); if(hit) return hit;
       return /comedy|improv|theat|perform|drag/i.test(c)?'comedy':/film|movie|cinema|screening|media|podcast/i.test(c)?'film':/immersive|experien|installation/i.test(c)?'immersive':/night|club|dj|dance party|bar/i.test(c)?'nightlife':/music|concert|jazz|art|gallery|museum/i.test(c)?'music':/dinner|food|drink|supper|coffee|wine|beer/i.test(c)?'food':/fitness|wellness|yoga|run|health|medit/i.test(c)?'wellness':/workshop|class|craft|making|learn|lecture|talk/i.test(c)?'workshops':/hike|outdoor|beach|park|nature|garden/i.test(c)?'outdoors':/sport|game|trivia|volley|pickle|soccer|basketball/i.test(c)?'sports':/meetup|social|mixer|networking|speed/i.test(c)?'social':/market|shop|vintage|flea/i.test(c)?'markets':'community'; };
-    events=rows.map((r,i)=>({ id:(parseInt(String(r['event id']||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r['event id']).replace(/\D/g,'')) : 100+i, eid:r['event id']||'', title:r['event name'], venue:r['venue name']||'', lat:r.lat, lng:r.lng, area:r['neighborhood']||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r['host / organizer']||'', desc:r['short description']||'', category:catMap(r['primary category']), kind:tierKey(r['tier']), parking:r['parking & transit']||'', alcohol:undefined,
+    events=rows.map((r,i)=>({ id:(parseInt(String(r['event id']||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r['event id']).replace(/\D/g,'')) : 100+i, eid:r['event id']||'', title:r['event name'], venue:r['venue name']||'', lat:r.lat, lng:r.lng, area:r['neighborhood']||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r['host / organizer']||'', desc:r['short description']||'', ...(c=>({ sub:c, category:catKey(c) }))(catMap(r['primary category'])), kind:tierKey(r['tier']), parking:r['parking & transit']||'', alcohol:undefined,
       address:[r['street address'],r['city'],r['zip']].filter(Boolean).join(', '), price:r['free / paid']||'', age:r['age']||'', setting:r['indoor / outdoor']||'', rsvpReq:/^y/i.test(r['rsvp required?']||''), verified:/^(y|true|✓|verified)/i.test(String(r['verified']||'').trim()),
       ticket:r['ticket / rsvp link']||'', source:r['source url']||'', rec:r['recurrence']||'', recDetail:r['recurrence detail']||'', start:parseDay(r['start date']), end:parseDay(r['end date']), t0:r['start time']||'', t1:r['end time']||'' }));
     eventsState='live'; if(current==='home') renderHome(); loadGoing(); loadSubmissions();
