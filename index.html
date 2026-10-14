@@ -1000,9 +1000,9 @@ function showCard(ev){
 }
 function inView(ev){ return true; }
 /* Zoom ladder: city level shows cream cluster bubbles (lone events as dots), neighborhood level shows every event
-   as a small dot in its group's color, street level shows full pins with icons. The map opens at neighborhood level
+   as a small dot in its group's color, street level shows full pins with icons. The map opens just past the pin level
    around you; today's Top 4 live in the daily pop-up, not on the map. */
-const CLUSTER_ZOOM=12, PIN_ZOOM=13.5, OPEN_ZOOM=12;
+const CLUSTER_ZOOM=12, PIN_ZOOM=13.5, OPEN_ZOOM=14;
 // the header floats over the top of the map and the cards over the bottom: frame events in the space between
 function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
   return { t:head?head.offsetHeight:150, b:(nav.height? app.bottom-nav.top : 70)+80 }; }
