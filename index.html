@@ -313,6 +313,12 @@ img{ max-width:100% }
 .pagegrid .slot{ text-align:center; padding:4px 0 }
 .ghost-rect{ width:140px; height:92px; border-radius:10px; border:2px dashed #CDBF9F; display:grid; place-items:center; font-family:var(--hand); font-size:18px; color:#A89C82; margin:4px 0; padding:8px; line-height:1 }
 .pagenote{ font-family:var(--hand); font-size:18px; color:var(--red); text-align:center; margin-top:10px }
+/* passport: the four kinds of outing, lit once you have a stamp in each */
+.kinds{ display:flex; align-items:center; gap:10px; padding:2px 4px 12px }
+.kinds > span{ display:flex; flex-direction:column; align-items:center; gap:3px; opacity:.3; filter:grayscale(1) }
+.kinds > span.on{ opacity:1; filter:none }
+.kinds small{ font-size:10.5px; font-weight:700; color:var(--muted) }
+.kinds b{ margin-left:auto; font-family:var(--hand); font-size:19px; color:var(--red); font-weight:700 }
 .unlocks{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:-8px 0 18px }
 .unlocks span{ background:rgba(243,231,209,.14); border:1px solid rgba(243,231,209,.35); border-radius:30px; padding:6px 12px; font-size:13px; font-weight:700 }
 .ghost-stamp{ width:122px; height:122px; border-radius:50%; border:2px dashed #CDBF9F; display:grid; place-items:center; font-family:var(--hand); font-size:19px; color:#A89C82; line-height:1; padding:12px }
@@ -1553,7 +1559,7 @@ document.getElementById('calNext').onclick=()=>{ calView=new Date(calView.getFul
 document.getElementById('calToday').onclick=()=>{ calSel=today0(); calView=new Date(calSel.getFullYear(),calSel.getMonth(),1); renderPlans(); };
 
 /* ---------- passport: a page per place type, plus neighborhoods ---------- */
-let passTab='cornerstone';
+let passTab='places';
 const PATCHES=[ {img:'patches/first-stamp.webp',t:'FIRST STAMP',s:'WELCOME',sc:'hills',ok:()=>Object.keys(S.places).length>=1},
   {img:'patches/three-hoods.webp',t:'THREE HOODS',s:'EXPLORER',sc:'lake',ok:()=>Object.keys(visitedHoods()).length>=3},
   {img:'patches/regular.webp',t:'REGULAR',s:'5 VISITS, 1 PLACE',sc:'hills',ok:()=>Object.values(S.places).some(p=>p.n>=5)},
@@ -1572,17 +1578,21 @@ function renderPassport(){
   document.getElementById('passBar').style.width=Math.min(100,nH/HOODS.length*100)+'%';
   document.getElementById('psStreak').textContent=PATCHES.filter(x=>x.ok()).length; document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
   document.getElementById('passSeal').innerHTML=omark(130,'#F3E7D1','#F3E7D1');
-  const byKind=k=>Object.entries(places).filter(([,p])=>kindOf(p)===k);
-  const tabs=[...Object.keys(KINDS).map(k=>[k,`${tierIcon(k,13)} ${KINDS[k].plural}`,byKind(k).length]),['hoods','Neighborhoods',nH]];
+  if(passTab!=='hoods') passTab='places';
+  const tabs=[['places','Places',nP],['hoods','Neighborhoods',nH]];
   document.getElementById('passTabs').innerHTML=tabs.map(t=>`<button role="tab" aria-selected="${t[0]===passTab}" class="${t[0]===passTab?'on':''}" data-tab="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
   const rots=[-7,5,-3,8,-5,4,-9,6,-4,7];
   let html='';
-  if(KINDS[passTab]){
-    const list=byKind(passTab).sort((a,b)=>b[1].n-a[1].n);
-    html=`<div class="ph"><b>${KINDS[passTab].plural}</b><span>${KINDS[passTab].blurb}</span></div><div class="pagegrid">`+
+  if(passTab==='places'){
+    // one page of every place you've checked in; the four kinds light up as you try each one
+    const list=Object.entries(places).sort((a,b)=>b[1].n-a[1].n), tried=new Set(list.map(([,p])=>catKey(p.cat))), untried=Object.keys(CATS).filter(k=>!tried.has(k));
+    const FIRST={ shows:'your first show?', food:'your first food spot?', active:'your first active plan?', classes:'your first class?' };
+    html=`<div class="ph"><b>Places</b><span>a stamp for every spot you check in</span></div>
+      <div class="kinds">${Object.keys(CATS).map(k=>`<span class="${tried.has(k)?'on':''}" title="${CATS[k].label}">${catDot(k,30)}<small>${CATS[k].short}</small></span>`).join('')}<b>${tried.size} of 4 kinds</b></div>
+      <div class="pagegrid">`+
       list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,hoodOf(p).name,p.cat,p.n,rots[i%rots.length])}</div>`).join('')+
-      `<div class="slot"><div class="ghost-rect">${list.length?'next':'your first'} ${KINDS[passTab].label.toLowerCase()}?</div></div>`.repeat(list.length%2?1:2)+
-      `</div><div class="pagenote">${list.length} ${(list.length===1?KINDS[passTab].label:KINDS[passTab].plural).toLowerCase()} stamped</div>`;
+      (untried.length? untried : ['next']).slice(0,list.length%2?1:2).map(k=>`<div class="slot"><div class="ghost-rect">${FIRST[k]||'your next spot?'}</div></div>`).join('')+
+      `</div><div class="pagenote">${list.length} place${list.length===1?'':'s'} stamped</div>`;
   } else if(passTab==='hoods'){
     html=`<div class="ph"><b>Neighborhoods</b><span>earned with your first place in each</span></div><div class="pagegrid">`+
       HOODS.map((h,i)=> H[h.name]? `<div class="slot">${STAMP_IMG[h.name] ? hoodStamp(h.name,128,rots[i%rots.length])+`<div class="pagenote" style="margin-top:4px">${H[h.name]} visit${H[h.name]>1?'s':''}</div>` : stampSVG(h.name.toUpperCase(),`${H[h.name]} VISIT${H[h.name]>1?'S':''} · COMUNA`,h.glyph,h.color,132,rots[i%rots.length])}</div>` : `<div class="slot"><div class="ghost-stamp">${h.name}?</div></div>`).join('')+`</div>`;
