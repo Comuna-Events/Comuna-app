@@ -118,7 +118,7 @@ img{ max-width:100% }
 #map, .paper-map{ position:absolute; inset:0 }
 .mapwrap .toggle{ position:absolute; right:10px; top:10px; z-index:5; background:var(--card); border-radius:30px; display:flex; padding:3px; box-shadow:0 2px 8px rgba(0,0,0,.12) }
 .mapwrap .toggle button{ padding:6px 12px; border-radius:30px; font-size:12.5px; font-weight:700 }
-.mapwrap .toggle button.on{ background:var(--green); color:var(--paper) }
+.mapwrap .toggle button.on{ background:var(--paper-2); color:var(--ink) } .mapwrap .toggle button{ color:var(--muted) }
 .maplabel{ position:absolute; left:14px; bottom:10px; z-index:4; font-family:var(--hand); font-size:18px; color:var(--red); pointer-events:none }
 .pin{ width:28px; height:28px; border-radius:50%; background:var(--green); border:none; box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; position:relative; cursor:pointer; transform:translate(-50%,-50%); overflow:visible }
 .pin.big{ width:40px; height:40px; box-shadow:0 0 0 3px var(--sun),0 4px 10px rgba(0,0,0,.32); z-index:2 }
@@ -136,11 +136,11 @@ img{ max-width:100% }
 .chips::-webkit-scrollbar{ display:none }
 .chip{ flex:none; border:1.5px solid var(--ink); border-radius:30px; padding:6px 13px; font-size:13px; font-weight:500 }
 .chip.on{ background:var(--ink); color:var(--paper) }
-.fbtn{ flex:1; display:flex; align-items:baseline; gap:6px; min-width:0; border:1.3px solid var(--ink); border-radius:12px; padding:5px 10px; font-size:13px; font-weight:700; background:var(--card); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.fbtn{ flex:1; display:flex; align-items:baseline; gap:6px; min-width:0; border:1px solid #DCCDAE; border-radius:20px; padding:7px 12px; font-size:13px; font-weight:600; color:var(--ink); background:var(--card); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .fbtn small{ font-size:10px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.05em } .fbtn i{ margin-left:auto; font-style:normal; font-size:11px; color:var(--muted) }
-.fbtn.set{ background:var(--green); border-color:var(--green); color:var(--paper) } .fbtn.set small, .fbtn.set i{ color:#CFE0D3 }
+.fbtn.set::before{ content:''; flex:none; align-self:center; width:6px; height:6px; border-radius:50%; background:var(--green) }
 .picklist{ display:flex; flex-direction:column; margin-top:8px } .popt{ display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px dashed #DCCDAE; font-size:15px; text-align:left }
-.betapill{ font-size:11.5px; font-weight:700; letter-spacing:.02em; color:var(--green); border:1.5px solid var(--green); border-radius:20px; padding:5px 10px; background:var(--card); white-space:nowrap }
+.betapill{ font-size:12px; font-weight:600; color:var(--muted); padding:5px 4px; background:none; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
 .moods{ display:flex; gap:8px; margin:12px 0 4px } .moods button{ flex:1; font-size:26px; padding:10px 0; border-radius:14px; background:var(--card); border:2px solid transparent } .moods button.on{ border-color:var(--green); background:#E4ECDF }
 .fbtext{ width:100%; min-height:96px; border:1.5px solid #DCCDAE; border-radius:14px; padding:12px; font:inherit; font-size:15px; background:var(--card); resize:vertical; margin-top:10px }
 .tagpick{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px } .tagpick button{ font-size:13px; font-weight:500; padding:7px 12px; border-radius:20px; border:1.5px solid var(--ink) } .tagpick button.on{ background:var(--ink); color:var(--paper) }
@@ -178,18 +178,17 @@ img{ max-width:100% }
 #homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 134px) }
 #homeScreen:not(.home-list) .picks{ position:absolute; left:0; right:0; bottom:calc(var(--navh) + 10px); z-index:6; flex:none; display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:0 14px; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x; cursor:grab; -webkit-overflow-scrolling:touch }
 #homeScreen:not(.home-list) .picks.dragging{ scroll-snap-type:none; cursor:grabbing }
-#homeTitle{ white-space:nowrap; font-size:30px }
 #homeScreen:not(.home-list) .picks::-webkit-scrollbar{ display:none }
 /* map view: slim one-line cards so more of the map shows */
 .pick .m2{ display:none }
 #homeScreen:not(.home-list) .pick{ grid-template-columns:30px 1fr; gap:10px; padding:9px 14px; border-radius:14px }
 #homeScreen:not(.home-list) .pick .n{ width:30px; height:30px }
 #homeScreen:not(.home-list) .pick .dist, #homeScreen:not(.home-list) .pick .when, #homeScreen:not(.home-list) .pick .m{ display:none }
-#homeScreen:not(.home-list) .pick .t{ -webkit-line-clamp:1; font-size:14.5px; margin:0 }
+#homeScreen:not(.home-list) .pick .t{ -webkit-line-clamp:1; font-size:15.5px; margin:0 }
 #homeScreen:not(.home-list) .pick .m2{ display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px }
 #homeScreen:not(.home-list) .pick.hot{ outline:2.5px solid var(--green); outline-offset:-2.5px }
 #homeScreen:not(.home-list) .pick .m2 b{ color:var(--red); font-weight:700 }
-#homeScreen:not(.home-list) .pick{ flex:0 0 84%; margin:0; scroll-snap-align:center; box-shadow:0 4px 14px rgba(0,0,0,.18); pointer-events:auto }
+#homeScreen:not(.home-list) .pick{ flex:0 0 84%; margin:0; scroll-snap-align:center; box-shadow:0 10px 24px rgba(38,37,31,.26), 0 2px 6px rgba(38,37,31,.12); pointer-events:auto }
 #homeScreen:not(.home-list) .endnote, #homeScreen:not(.home-list) .demo-tag{ display:none }
 /* list mode: keep the map/list toggle reachable (it lives inside .mapwrap) instead of hiding the whole wrapper */
 .home-list .mapwrap{ height:auto; min-height:0; margin:6px 14px 0; background:none; overflow:visible; display:flex; justify-content:flex-end }
@@ -366,12 +365,14 @@ img{ max-width:100% }
 .hostscr .h2{ color:var(--sun) }
 
 /* ---------- nav ---------- */
-.nav{ position:absolute; left:0; right:0; bottom:0; z-index:30; display:grid; grid-template-columns:repeat(4,1fr); background:var(--green); border-top:0; padding:8px 6px; left:16px; right:16px; bottom:calc(14px + env(safe-area-inset-bottom,0px)); border-radius:40px; box-shadow:0 8px 24px rgba(38,37,31,.28) }
+.nav{ position:absolute; z-index:30; display:grid; grid-template-columns:repeat(4,1fr); left:16px; right:16px; bottom:calc(14px + env(safe-area-inset-bottom,0px)); padding:6px; border-radius:40px;
+  background:rgba(251,246,234,.82); -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2); border:1px solid rgba(220,205,174,.8); box-shadow:0 4px 16px rgba(38,37,31,.12) }
 .nav.hide{ display:none }
-.nav button{ display:flex; align-items:center; justify-content:center; color:#B9C7B8; padding:2px 0 }
-/* Brand pairing "Sun on Green": green bar, Sun pill behind the active tab */
-.nav svg{ stroke:#B9C7B8; box-sizing:content-box; padding:6px 16px; border-radius:20px; transition:background .15s }
-.nav button.on svg{ stroke:var(--green); background:var(--sun) }
+.nav button{ position:relative; display:flex; align-items:center; justify-content:center; padding:4px 0 8px }
+/* quiet chrome: the bar stays in the background so the map and events lead */
+.nav svg{ stroke:var(--muted); opacity:.75; transition:opacity .15s }
+.nav button.on svg{ stroke:var(--green); opacity:1 }
+.nav button.on::after{ content:''; position:absolute; bottom:1px; width:5px; height:5px; border-radius:50%; background:var(--green) }
 .toast{ position:absolute; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:30px; font-size:13.5px; font-weight:500; z-index:80; opacity:0; transition:opacity .2s; pointer-events:none; width:max-content; max-width:88%; text-align:center }
 .toast.on{ opacity:1 }
 .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib{ opacity:.6 }
@@ -449,9 +450,6 @@ img{ max-width:100% }
           <button class="betapill" id="betaBtn" aria-label="Beta: send feedback">Beta · Feedback</button>
           <button class="iconbtn" data-go="alerts" aria-label="Alerts"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4z"/><path d="M10 21h4"/></svg><span class="dot" id="alertDot" style="display:none"></span></button>
         </div>
-      </div>
-      <div style="padding:2px 20px 0">
-        <div class="h1" id="homeTitle">Explore your neighborhood</div>
       </div>
       <div class="chips" id="chips"></div>
       </div>
@@ -972,7 +970,7 @@ function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
   const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
-  document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when"><small>When</small>${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type"><small>Type</small>${cl}<i>▾</i></button>`;
+  document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when" aria-label="When: ${wl}">${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type" aria-label="Type: ${cl}">${cl}<i>▾</i></button>`;
   const P=picks();
   document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
     + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
