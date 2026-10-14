@@ -1173,6 +1173,8 @@ function tryMapbox(){
       m.addControl(new mapboxgl.AttributionControl({compact:true}),'top-right');
       // A token locked to another domain answers 401/403: fall back to the Paper map instead of showing a blank one.
       m.on('error',ev=>{ const er=ev&&ev.error; if(!er) return; const bad=[401,403].includes(er.status) || /401|403|Forbidden|Unauthorized/i.test(String(er.message)); if(!bad) return;
+        // once the live map is up, one refused tile (e.g. while zooming out) must not swap the whole map for Paper
+        if(settled && map===m){ console.warn('Mapbox refused a request; keeping the live map', er); return; }
         clearTimeout(timer); markers.forEach(x=>x.remove()); markers=[]; markers.you=null; try{ m.remove(); }catch(e){} map=null; settled=true; drawPaper(); setMapStatus(false); });
       m.on('style.load',()=>{ if(settled) return; map=m; styleMapbox(); });
       m.once('idle',()=>{ clearTimeout(timer); if(settled) return; settled=true; map=m; document.querySelector('#map .paper-map')?.remove(); setMapStatus(true); renderHome(); });
