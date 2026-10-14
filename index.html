@@ -864,45 +864,41 @@ const kitModal=document.getElementById('kitModal');
 function kitSlides(){
   enrich();
   const drive20=events.filter(ev=>mins(ev.mi)<=20).length, all=events.length, first=(S.name||'').split(' ')[0], hood=S.nb||'your neighborhood';
-  const stamp=STAMP_IMG[hood]? hoodStamp(hood,96,-8) : omark(72);
+  const stamp=STAMP_IMG[hood]? hoodStamp(hood,80,-8) : omark(64);
   return [
     `<div class="k">Neighborhood starter kit</div><div class="h1" id="kitTitle">Welcome to ${hood}${first?`, ${first}`:''}.</div>
-     <p class="sub">Comuna finds the good stuff happening around you: shows, markets, run clubs, pop-ups, supper clubs. Here's what's out there right now.</p>
      <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
      <p class="hand" style="font-size:26px;color:var(--red);margin-top:14px;transform:rotate(-2deg);transform-origin:left">New events get added daily!</p>`,
     `<div class="k">How it works</div><div class="h1" id="kitTitle">Find it. Save it. Show up.</div>
      <ol class="kitsteps">
-      <li><div><b>Explore the map</b><span>Every event across LA is on the map. Tap a pin or swipe the cards, and zoom in to break up the clusters.</span></div></li>
-      <li><div><b>Tap "Interested"</b><span>It lands in your Plans, so you won't forget. If the host needs an RSVP or ticket, we'll take you to their link. Invite friends from there.</span></div></li>
-      <li><div><b>Check in when you get there</b><span>Tap "I'm here" at the event to collect the stamp.</span></div></li>
+      <li><div><b>Explore the map</b><span>Tap any pin.</span></div></li>
+      <li><div><b>Tap "Interested"</b><span>It saves to your Plans.</span></div></li>
+      <li><div><b>Check in when you're there</b><span>Collect the stamp.</span></div></li>
      </ol>`,
     `<div class="k">Your passport</div><div class="h1" id="kitTitle">Collect stamps, points and patches.</div>
      <div class="kitart">${stamp}</div>
      <div class="kitpts"><span><b class="kk">Save it.</b> Tap Interested or RSVP</span><b>+10</b></div>
      <div class="kitpts"><span><b class="kk">Go.</b> Check in when you're there</span><b>+100</b></div>
-     <div class="kitpts sub2"><span>First time at that place</span><b>+50</b></div>
-     <div class="kitpts sub2"><span>You saved it before you went</span><b>+25</b></div>
-     <div class="kitpts sub2"><span>Rate it after</span><b>+10</b></div>
-     <div class="kitpts"><span><b class="kk">Share it.</b> Add an event we approve, plus +25 for each person who goes</span><b>+25</b></div>
-     <p class="sub" style="margin-top:12px">Every place you visit earns a stamp, and your first visit in each neighborhood earns its neighborhood stamp. Hit milestones (three neighborhoods, five visits to one spot) to unlock patches.</p>`,
+     <div class="kitpts sub2"><span>Bonus: first visit, saved ahead, rated it</span><b>+85</b></div>
+     <div class="kitpts"><span><b class="kk">Share it.</b> Add an event we approve</span><b>+25</b></div>`,
     `<div class="k">Reading the map</div>${legendHtml(true)}`,
     `<div class="k">A few more things</div><div class="h1" id="kitTitle">You're all set.</div>
      <ol class="kitsteps">
-      <li><div><b>Your daily Top 4</b><span>Every day we pick four things near you: a Headliner, a Staple, a Hidden Gem and a Pop-up.</span></div></li>
-      <li><div><b>Win gift cards</b><span class="hand" style="display:block;font-size:22px;color:var(--red);line-height:1.15;margin:2px 0 4px">The top 5 in ${hood} each month win gift cards to their favorite spots!</span><span>Check in to at least 3 events that month to qualify.</span></div></li>
-      <li><div><b>Know about something cool?</b><span>Add it with the + tab. Once we approve it, it goes on the map and you get +25 points (up to 3 events a week), plus +25 for everyone who checks in. Events already on the map can't be added again.</span></div></li>
+      <li><div><b>Your daily Top 4</b><span>Four picks near you, every day.</span></div></li>
+      <li><div><b>Win gift cards</b><span class="hand" style="display:block;font-size:22px;color:var(--red);line-height:1.15;margin:2px 0 4px">Top 5 in ${hood} each month win!</span><span>Check in to 3+ events to qualify.</span></div></li>
+      <li><div><b>Know something cool?</b><span>Tap + to add it. Earn +25 when we approve it.</span></div></li>
      </ol>`
   ];
 }
 // map key: every pin is a green circle with its category's icon; Headliners are bigger with a gold ring.
-// In onboarding only your picked interests show; the map's "?" shows them all.
+// In onboarding only your picked interests show (and no cluster row); the map's "?" shows everything.
 function legendHtml(mine){
   const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label)), keys=mine&&want.length? want : Object.keys(CATS);
   return `<div class="h1" id="kitTitle">The icon shows what kind.</div>
      <div class="lgcats">${keys.map(k=>`<span>${catDot(k,26)}${CATS[k].label}</span>`).join('')}</div>
      ${keys.length<Object.keys(CATS).length?`<p class="sub" style="font-size:13px;margin-top:8px">Those are your picks. Tap <b>?</b> on the map anytime for every icon.</p>`:''}
      <div class="lgrow" style="margin-top:14px"><span class="lgico"><span class="pin big" style="position:static;transform:none;width:34px;height:34px;cursor:default">${catIcon('music',18)}</span></span><div><b>Bigger with a gold ring = Headliner</b><span>${KINDS.cornerstone.blurb}</span></div></div>
-     <div class="lgrow" style="border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap one to zoom in and see each event</span></div></div>`;
+     ${mine?'':`<div class="lgrow" style="border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap to zoom in</span></div></div>`}`;
 }
 function openLegend(){
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Reading the map</div>${legendHtml(false).replace('id="kitTitle"','')}`;
@@ -1187,7 +1183,7 @@ function openSubmit(){
   const cats=Object.keys(CATS).map(k=>`<option value="${k}">${CATS[k].label}</option>`).join('');
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
     <div class="cat">Add an event</div><h2 style="font-size:30px">Know something good?</h2>
-    <p class="sub">Share it with the neighborhood. We review every event before it goes on the map.</p>
+    <p class="sub">We review every event first. Once it's approved you get +25, plus +25 for each person who goes.</p>
     <form id="subForm" class="subform" novalidate>
       <label>Link to the event *<small>Instagram post, Partiful, Eventbrite or website: where people can see photos and details</small>
         <input class="field" name="link" type="url" inputmode="url" placeholder="https://" required></label>
