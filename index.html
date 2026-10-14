@@ -864,7 +864,7 @@ const kitModal=document.getElementById('kitModal');
 function kitSlides(){
   enrich();
   const drive20=events.filter(ev=>mins(ev.mi)<=20).length, all=events.length, first=(S.name||'').split(' ')[0], hood=S.nb||'your neighborhood';
-  const stamp=STAMP_IMG[hood]? hoodStamp(hood,96,-8) : omark(72);
+  const stamp=STAMP_IMG[hood]? hoodStamp(hood,80,-8) : omark(64);
   return [
     `<div class="k">Neighborhood starter kit</div><div class="h1" id="kitTitle">Welcome to ${hood}${first?`, ${first}`:''}.</div>
      <p class="sub">Comuna finds the good stuff happening around you: shows, markets, run clubs, pop-ups, supper clubs. Here's what's out there right now.</p>
@@ -880,11 +880,8 @@ function kitSlides(){
      <div class="kitart">${stamp}</div>
      <div class="kitpts"><span><b class="kk">Save it.</b> Tap Interested or RSVP</span><b>+10</b></div>
      <div class="kitpts"><span><b class="kk">Go.</b> Check in when you're there</span><b>+100</b></div>
-     <div class="kitpts sub2"><span>First time at that place</span><b>+50</b></div>
-     <div class="kitpts sub2"><span>You saved it before you went</span><b>+25</b></div>
-     <div class="kitpts sub2"><span>Rate it after</span><b>+10</b></div>
-     <div class="kitpts"><span><b class="kk">Share it.</b> Add an event we approve, plus +25 for each person who goes</span><b>+25</b></div>
-     <p class="sub" style="margin-top:12px">Every place you visit earns a stamp, and your first visit in each neighborhood earns its neighborhood stamp. Hit milestones (three neighborhoods, five visits to one spot) to unlock patches.</p>`,
+     <div class="kitpts sub2"><span>Bonus: first visit, saved ahead, rated it</span><b>+85</b></div>
+     <div class="kitpts"><span><b class="kk">Share it.</b> Add an event we approve</span><b>+25</b></div>`,
     `<div class="k">Reading the map</div>${legendHtml(true)}`,
     `<div class="k">A few more things</div><div class="h1" id="kitTitle">You're all set.</div>
      <ol class="kitsteps">
