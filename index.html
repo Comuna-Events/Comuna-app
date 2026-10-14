@@ -27,9 +27,9 @@
   --display:'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
   --sans:'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --hand:'Caveat', 'Comic Sans MS', cursive;
-  --navh:calc(80px + env(safe-area-inset-bottom,0px));  /* floating pill nav: 60px bar + 14px gap + breathing room */
+  --navh:calc(62px + env(safe-area-inset-bottom,0px));  /* floating pill nav: ~50px bar + 8px gap above the home indicator + breathing room */
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-top:env(safe-area-inset-top,0px);  /* no bottom padding: the app runs behind the home indicator; screens and sheets pad themselves */
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --stage:#1C2A22; --stage-ink:#F3E7D1; --stage-muted:#B9AE97; } }
 :root[data-theme="dark"]{ --stage:#1C2A22; --stage-ink:#F3E7D1; --stage-muted:#B9AE97; }
@@ -60,7 +60,7 @@ img{ max-width:100% }
 }
 
 /* ---------- shared ---------- */
-.screen{ position:absolute; inset:0; display:none; flex-direction:column; background:var(--paper) }
+.screen{ position:absolute; inset:0; display:none; flex-direction:column; background:var(--paper); padding-bottom:env(safe-area-inset-bottom,0px) }
 .screen.on{ display:flex }
 .scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 20px 110px }
 .topbar{ display:flex; align-items:center; justify-content:space-between; padding:20px 20px 8px }
@@ -199,7 +199,7 @@ img{ max-width:100% }
 /* ---------- sheet ---------- */
 .overlay{ position:absolute; inset:0; background:rgba(38,37,31,.45); z-index:40; display:none; align-items:flex-end }
 .overlay.on{ display:flex }
-.sheet{ width:100%; background:var(--paper); border-radius:26px 26px 0 0; padding:10px 22px 26px; max-height:88%; overflow-y:auto; animation:up .25s ease-out }
+.sheet{ width:100%; background:var(--paper); border-radius:26px 26px 0 0; padding:10px 22px calc(26px + env(safe-area-inset-bottom,0px)); max-height:88%; overflow-y:auto; animation:up .25s ease-out }
 @keyframes up{ from{ transform:translateY(40px); opacity:.6 } to{ transform:none; opacity:1 } }
 @media (prefers-reduced-motion:reduce){ .sheet{ animation:none } }
 .grab{ width:42px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px; cursor:grab }
@@ -220,7 +220,7 @@ img{ max-width:100% }
 .evrec{ font-size:12.5px; color:var(--muted); margin-top:2px }
 .badges > span.tier{ background:var(--sun); border-color:var(--sun); color:var(--ink) }
 .evmeta{ font-size:13px; color:var(--muted); margin:-4px 0 10px } .evmeta a{ color:var(--green); font-weight:700; white-space:nowrap }
-.sheetfoot{ position:sticky; bottom:-26px; display:flex; gap:8px; align-items:stretch; background:var(--paper); margin:6px -22px -26px; padding:12px 22px 26px; border-top:1px solid #E2D5BA }
+.sheetfoot{ position:sticky; bottom:calc(-26px - env(safe-area-inset-bottom,0px)); display:flex; gap:8px; align-items:stretch; background:var(--paper); margin:6px -22px calc(-26px - env(safe-area-inset-bottom,0px)); padding:12px 22px calc(26px + env(safe-area-inset-bottom,0px)); border-top:1px solid #E2D5BA }
 .sheetfoot .ib{ flex:none; width:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:14px; background:var(--card); color:var(--green); font-size:10px; font-weight:700; text-decoration:none }
 .sheetfoot .btn{ flex:1; width:auto }
 .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
@@ -366,7 +366,7 @@ img{ max-width:100% }
 .hostscr .h2{ color:var(--sun) }
 
 /* ---------- nav ---------- */
-.nav{ position:absolute; z-index:30; display:grid; grid-template-columns:repeat(4,1fr); left:16px; right:16px; bottom:calc(14px + env(safe-area-inset-bottom,0px)); padding:6px; border-radius:40px;
+.nav{ position:absolute; z-index:30; display:grid; grid-template-columns:repeat(4,1fr); left:16px; right:16px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); padding:6px; border-radius:40px;
   background:rgba(251,246,234,.82); -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2); border:1px solid rgba(220,205,174,.8); box-shadow:0 4px 16px rgba(38,37,31,.12) }
 .nav.hide{ display:none }
 .nav button{ position:relative; display:flex; align-items:center; justify-content:center; padding:4px 0 8px }
