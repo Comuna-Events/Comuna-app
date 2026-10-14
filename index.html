@@ -1083,7 +1083,11 @@ function setDots(list){
   if(!map.getSource('focus-dots')){
     map.addSource('focus-dots',{ type:'geojson', data });
     map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':.85, 'circle-stroke-color':'#F3E7D1', 'circle-stroke-width':1.5 } });
-    map.on('click','focus-dots',e=>{ const f=e.features&&e.features[0]; if(f) openSheet(+f.properties.id); });
+    // dots are 9px but a fingertip isn't: a tap anywhere within ~22px opens the closest dot's event
+    map.on('click',e=>{ if(!map.getLayer('focus-dots')) return; const p=e.point, r=22;
+      const fs=map.queryRenderedFeatures([[p.x-r,p.y-r],[p.x+r,p.y+r]],{layers:['focus-dots']}); if(!fs.length) return;
+      const d=f=>{ const q=map.project(f.geometry.coordinates); return Math.hypot(q.x-p.x,q.y-p.y); };
+      const f=fs.reduce((a,b)=>d(b)<d(a)?b:a); if(d(f)<=r) openSheet(+f.properties.id); });
     map.on('mouseenter','focus-dots',()=>map.getCanvas().style.cursor='pointer'); map.on('mouseleave','focus-dots',()=>map.getCanvas().style.cursor='');
   } else map.getSource('focus-dots').setData(data);
 }
