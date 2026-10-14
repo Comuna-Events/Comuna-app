@@ -797,13 +797,10 @@ let tt; function toast(msg){ const t=document.getElementById('toast'); t.textCon
 /* ---------- onboarding ---------- */
 function buildOnb(){
   const f=document.getElementById('stampfield');
-  // four neighborhood stamps, one per ink color, plus a place stamp in the middle: you collect the spots you go to
-  f.innerHTML=`<div style="left:4px;top:4px">${hoodStamp('Santa Monica',140,-10,true)}</div>
-  <div style="right:22px;top:18px">${hoodStamp('Echo Park',132,8,true)}</div>
-  <div style="left:26px;top:156px">${hoodStamp('West Hollywood',134,-6,true)}</div>
-  <div style="right:-2px;top:164px">${hoodStamp('Silver Lake',130,7,true)}</div>
-  <div style="left:50%;top:92px;margin-left:-62px;filter:url(#inkwear)">${placeStamp('Ten Speed Coffee','Silver Lake','food',5,-6,116,77,C.paper)}</div>
-  <svg width="0" height="0" style="position:absolute"><filter id="inkwear"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 2.05"/><feComposite in="SourceGraphic" operator="in"/></filter></svg>`;
+  // three neighborhood stamps, one per ink color, spread evenly across the field
+  f.innerHTML=`<div style="left:0;top:14px">${hoodStamp('Santa Monica',136,-8,true)}</div>
+  <div style="left:50%;top:150px;margin-left:-68px">${hoodStamp('West Hollywood',136,5,true)}</div>
+  <div style="right:0;top:14px">${hoodStamp('Silver Lake',136,8,true)}</div>`;
 }
 const locNext=document.getElementById('locNext');
 function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
