@@ -1215,18 +1215,19 @@ function drawPaper(){
   let host=wrap.querySelector('.paper-map'); if(!host){ host=document.createElement('div'); host.className='paper-map'; wrap.appendChild(host); }
   enrich(); const P=picks(), near=P.filter(e=>e.mi<=NEARBY_MILES*2); paintPaper(host,w,h,near.length>=3? near : P,{ pins:P, ins:mapInsets() });
 }
-// sign-up map: a real Mapbox overview of LA in the brand style, with every event as a dot. Look-only (no pan/zoom).
+// sign-up map: a real Mapbox view of your neighborhood in the brand style, with every event as a dot. Look-only (no pan/zoom).
 // Falls back to the drawn Paper map if Mapbox can't load.
 let mini=null, miniWait=0;
 function eventDots(){ return { type:'FeatureCollection', features:events.map(ev=>({ type:'Feature', properties:{ c:CATS[catKey(ev.category)].bg }, geometry:{ type:'Point', coordinates:[ev.lng,ev.lat] } })) }; }
+const MINI_ZOOM=12;   // sign-up preview: your neighborhood, not all of LA
 function drawMini(){
   const el=document.getElementById('miniMap');
-  if(mini){ mini.resize(); const src=mini.getSource && mini.getSource('mini-events'); if(src) src.setData(eventDots()); miniYou(); return; }
+  if(mini){ mini.resize(); mini.jumpTo({ center:[origin().lng,origin().lat], zoom:MINI_ZOOM }); const src=mini.getSource && mini.getSource('mini-events'); if(src) src.setData(eventDots()); miniYou(); return; }
   if(!window.mapboxgl || !MAPBOX_TOKEN){ if(++miniWait<30 && MAPBOX_TOKEN){ setTimeout(drawMini,200); } else paintMini(el); if(miniWait===1) paintMini(el); return; }
   try{
     mapboxgl.accessToken=MAPBOX_TOKEN;
     el.querySelector('.paper-map')?.remove(); el.innerHTML='';
-    mini=new mapboxgl.Map({ container:el, style:'mapbox://styles/mapbox/light-v11', center:[-118.36,34.04], zoom:8.9, interactive:false, attributionControl:false, logoPosition:'bottom-left', fadeDuration:0 });
+    mini=new mapboxgl.Map({ container:el, style:'mapbox://styles/mapbox/light-v11', center:[origin().lng,origin().lat], zoom:MINI_ZOOM, interactive:false, attributionControl:false, logoPosition:'bottom-left', fadeDuration:0 });
     mini.addControl(new mapboxgl.AttributionControl({compact:true}),'bottom-right');
     mini.on('error',ev=>{ const er=ev&&ev.error; if(er && ([401,403].includes(er.status) || /401|403|Forbidden|Unauthorized/i.test(String(er.message)))){ try{ mini.remove(); }catch(e){} mini=null; paintMini(el); } });
     mini.on('style.load',()=>{ styleMapbox(mini);
