@@ -111,8 +111,6 @@ img{ max-width:100% }
 .interests{ display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 20px }
 .interests button{ border:1.5px solid var(--ink); border-radius:30px; padding:9px 14px; font-size:14px; font-weight:500 }
 .vcheck{ display:inline-block; vertical-align:-0.12em; margin-left:6px; flex:none }
-.vnote{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:#2F6FDB; font-weight:600; margin:4px 0 2px } .vnote .vcheck{ margin-left:0 }
-.tierline{ display:flex; gap:7px; align-items:center; font-size:12.5px; margin:6px 0 2px; opacity:.85 }
 .interests button[aria-pressed="true"]{ background:var(--green); border-color:var(--green); color:var(--paper) }
 
 /* ---------- home ---------- */
@@ -207,21 +205,24 @@ img{ max-width:100% }
 .grab{ width:42px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px; cursor:grab }
 .sheet .x{ position:sticky; top:0; float:right; margin:-4px -8px 0 0; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); font-size:20px; line-height:1; display:grid; place-items:center; z-index:2 }
 .sheet .cat{ color:var(--red); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase }
-.sheet h2{ font-family:var(--display); font-weight:900; font-size:36px; line-height:.95; text-transform:uppercase; margin:6px 0 6px; color:var(--green) }
-.facts{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0 }
-.fact{ background:var(--card); border-radius:12px; padding:10px 12px }
-.fact .k{ font-size:11px; color:var(--muted) }
-.fact .v{ font-weight:700; font-size:14px; margin-top:2px }
-.fact .more{ font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden }
+.sheet h2{ font-family:var(--display); font-weight:900; font-size:30px; line-height:.95; text-transform:uppercase; margin:6px 0 6px; color:var(--green) }
 .badges{ display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0 } .badges > span{ display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; background:var(--card); color:var(--green); border:1px solid #DCCDAE }
-.actions{ display:flex; gap:8px; margin:0 0 14px; flex-wrap:wrap } .act{ flex:1; min-width:30%; text-align:center; font-size:13px; font-weight:700; padding:10px 8px; border-radius:12px; border:1.5px solid var(--green); color:var(--green); background:transparent; text-decoration:none }
 .desc{ font-size:14.5px; line-height:1.5; margin:4px 0 12px }
-.host{ display:flex; align-items:center; gap:10px; margin:6px 0 14px; font-size:13.5px }
 .avatar{ width:36px; height:36px; border-radius:50%; background:var(--sun); color:var(--ink); display:grid; place-items:center; font-family:var(--display); font-weight:900; font-size:16px }
-.goingrow{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-bottom:12px }
 .faces{ display:flex } .faces span{ width:24px; height:24px; border-radius:50%; border:2px solid var(--paper); margin-left:-6px; display:grid; place-items:center; font-size:10px; font-weight:700; color:var(--paper) }
 .faces span:first-child{ margin-left:0 }
-.practical{ font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:16px }
+.practical{ font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:12px }
+/* event sheet: title, then when (biggest), where, tags, description; one primary action pinned at the bottom */
+.sheet .cat.quiet{ color:var(--muted) }
+.sheet .vbtn{ display:inline; padding:0; vertical-align:baseline }
+.evwhen{ font-family:var(--display); font-weight:900; font-size:26px; line-height:1; text-transform:uppercase; color:var(--red); margin:12px 0 4px }
+.evwhere{ display:block; font-size:14px; color:var(--ink); text-decoration:none; line-height:1.4 } .evwhere span{ color:var(--muted) }
+.evrec{ font-size:12.5px; color:var(--muted); margin-top:2px }
+.badges > span.tier{ background:var(--sun); border-color:var(--sun); color:var(--ink) }
+.evmeta{ font-size:13px; color:var(--muted); margin:-4px 0 10px } .evmeta a{ color:var(--green); font-weight:700; white-space:nowrap }
+.sheetfoot{ position:sticky; bottom:-26px; display:flex; gap:8px; align-items:stretch; background:var(--paper); margin:6px -22px -26px; padding:12px 22px 26px; border-top:1px solid #E2D5BA }
+.sheetfoot .ib{ flex:none; width:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:14px; background:var(--card); color:var(--green); font-size:10px; font-weight:700; text-decoration:none }
+.sheetfoot .btn{ flex:1; width:auto }
 .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
 
 /* ---------- stamp modal ---------- */
@@ -1319,34 +1320,40 @@ const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
 function openSheet(id){
   const ev=events.find(e=>e.id===id); if(!ev) return; enrich();
   const inn=S.rsvp.includes(id), done=S.checked.includes(id);
-  const initials=(ev.host||'?').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
+  const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
+  const link=(()=>{ const u=(ev.ticket&&!isRoundup(ev.ticket))?ev.ticket:(ev.source&&!isRoundup(ev.source))?ev.source:(ev.ticket||ev.source);
+    if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the RSVP button already opens it
+    return `<a class="evlink" href="${u}" target="_blank" rel="noopener noreferrer">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
+  const showHost=ev.host && ev.host!==ev.venue;
+  const meta=[showHost?`Hosted by ${ev.host}`:'', ev.going?`${ev.going} interested on Comuna`:'', link].filter(Boolean).join(' · ');
+  const icon=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
+    : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
+    : `<button class="btn primary" id="rsvpBtn">${needsRsvp(ev)?'RSVP':'Interested'}</button>`;
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
-    <div class="cat" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${CATS[catKey(ev.category)].label} · ${ev.area||ev.hood}</div>
-    <h2>${ev.title}${vCheck(ev,22)}</h2>${ev.verified?`<div class="vnote">${vCheck(ev,14)} Verified by Comuna: a real venue, organization or established host</div>`:''}
-    <div class="sub">${ev.venue}</div>
-    <div class="tierline">${kindOf(ev)==='cornerstone'?tierIcon('cornerstone',14):''}<span><b>${KINDS[kindOf(ev)].label}:</b> ${KINDS[kindOf(ev)].blurb}</span></div>
-    ${badges(ev).length?`<div class="badges">${badges(ev).map(x=>`<span>${x}</span>`).join('')}</div>`:''}
-    <div class="facts"><div class="fact"><div class="k">${ev.start&&!/one-off/i.test(ev.rec||'')?'Next':'When'}</div><div class="v">${ev.start?nextWhen(ev):(ev.time||'Soon')}</div>${ev.start&&ev.recDetail&&!/one-off/i.test(ev.rec)?`<div class="more">${ev.recDetail}</div>`:''}</div><div class="fact"><div class="k">How far</div><div class="v">${mins(ev.mi)} min · ${ev.mi.toFixed(1)} mi</div></div></div>
-    ${ev.going?`<div class="goingrow">${ev.going} interested on Comuna</div>`:''}
+    <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${CATS[catKey(ev.category)].label} · ${ev.area||ev.hood}</div>
+    <h2>${ev.verified? ev.title.replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : ev.title}</h2>
+    <div class="evwhen">${ev.start?nextWhen(ev):(ev.time||'Soon')}</div>
+    <a class="evwhere" href="${directionsUrl(ev)}" target="_blank" rel="noopener">${ev.venue} <span>· ${mins(ev.mi)} min away</span></a>
+    ${recurs&&ev.recDetail?`<div class="evrec">${ev.recDetail}</div>`:''}
+    <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':KINDS[k].label}</span>${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${x}</span>`).join('')}</div>
     ${ev.desc?`<p class="desc">${ev.desc}</p>`:''}
-    <div class="actions">
-      <a class="act" href="${directionsUrl(ev)}" target="_blank" rel="noopener">Directions</a>
-      <button class="act" id="calBtn" aria-label="Add to calendar">+ Calendar</button>
-      ${(()=>{ const u=(ev.ticket&&!isRoundup(ev.ticket))?ev.ticket:(ev.source&&!isRoundup(ev.source))?ev.source:(ev.ticket||ev.source); if(!u) return '';
-        const lab=ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket?(/paid/i.test(ev.price)?'Get tickets':'RSVP link'):'Event page';
-        return `<a class="act" href="${u}" target="_blank" rel="noopener noreferrer">${lab}</a>`; })()}
-    </div>
-    <div class="host"><div class="avatar">${initials}</div><div><b>${ev.host||'Local host'}</b><div class="sub" style="font-size:12px">Host</div></div></div>
+    ${meta?`<div class="evmeta">${meta}</div>`:''}
     ${(ev.parking||ev.alcohol!==undefined)?`<div class="practical">${ev.parking?`Parking: ${ev.parking}<br>`:''}${ev.alcohol===true?'Drinks available, 21+ to drink':ev.alcohol===false?'Alcohol-free':''}</div>`:''}
-    ${done? `<button class="btn green" disabled>Stamped. See you next time.</button>`
-      : inn? `<div class="row2"><button class="btn ghost" id="shareBtn">Invite friends</button><button class="btn primary" id="checkBtn">I'm here: check in</button></div>`
-      : `<div class="row2"><button class="btn ghost" id="shareBtn">Invite friends</button><button class="btn primary" id="rsvpBtn">${needsRsvp(ev)?'RSVP':'Interested'}</button></div>`}`;
+    <div class="sheetfoot">
+      <a class="ib" id="dirBtn" href="${directionsUrl(ev)}" target="_blank" rel="noopener" aria-label="Directions">${icon('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>')}Directions</a>
+      <button class="ib" id="calBtn" aria-label="Add to calendar">${icon('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>')}Calendar</button>
+      <button class="ib" id="shareBtn" aria-label="Invite friends">${icon('<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>')}Invite</button>
+      ${cta}
+    </div>`;
   overlay.classList.add('on'); track(ev,'view');
-  sheet.querySelectorAll('a.act').forEach(a=>a.addEventListener('click',()=>track(ev,a.textContent==='Directions'?'directions':'link')));
+  sheet.querySelectorAll('#dirBtn,.evwhere').forEach(a=>a.addEventListener('click',()=>track(ev,'directions')));
+  const el=sheet.querySelector('.evlink'); if(el) el.addEventListener('click',()=>track(ev,'link'));
+  const vb=document.getElementById('vBtn'); if(vb) vb.onclick=()=>toast('Verified by Comuna: a real venue, organization or established host');
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
   const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); if(needsRsvp(ev)) window.open(okRsvpLink(ev),'_blank','noopener'); S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
-  const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking your location…';
+  const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
     const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; toast(v.msg); return; } checkIn(ev,v.dist); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
 }
