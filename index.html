@@ -178,9 +178,6 @@ img{ max-width:100% }
 #homeScreen:not(.home-list) .mapwrap .toggle{ top:auto; bottom:calc(var(--navh) + 72px) }
 #homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 134px) }
 /* first view: today's Top 4 as pins, other events as quiet dots, one pill to show everything */
-.morepill{ position:absolute; z-index:5; left:50%; transform:translateX(-50%); top:calc(var(--headh,170px) + 4px); background:var(--card); border-radius:30px; padding:8px 14px; font-size:12.5px; font-weight:700; color:var(--ink); box-shadow:0 2px 8px rgba(0,0,0,.14); white-space:nowrap }
-.morepill b{ color:var(--green) }
-.home-list .morepill{ display:none }
 .edot{ position:absolute; width:11px; height:11px; border-radius:50%; border:1.5px solid var(--paper); transform:translate(-50%,-50%); opacity:.85; cursor:pointer; padding:0 }
 #homeScreen:not(.home-list) .picks{ position:absolute; left:0; right:0; bottom:calc(var(--navh) + 10px); z-index:6; flex:none; display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:0 14px; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x; cursor:grab; -webkit-overflow-scrolling:touch }
 #homeScreen:not(.home-list) .picks.dragging{ scroll-snap-type:none; cursor:grabbing }
@@ -463,7 +460,6 @@ img{ max-width:100% }
         <div id="map"></div>
         <div class="toggle"><button class="on" id="tMap">Map</button><button id="tList">List</button></div>
         <button class="maphelp" id="mapHelp" aria-label="How to read the map">?</button>
-        <button class="morepill" id="morePill" hidden></button>
         <div class="maplabel" id="mapNote"></div>
       </div>
       <div class="picks" id="picks"></div>
@@ -856,7 +852,6 @@ function dailyPicks(){
 }
 function maybeDailyPicks(){
   if(S.kitSeen===false) return;   // the starter kit goes first; it hands off to these picks when closed
-  if(focus && dailyPicks().length) return;   // the map opens on the Top 4, so no pop-up
   const today=new Date().toDateString(); if(S.lastPicksDay===today) return;
   const picks=dailyPicks(); if(!picks.length) return;
   S.lastPicksDay=today; save();
@@ -963,7 +958,7 @@ function cardHtml(ev){
 let userMoved=false;
 function cardsForView(){
   if(!map || !userMoved || document.getElementById('homeScreen').classList.contains('home-list')) return;
-  const b=map.getBounds(), c=map.getCenter(), inB=lastPins.filter(ev=>b.contains([ev.lng,ev.lat]))
+  const b=map.getBounds(), c=map.getCenter(), inB=[...lastView.top,...lastView.rest].filter(ev=>b.contains([ev.lng,ev.lat]))
     .sort((x,y)=>Math.hypot(x.lng-c.lng,x.lat-c.lat)-Math.hypot(y.lng-c.lng,y.lat-c.lat));
   const el=document.getElementById('picks');
   el.innerHTML = inB.length? inB.slice(0,40).map(cardHtml).join('') : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">No events in this area</div><div class="m2" style="display:block">Zoom out or change the When / Type filter</div></div></div>`;
@@ -978,18 +973,16 @@ function showCard(ev){
   el.scrollTo({left:card.offsetLeft-14,behavior:'smooth'});
 }
 function inView(ev){ return true; }
-/* First view: frame today's Top 4 close to you, show other events as small dots, and let one tap show everything.
-   FOCUS_EVERY_OPEN true = the map opens this way every time; false = only until you first tap "Show all". */
-const FOCUS_EVERY_OPEN=true;
-let focus=FOCUS_EVERY_OPEN || !S.mapExpanded;
+/* The map opens framed on today's Top 4 near you, shown as full pins. Every other event is a small dot in its
+   group's color until you zoom in close (PIN_ZOOM), where it becomes a full pin with its icon. */
+const PIN_ZOOM=13.5;
 // the header floats over the top of the map and the cards over the bottom: frame events in the space between
 function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
-  return { t:(head?head.offsetHeight:150)+(focus?36:0), b:(nav.height? app.bottom-nav.top : 70)+80 }; }
+  return { t:head?head.offsetHeight:150, b:(nav.height? app.bottom-nav.top : 70)+80 }; }
 function mapView(){
-  const P=picks(), top=focus? dailyPicks() : [], ids=new Set(top.map(e=>e.id));
-  if(top.length) return { P, top, pins:top, dots:P.filter(e=>!ids.has(e.id)), frame:top };
-  const near=P.filter(e=>e.mi<=NEARBY_MILES*2);   // start in your part of town; zoom out for the rest of LA
-  return { P, top, pins:P, dots:[], frame:near.length>=3? near : P };
+  const P=picks(), ids=new Set(dailyPicks().map(e=>e.id)), top=P.filter(e=>ids.has(e.id)), rest=P.filter(e=>!ids.has(e.id));
+  const near=P.filter(e=>e.mi<=NEARBY_MILES*2);   // no Top 4 for these filters: start in your part of town
+  return { P, top, rest, frame: top.length? top : near.length>=3? near : P };
 }
 function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
@@ -997,9 +990,7 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
   document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when" aria-label="When: ${wl}">${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type" aria-label="Type: ${cl}">${cl}<i>▾</i></button>`;
   const V=mapView(), P=V.P;
-  const mp=document.getElementById('morePill'); mp.hidden=!V.top.length;
-  if(V.top.length) mp.innerHTML=`Today's Top 4 · <b>Show all ${P.length}</b>`;
-  document.getElementById('picks').innerHTML = V.top.length? V.top.map(cardHtml).join('') : P.map(cardHtml).join('')
+  document.getElementById('picks').innerHTML = [...V.top,...V.rest].map(cardHtml).join('')   // Top 4 cards first
     + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
       : eventsState==='error'? `<button class="pick" id="retryEvents" style="grid-template-columns:1fr"><div><div class="t">Couldn't load events</div><div class="m2" style="display:block">Check your connection, then tap to try again</div></div></button>`
       : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches these filters</div><div class="m2" style="display:block">Try Anytime or Everything</div></div></div>`);
@@ -1035,10 +1026,9 @@ function openPicker(kind){
   const ei=document.getElementById('editInt'); if(ei) ei.onclick=e=>{ e.stopPropagation(); editInterests(); };
   sheet.querySelector('.picklist').onclick=e=>{ const o=e.target.closest('[data-opt],[data-tier]'); if(!o||o.disabled) return;
     if(o.dataset.tier) tier=o.dataset.tier; else if(kind==='when') when=o.dataset.opt; else filter=o.dataset.opt;
-    focus=false; overlay.classList.remove('on'); renderHome(); };
+    overlay.classList.remove('on'); renderHome(); };
 }
 document.getElementById('mapHelp').onclick=openLegend;
-document.getElementById('morePill').onclick=()=>{ focus=false; S.mapExpanded=true; save(); renderHome(); };
 document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadSheet(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
 document.getElementById('tMap').onclick=()=>{ document.getElementById('homeScreen').classList.remove('home-list'); tMap.classList.add('on'); tList.classList.remove('on'); setTimeout(()=>{ map?map.resize():drawPaper(); },20); };
 document.getElementById('tList').onclick=()=>{ document.getElementById('homeScreen').classList.add('home-list'); tList.classList.add('on'); tMap.classList.remove('on'); };
@@ -1058,6 +1048,7 @@ function pinEl(ev,i){ const el=document.createElement('div'); const done=S.check
 let lastPins=[]; const CLUSTER_PX=40, STREET_ZOOM=15;
 function drawClusters(){
   if(!map) return; const you=markers.you; markers.forEach(m=>m.remove()); markers=[]; markers.you=you;
+  const close=map.getZoom()>=PIN_ZOOM; lastPins=close? [...lastView.top,...lastView.rest] : lastView.top; setDots(close? [] : lastView.rest);
   const street=map.getZoom()>=STREET_ZOOM, radius=street? 14 : CLUSTER_PX, groups=[];
   lastPins.forEach(ev=>{ const pt=map.project([ev.lng,ev.lat]); const g=groups.find(g=>Math.hypot(g.x-pt.x,g.y-pt.y)<radius);
     if(g){ g.list.push(ev); g.x=(g.x*(g.list.length-1)+pt.x)/g.list.length; g.y=(g.y*(g.list.length-1)+pt.y)/g.list.length; } else groups.push({x:pt.x,y:pt.y,list:[ev]}); });
@@ -1076,7 +1067,7 @@ function drawClusters(){
     el.onclick=zoomIn; el.onkeydown=e=>{ if(e.key==='Enter') zoomIn(); };
     markers.push(new mapboxgl.Marker({element:el}).setLngLat(map.unproject([g.x,g.y])).addTo(map)); });
 }
-// other events in the first view: small dots in their group's color, tap one to open it
+// events shown as small dots (zoomed out): their group's color, tap one to open it
 function setDots(list){
   const data={ type:'FeatureCollection', features:list.map(ev=>({ type:'Feature', properties:{ id:ev.id, c:CATS[catKey(ev.category)].bg }, geometry:{ type:'Point', coordinates:[ev.lng,ev.lat] } })) };
   if(!map.getSource('focus-dots')){
@@ -1086,13 +1077,14 @@ function setDots(list){
     map.on('mouseenter','focus-dots',()=>map.getCanvas().style.cursor='pointer'); map.on('mouseleave','focus-dots',()=>map.getCanvas().style.cursor='');
   } else map.getSource('focus-dots').setData(data);
 }
+let lastView={ top:[], rest:[] };
 function placePins(V){
-  const P=V.pins;
-  if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you; setDots(V.dots);
+  if(map){ const you=markers.you; lastView=V; drawClusters(); markers.you=you;
     if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); cardsForView(); });
       ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent) userMoved=true; })); }
     if(!markers.you){ const y=youEl(30); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
-    const b=new mapboxgl.LngLatBounds(); V.frame.forEach(e=>b.extend([e.lng,e.lat])); b.extend([origin().lng,origin().lat]); const ins=mapInsets(); map.fitBounds(b,{padding:{top:ins.t+20,bottom:ins.b+20,left:40,right:40},maxZoom:V.top.length?14:15,duration:600});
+    const b=new mapboxgl.LngLatBounds(); V.frame.forEach(e=>b.extend([e.lng,e.lat])); b.extend([origin().lng,origin().lat]); map.resize();   // the map may have been created while hidden; frame against its real size
+    const ins=mapInsets(); map.fitBounds(b,{padding:{top:ins.t+20,bottom:ins.b+20,left:40,right:40},maxZoom:V.top.length? PIN_ZOOM-0.5 : 15,duration:600});
   } else drawPaper();
 }
 /* Brand Guide v2 "Paper" map style, applied on top of Mapbox Light.
@@ -1183,7 +1175,7 @@ function drawPaper(){
   if(map) return;
   const wrap=document.getElementById('map'); const w=wrap.clientWidth, h=wrap.clientHeight; if(!w||!h) return;
   let host=wrap.querySelector('.paper-map'); if(!host){ host=document.createElement('div'); host.className='paper-map'; wrap.appendChild(host); }
-  enrich(); const V=mapView(); paintPaper(host,w,h,V.frame,{ pins:V.pins, dots:V.dots, ins:mapInsets() });
+  enrich(); const V=mapView(); paintPaper(host,w,h,V.frame,{ pins:V.top.length? V.top : V.rest, dots:V.top.length? V.rest : [], ins:mapInsets() });
 }
 // sign-up map: a real Mapbox overview of LA in the brand style, with every event as a dot. Look-only (no pan/zoom).
 // Falls back to the drawn Paper map if Mapbox can't load.
