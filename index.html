@@ -124,6 +124,7 @@ img{ max-width:100% }
 .mapwrap .toggle button.on{ background:var(--paper-2); color:var(--ink) } .mapwrap .toggle button{ color:var(--muted) }
 .maplabel{ position:absolute; left:14px; bottom:10px; z-index:4; font-family:var(--hand); font-size:18px; color:var(--red); pointer-events:none }
 .pin{ width:28px; height:28px; border-radius:50%; background:var(--green); border:none; box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; position:relative; cursor:pointer; transform:translate(-50%,-50%); overflow:visible }
+.pin.sel{ z-index:22; box-shadow:0 0 0 2.5px var(--paper),0 0 0 5px var(--ink),0 6px 14px rgba(0,0,0,.35) !important }
 .pin.big{ box-shadow:0 0 0 2px var(--paper),0 0 0 5px var(--sun),0 4px 10px rgba(0,0,0,.32); z-index:2 }  /* same size as other pins; the cream gap keeps the gold ring visible on a mustard pin */
 .pin svg{ display:block }
 /* tier = pin shape (category = colour), growing with the tier: Pop-up dot, Hidden Gem triangle, Staple square, Headliner starburst */
@@ -970,7 +971,24 @@ function cardsForView(){
     .sort((x,y)=>Math.hypot(x.lng-c.lng,x.lat-c.lat)-Math.hypot(y.lng-c.lng,y.lat-c.lat));
   const el=document.getElementById('picks');
   el.innerHTML = inB.length? inB.slice(0,40).map(cardHtml).join('') : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">No events in this area</div><div class="m2" style="display:block">Zoom out or change the When / Type filter</div></div></div>`;
-  el.scrollLeft=0;
+  cardSwipe=false; el.scrollLeft=0;
+}
+/* swiping the card row moves the map to the event on the card you land on; that event shows as a full pin with a
+   dark ring at any zoom so you can find it. Panning the map yourself clears it and refreshes the cards as before. */
+let selId=null, fromCards=false, cardSwipe=false;
+(function(){
+  const row=document.getElementById('picks'); let t=0;
+  ['touchstart','pointerdown','wheel'].forEach(k=>row.addEventListener(k,()=>{ cardSwipe=true; },{passive:true}));
+  row.addEventListener('scroll',()=>{ if(!cardSwipe) return; clearTimeout(t); t=setTimeout(()=>{ cardSwipe=false; syncMapToCard(); },180); },{passive:true});
+})();
+function syncMapToCard(){
+  if(!map || document.getElementById('homeScreen').classList.contains('home-list')) return;
+  const row=document.getElementById('picks'), mid=row.scrollLeft+row.clientWidth/2; let best=null, bd=1e9;
+  row.querySelectorAll('[data-ev]').forEach(c=>{ const d=Math.abs(c.offsetLeft+c.offsetWidth/2-mid); if(d<bd){ bd=d; best=c; } });
+  const ev=best && events.find(e=>e.id===+best.dataset.ev); if(!ev || ev.id===selId) return;
+  row.querySelectorAll('.pick.hot').forEach(x=>x.classList.remove('hot')); best.classList.add('hot');
+  selId=ev.id; fromCards=true; drawClusters();
+  const ins=mapInsets(); map.easeTo({ center:[ev.lng,ev.lat], padding:{top:ins.t,bottom:ins.b,left:0,right:0}, duration:500 });
 }
 // pointing at a pin brings its card to the front
 function showCard(ev){
@@ -978,13 +996,13 @@ function showCard(ev){
   let card=el.querySelector(`[data-ev="${ev.id}"]`);
   if(!card){ el.insertAdjacentHTML('afterbegin',cardHtml(ev)); card=el.firstElementChild; }
   el.querySelectorAll('.pick.hot').forEach(x=>x.classList.remove('hot')); card.classList.add('hot');
-  el.scrollTo({left:card.offsetLeft-14,behavior:'smooth'});
+  cardSwipe=false; el.scrollTo({left:card.offsetLeft-14,behavior:'smooth'});
 }
 function inView(ev){ return true; }
 /* Zoom ladder: city level shows cream cluster bubbles (lone events as dots), neighborhood level shows every event
-   as a small dot in its group's color, street level shows full pins with icons. The map opens at neighborhood level
+   as a small dot in its group's color, street level shows full pins with icons. The map opens just past the pin level
    around you; today's Top 4 live in the daily pop-up, not on the map. */
-const CLUSTER_ZOOM=12, PIN_ZOOM=13.8, OPEN_ZOOM=13;
+const CLUSTER_ZOOM=12, PIN_ZOOM=13.5, OPEN_ZOOM=14;
 // the header floats over the top of the map and the cards over the bottom: frame events in the space between
 function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
   return { t:head?head.offsetHeight:150, b:(nav.height? app.bottom-nav.top : 70)+80 }; }
@@ -1052,10 +1070,12 @@ function pinEl(ev,i){ const el=document.createElement('div'); const done=S.check
 let lastPins=[]; const CLUSTER_PX=44, FAN_PX=14;
 function drawClusters(){
   if(!map) return; const you=markers.you; markers.forEach(m=>m.remove()); markers=[]; markers.you=you;
-  const z=map.getZoom();
-  if(z>=CLUSTER_ZOOM && z<PIN_ZOOM){ setDots(lastPins); return; }   // neighborhood: every event is a dot
+  const z=map.getZoom(), all=lastPins, sel=all.find(e=>e.id===selId);
+  if(sel){ const el=pinEl(sel); el.classList.add('sel'); markers.push(new mapboxgl.Marker({element:el}).setLngLat([sel.lng,sel.lat]).addTo(map)); }
+  const rest=sel? all.filter(e=>e!==sel) : all;
+  if(z>=CLUSTER_ZOOM && z<PIN_ZOOM){ setDots(rest); return; }   // neighborhood: every event is a dot
   const street=z>=PIN_ZOOM, radius=street? FAN_PX : CLUSTER_PX, groups=[];
-  lastPins.forEach(ev=>{ const pt=map.project([ev.lng,ev.lat]); const g=groups.find(g=>Math.hypot(g.x-pt.x,g.y-pt.y)<radius);
+  rest.forEach(ev=>{ const pt=map.project([ev.lng,ev.lat]); const g=groups.find(g=>Math.hypot(g.x-pt.x,g.y-pt.y)<radius);
     if(g){ g.list.push(ev); g.x=(g.x*(g.list.length-1)+pt.x)/g.list.length; g.y=(g.y*(g.list.length-1)+pt.y)/g.list.length; } else groups.push({x:pt.x,y:pt.y,list:[ev]}); });
   if(street){
     // street: full pins; events sharing a spot fan out in a small ring so each one can be tapped
@@ -1083,14 +1103,18 @@ function setDots(list){
   if(!map.getSource('focus-dots')){
     map.addSource('focus-dots',{ type:'geojson', data });
     map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':.85, 'circle-stroke-color':'#F3E7D1', 'circle-stroke-width':1.5 } });
-    map.on('click','focus-dots',e=>{ const f=e.features&&e.features[0]; if(f) openSheet(+f.properties.id); });
+    // dots are 9px but a fingertip isn't: a tap anywhere within ~22px opens the closest dot's event
+    map.on('click',e=>{ if(!map.getLayer('focus-dots')) return; const p=e.point, r=22;
+      const fs=map.queryRenderedFeatures([[p.x-r,p.y-r],[p.x+r,p.y+r]],{layers:['focus-dots']}); if(!fs.length) return;
+      const d=f=>{ const q=map.project(f.geometry.coordinates); return Math.hypot(q.x-p.x,q.y-p.y); };
+      const f=fs.reduce((a,b)=>d(b)<d(a)?b:a); if(d(f)<=r) openSheet(+f.properties.id); });
     map.on('mouseenter','focus-dots',()=>map.getCanvas().style.cursor='pointer'); map.on('mouseleave','focus-dots',()=>map.getCanvas().style.cursor='');
   } else map.getSource('focus-dots').setData(data);
 }
 function placePins(P){
   if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you;
-    if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); cardsForView(); });
-      ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent) userMoved=true; })); }
+    if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); if(fromCards){ fromCards=false; return; } cardsForView(); });
+      ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent){ userMoved=true; fromCards=false; if(t==='dragstart' && selId!==null){ selId=null; } } })); }
     if(!markers.you){ const y=youEl(30); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
     if(!map._opened){ map._opened=true; openCamera(false); }
   } else drawPaper();
