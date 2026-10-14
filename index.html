@@ -455,7 +455,7 @@ img{ max-width:100% }
         <input class="field" id="suName" autocomplete="name" placeholder="First and last name"></div>
         <div id="suEmailWrap"><label class="flabel" for="suEmail">Your email</label>
         <input class="field" id="suEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
-        <p class="sub" style="margin-top:8px">We'll email you a 6-digit code. No password needed.</p></div>
+        <p class="sub" style="margin-top:8px">We'll email you a sign-in code. No password needed.</p></div>
         <button class="btn primary" id="suNext" style="margin-top:auto;margin-top:22px" disabled>Send my code</button>
       </div>
     </section>
@@ -466,8 +466,8 @@ img{ max-width:100% }
         <div class="onbtop"><button class="back" data-back>&larr; Back</button></div>
         <div class="h1" style="color:var(--green);font-size:44px">Check your email.</div>
         <p class="sub" style="font-size:15px" id="codeSent"></p>
-        <label class="flabel" for="suCode">6-digit code</label>
-        <input class="field code" id="suCode" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" placeholder="······">
+        <label class="flabel" for="suCode">Code from the email</label>
+        <input class="field code" id="suCode" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="8" placeholder="Code">
         <button class="btn primary" id="codeNext" style="margin-top:22px" disabled>Verify</button>
         <button class="resend" id="codeResend">Resend code</button>
       </div>
@@ -855,7 +855,7 @@ function renderInterests(){ const mine=S.interests||[]; document.getElementById(
 document.getElementById('interestList').addEventListener('click',e=>{ const b=e.target.closest('[data-int]'); if(!b) return; const t=b.dataset.int, m=S.interests=S.interests||[]; m.includes(t)? m.splice(m.indexOf(t),1) : m.push(t); save(); renderInterests(); });
 intNext.onclick=()=>openAuth('signup');
 
-/* sign-up: name + email, then the 6-digit code from the email */
+/* sign-up: name + email, then the code from the email */
 // a code, not a link: on iPhone an emailed link opens Safari, not the installed app, so the sign-in would land in the wrong place
 const suName=document.getElementById('suName'), suEmail=document.getElementById('suEmail'), suNext=document.getElementById('suNext');
 const suCode=document.getElementById('suCode'), codeNext=document.getElementById('codeNext'), codeResend=document.getElementById('codeResend');
@@ -891,8 +891,8 @@ async function sendCode(email){
   if(error){ console.warn('Supabase send code failed', error);
     toast(/security purposes|rate limit/i.test(error.message)? 'Please wait a minute before asking for another code.' : 'Couldn\'t send the code: '+error.message); return false; }
   codeEmail=email;
-  document.getElementById('codeSent').textContent=`We sent a 6-digit code to ${email}. It can take a minute to arrive, so check spam too.`;
-  suCode.value=''; codeNext.disabled=true; cooldown(); return true;
+  document.getElementById('codeSent').textContent=`We sent a code to ${email}. It can take a minute to arrive, so check spam too.`;
+  suCode.value=''; suCode.dataset.len=0; codeNext.disabled=true; cooldown(); return true;
 }
 // Supabase allows one email per person per minute
 function cooldown(){
@@ -901,10 +901,16 @@ function cooldown(){
   tick(); resendT=setInterval(tick,1000);
 }
 codeResend.onclick=async()=>{ if(await sendCode(codeEmail)) toast('New code sent'); };
-// digits only; submits on its own once all 6 are in (iPhone can autofill the code from Mail)
-suCode.addEventListener('input',()=>{ suCode.value=suCode.value.replace(/\D/g,'').slice(0,6); codeNext.disabled=suCode.value.length!==6; if(suCode.value.length===6) codeNext.click(); });
+// Supabase codes are 6 to 8 digits (set under Sign In / Providers > Email). Digits only; it submits on its own
+// when a whole code arrives at once (iPhone autofill from Mail, or paste) or all 8 are typed, otherwise tap Verify.
+const CODE_MIN=6, CODE_MAX=8;
+suCode.addEventListener('input',()=>{
+  const before=suCode.dataset.len|0; suCode.value=suCode.value.replace(/\D/g,'').slice(0,CODE_MAX); const n=suCode.value.length; suCode.dataset.len=n;
+  codeNext.disabled=n<CODE_MIN;
+  if(n===CODE_MAX || (n>=CODE_MIN && n-before>1)) codeNext.click();
+});
 codeNext.onclick=async()=>{
-  if(verifying || suCode.value.length!==6) return;
+  if(verifying || suCode.value.length<CODE_MIN) return;
   verifying=true; codeNext.disabled=true; codeNext.textContent='Checking…';
   const { data, error } = await sb.auth.verifyOtp({ email:codeEmail, token:suCode.value, type:'email' });
   verifying=false; codeNext.textContent='Verify';
