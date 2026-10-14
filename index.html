@@ -797,10 +797,10 @@ let tt; function toast(msg){ const t=document.getElementById('toast'); t.textCon
 /* ---------- onboarding ---------- */
 function buildOnb(){
   const f=document.getElementById('stampfield');
-  // a mix of what you collect: neighborhood stamps, a patch and the Comuna pennant
+  // a mix of what you collect: neighborhood stamps and the Comuna pennant
   f.innerHTML=`<div style="left:4px;top:4px">${hoodStamp('Santa Monica',140,-10,true)}</div>
   <img src="patches/pennant.webp" alt="" style="right:-4px;top:14px;width:178px;transform:rotate(9deg);filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))">
-  <img src="patches/scout.webp" alt="" style="left:30px;top:150px;width:112px;transform:rotate(-8deg);filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))">
+  <div style="left:14px;top:150px">${hoodStamp('West Hollywood',134,-6,true)}</div>
   <div style="right:14px;top:142px">${hoodStamp('Silver Lake',134,7,true)}</div>`;
 }
 const locNext=document.getElementById('locNext');
