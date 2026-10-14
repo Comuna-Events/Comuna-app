@@ -181,7 +181,7 @@ img{ max-width:100% }
 #homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 134px) }
 /* first view: today's Top 4 as pins, other events as quiet dots, one pill to show everything */
 .edot{ position:absolute; width:11px; height:11px; border-radius:50%; border:1.5px solid var(--paper); transform:translate(-50%,-50%); opacity:.85; cursor:pointer; padding:0 }
-#homeScreen:not(.home-list) .picks{ position:absolute; left:0; right:0; bottom:calc(var(--navh) + 10px); z-index:6; flex:none; display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:0 14px; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x; cursor:grab; -webkit-overflow-scrolling:touch }
+#homeScreen:not(.home-list) .picks{ position:absolute; left:0; right:0; bottom:calc(var(--navh) - 18px); z-index:6; flex:none; display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:10px 14px 28px;  /* room for the cards' shadow, which a scrolling row would otherwise clip */ scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x; cursor:grab; -webkit-overflow-scrolling:touch }
 #homeScreen:not(.home-list) .picks.dragging{ scroll-snap-type:none; cursor:grabbing }
 #homeScreen:not(.home-list) .picks::-webkit-scrollbar{ display:none }
 /* map view: slim one-line cards so more of the map shows */
