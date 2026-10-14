@@ -467,7 +467,7 @@ img{ max-width:100% }
         <div class="h1" style="color:var(--green);font-size:44px">Check your email.</div>
         <p class="sub" style="font-size:15px" id="codeSent"></p>
         <label class="flabel" for="suCode">Code from the email</label>
-        <input class="field code" id="suCode" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="8" placeholder="Code">
+        <input class="field code" id="suCode" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="8">
         <button class="btn primary" id="codeNext" style="margin-top:22px" disabled>Verify</button>
         <button class="resend" id="codeResend">Resend code</button>
       </div>
@@ -829,7 +829,7 @@ document.addEventListener('click',e=>{
   const g=e.target.closest('[data-go]'); if(g){ go(g.dataset.go); return; }
   if(e.target.closest('[data-back]')){ go(history.pop()||'home', false); }
 });
-let tt; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),2200); }
+let tt; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),Math.max(2200,msg.length*55)); }   // longer messages stay up long enough to read
 
 /* ---------- onboarding ---------- */
 function buildOnb(){
@@ -920,20 +920,22 @@ codeNext.onclick=async()=>{
 };
 const freshPassport=()=>Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[], redeemed:[], alertsRead:false });
 async function finishAuth(){
-  if(authMode==='signin'){
-    // coming back on a new phone: bring back their name, neighborhood and interests
-    const { data:p, error } = await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points').eq('id',authed.id).maybeSingle();
-    if(error) console.warn('Supabase profile load failed', error);
-    if(!p || !p.name){ authMode='signup'; toast('Let\'s set up your passport'); history=[]; go('onb2'); return; }
+  // an email that already has an account (a new phone, or signing up again by mistake): bring back their passport
+  const { data:p, error } = await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points').eq('id',authed.id).maybeSingle();
+  if(error) console.warn('Supabase profile load failed', error);
+  if(p && p.name){
+    const again=authMode==='signup';
     freshPassport();
     S.name=p.name; S.points=p.points||0; if(p.neighborhood) S.nb=hoodByName(p.neighborhood).name;
     S.loc=(p.lat!=null && p.lng!=null)? {lat:p.lat,lng:p.lng} : null;
     S.interests=(p.interests||[]).filter(t=>Object.values(CATS).some(c=>c.label===t));
     S.signedUp=true; S.kitSeen=true; S.joined=S.joined||new Date().toISOString().slice(0,10); save();
     rebuildMap(); renderNames(); flushFeedback();
-    history=[]; filter=myCats().length?'mine':'All'; go('home'); toast('Welcome back, '+shortName());
+    history=[]; filter=myCats().length?'mine':'All'; go('home');
+    toast(again? 'You already have an account, so we signed you in. Welcome back!' : 'Welcome back, '+shortName());
     return;
   }
+  if(authMode==='signin'){ authMode='signup'; toast('Let\'s set up your passport'); history=[]; go('onb2'); return; }
   // real users start with an empty passport (the demo profile is only for showing the app before sign-up)
   freshPassport();
   S.signedUp=true; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=new Date().toISOString().slice(0,10); save(); renderNames(); dbProfile(); flushFeedback();
