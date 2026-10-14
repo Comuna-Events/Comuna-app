@@ -126,7 +126,7 @@ img{ max-width:100% }
 .pin svg{ display:block }
 /* tier = pin shape (category = colour), growing with the tier: Pop-up dot, Hidden Gem triangle, Staple square, Headliner starburst */
 .ticon{ display:inline-grid; place-items:center; width:16px; height:16px; vertical-align:-3px; margin-right:2px } .ticon i{ display:block }
-.cluster{ border-radius:50%; background:var(--card); color:var(--green); border:2px solid var(--green); box-shadow:0 2px 6px rgba(0,0,0,.18); display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:15px; cursor:pointer }
+.cluster{ z-index:21; border-radius:50%; background:var(--card); color:var(--green); border:2px solid var(--green); box-shadow:0 2px 6px rgba(0,0,0,.18); display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:15px; cursor:pointer }
 .pin .chk{ position:absolute; right:-8px; top:-8px; width:16px; height:16px; border-radius:50%; background:var(--green); color:var(--paper); font-size:11px; font-weight:700; display:grid; place-items:center; border:2px solid var(--paper) }
 .mapboxgl-marker .pin{ transform:none }
 
@@ -958,7 +958,7 @@ function cardHtml(ev){
 let userMoved=false;
 function cardsForView(){
   if(!map || !userMoved || document.getElementById('homeScreen').classList.contains('home-list')) return;
-  const b=map.getBounds(), c=map.getCenter(), inB=[...lastView.top,...lastView.rest].filter(ev=>b.contains([ev.lng,ev.lat]))
+  const b=map.getBounds(), c=map.getCenter(), inB=lastPins.filter(ev=>b.contains([ev.lng,ev.lat]))
     .sort((x,y)=>Math.hypot(x.lng-c.lng,x.lat-c.lat)-Math.hypot(y.lng-c.lng,y.lat-c.lat));
   const el=document.getElementById('picks');
   el.innerHTML = inB.length? inB.slice(0,40).map(cardHtml).join('') : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">No events in this area</div><div class="m2" style="display:block">Zoom out or change the When / Type filter</div></div></div>`;
@@ -973,29 +973,25 @@ function showCard(ev){
   el.scrollTo({left:card.offsetLeft-14,behavior:'smooth'});
 }
 function inView(ev){ return true; }
-/* The map opens framed on today's Top 4 near you, shown as full pins. Every other event is a small dot in its
-   group's color until you zoom in close (PIN_ZOOM), where it becomes a full pin with its icon. */
-const PIN_ZOOM=13.5;
+/* Zoom ladder: city level shows cream cluster bubbles (lone events as dots), neighborhood level shows every event
+   as a small dot in its group's color, street level shows full pins with icons. The map opens at neighborhood level
+   around you; today's Top 4 live in the daily pop-up, not on the map. */
+const CLUSTER_ZOOM=12, PIN_ZOOM=14.5, OPEN_ZOOM=13;
 // the header floats over the top of the map and the cards over the bottom: frame events in the space between
 function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
   return { t:head?head.offsetHeight:150, b:(nav.height? app.bottom-nav.top : 70)+80 }; }
-function mapView(){
-  const P=picks(), ids=new Set(dailyPicks().map(e=>e.id)), top=P.filter(e=>ids.has(e.id)), rest=P.filter(e=>!ids.has(e.id));
-  const near=P.filter(e=>e.mi<=NEARBY_MILES*2);   // no Top 4 for these filters: start in your part of town
-  return { P, top, rest, frame: top.length? top : near.length>=3? near : P };
-}
 function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
   const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
   document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when" aria-label="When: ${wl}">${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type" aria-label="Type: ${cl}">${cl}<i>▾</i></button>`;
-  const V=mapView(), P=V.P;
-  document.getElementById('picks').innerHTML = [...V.top,...V.rest].map(cardHtml).join('')   // Top 4 cards first
+  const P=picks();
+  document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
     + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
       : eventsState==='error'? `<button class="pick" id="retryEvents" style="grid-template-columns:1fr"><div><div class="t">Couldn't load events</div><div class="m2" style="display:block">Check your connection, then tap to try again</div></div></button>`
       : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches these filters</div><div class="m2" style="display:block">Try Anytime or Everything</div></div></div>`);
   const first=P[0]; document.getElementById('mapNote').textContent = first ? (first.live? `${first.title.split(' ').slice(0,2).join(' ')}: ${first.startsIn}` : '') : '';
-  placePins(V);
+  placePins(P);
 }
 document.getElementById('chips').addEventListener('click',e=>{ const b=e.target.closest('[data-pick]'); if(b) openPicker(b.dataset.pick); });
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
@@ -1045,29 +1041,35 @@ function pinEl(ev,i){ const el=document.createElement('div'); const done=S.check
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
    Recomputed after every pan/zoom, so bubbles split apart as you zoom. At street level (zoom 15+) nothing
    clusters; events sharing an address fan out in a small ring so each one can be tapped. */
-let lastPins=[]; const CLUSTER_PX=40, STREET_ZOOM=15;
+let lastPins=[]; const CLUSTER_PX=44, FAN_PX=14;
 function drawClusters(){
   if(!map) return; const you=markers.you; markers.forEach(m=>m.remove()); markers=[]; markers.you=you;
-  const close=map.getZoom()>=PIN_ZOOM; lastPins=close? [...lastView.top,...lastView.rest] : lastView.top; setDots(close? [] : lastView.rest);
-  const street=map.getZoom()>=STREET_ZOOM, radius=street? 14 : CLUSTER_PX, groups=[];
+  const z=map.getZoom();
+  if(z>=CLUSTER_ZOOM && z<PIN_ZOOM){ setDots(lastPins); return; }   // neighborhood: every event is a dot
+  const street=z>=PIN_ZOOM, radius=street? FAN_PX : CLUSTER_PX, groups=[];
   lastPins.forEach(ev=>{ const pt=map.project([ev.lng,ev.lat]); const g=groups.find(g=>Math.hypot(g.x-pt.x,g.y-pt.y)<radius);
     if(g){ g.list.push(ev); g.x=(g.x*(g.list.length-1)+pt.x)/g.list.length; g.y=(g.y*(g.list.length-1)+pt.y)/g.list.length; } else groups.push({x:pt.x,y:pt.y,list:[ev]}); });
-  groups.forEach(g=>{
-    const n=g.list.length;
-    if(n===1 || street){
-      // same spot at street level: fan the pins out around the shared point
-      const ring=n===1? 0 : 16+n*3;
+  if(street){
+    // street: full pins; events sharing a spot fan out in a small ring so each one can be tapped
+    setDots([]);
+    groups.forEach(g=>{ const n=g.list.length, ring=n===1? 0 : 16+n*3;
       g.list.forEach((ev,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n;
-        markers.push(new mapboxgl.Marker({element:pinEl(ev),offset:[Math.round(ring*Math.cos(a)),Math.round(ring*Math.sin(a))]}).setLngLat([ev.lng,ev.lat]).addTo(map)); });
-      return; }
+        markers.push(new mapboxgl.Marker({element:pinEl(ev),offset:[Math.round(ring*Math.cos(a)),Math.round(ring*Math.sin(a))]}).setLngLat([ev.lng,ev.lat]).addTo(map)); }); });
+    return; }
+  // city: nearby events merge into cream bubbles; an event on its own stays a dot
+  setDots(groups.filter(g=>g.list.length===1).map(g=>g.list[0]));
+  groups.filter(g=>g.list.length>1).forEach(g=>{
+    const n=g.list.length;
     const el=document.createElement('div'); el.className='cluster'; el.textContent=n>20?'20+':n; const d=Math.min(40,26+Math.sqrt(n)*3); el.style.width=el.style.height=d+'px';
     el.setAttribute('role','button'); el.setAttribute('aria-label',n+' events here, zoom in'); el.tabIndex=0;
+    // tap a bubble: zoom in to its neighborhood, where its events show as dots
     const zoomIn=e=>{ e&&e.stopPropagation(); userMoved=true; const b=new mapboxgl.LngLatBounds(); g.list.forEach(ev=>b.extend([ev.lng,ev.lat]));
-      map.fitBounds(b,{padding:80,maxZoom:Math.max(map.getZoom()+2,STREET_ZOOM+0.5),duration:500}); };
+      const cam=map.cameraForBounds(b,{padding:60})||{center:map.unproject([g.x,g.y]),zoom:z};
+      map.easeTo({center:cam.center,zoom:Math.min(PIN_ZOOM-0.5,Math.max(CLUSTER_ZOOM+0.5,cam.zoom)),duration:500}); };
     el.onclick=zoomIn; el.onkeydown=e=>{ if(e.key==='Enter') zoomIn(); };
     markers.push(new mapboxgl.Marker({element:el}).setLngLat(map.unproject([g.x,g.y])).addTo(map)); });
 }
-// events shown as small dots (zoomed out): their group's color, tap one to open it
+// events shown as small dots: their group's color, tap one to open it
 function setDots(list){
   const data={ type:'FeatureCollection', features:list.map(ev=>({ type:'Feature', properties:{ id:ev.id, c:CATS[catKey(ev.category)].bg }, geometry:{ type:'Point', coordinates:[ev.lng,ev.lat] } })) };
   if(!map.getSource('focus-dots')){
@@ -1077,15 +1079,19 @@ function setDots(list){
     map.on('mouseenter','focus-dots',()=>map.getCanvas().style.cursor='pointer'); map.on('mouseleave','focus-dots',()=>map.getCanvas().style.cursor='');
   } else map.getSource('focus-dots').setData(data);
 }
-let lastView={ top:[], rest:[] };
-function placePins(V){
-  if(map){ const you=markers.you; lastView=V; drawClusters(); markers.you=you;
+function placePins(P){
+  if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you;
     if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); cardsForView(); });
       ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent) userMoved=true; })); }
     if(!markers.you){ const y=youEl(30); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
-    const b=new mapboxgl.LngLatBounds(); V.frame.forEach(e=>b.extend([e.lng,e.lat])); b.extend([origin().lng,origin().lat]); map.resize();   // the map may have been created while hidden; frame against its real size
-    const ins=mapInsets(); map.fitBounds(b,{padding:{top:ins.t+20,bottom:ins.b+20,left:40,right:40},maxZoom:V.top.length? PIN_ZOOM-0.5 : 15,duration:600});
+    if(!map._opened){ map._opened=true; openCamera(false); }
   } else drawPaper();
+}
+// open at neighborhood level, centered on you in the space between the header and the cards
+function openCamera(fly){
+  if(!map) return; map.resize();   // the map may have been created while hidden; place it against its real size
+  const ins=mapInsets(), cam={ center:[origin().lng,origin().lat], zoom:OPEN_ZOOM, padding:{top:ins.t,bottom:ins.b,left:0,right:0} };
+  fly? map.flyTo({...cam,duration:800}) : map.jumpTo(cam);
 }
 /* Brand Guide v2 "Paper" map style, applied on top of Mapbox Light.
    Paper land, Map Blue water, soft green parks, white streets, Ink labels. POIs hidden so Comuna pins lead. */
@@ -1141,7 +1147,7 @@ function tryMapbox(){
     }catch(e){ clearTimeout(timer); fail(); } };
   document.head.appendChild(s);
 }
-function rebuildMap(){ if(map){ if(markers.you){ markers.you.remove(); markers.you=null; } map.flyTo({center:[origin().lng,origin().lat],zoom:13.3,duration:800}); } }
+function rebuildMap(){ if(map){ if(markers.you){ markers.you.remove(); markers.you=null; } openCamera(true); } }
 
 function rng(seed){ return ()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }; }
 function projector(w,h,P,ins){
@@ -1175,7 +1181,7 @@ function drawPaper(){
   if(map) return;
   const wrap=document.getElementById('map'); const w=wrap.clientWidth, h=wrap.clientHeight; if(!w||!h) return;
   let host=wrap.querySelector('.paper-map'); if(!host){ host=document.createElement('div'); host.className='paper-map'; wrap.appendChild(host); }
-  enrich(); const V=mapView(); paintPaper(host,w,h,V.frame,{ pins:V.top.length? V.top : V.rest, dots:V.top.length? V.rest : [], ins:mapInsets() });
+  enrich(); const P=picks(), near=P.filter(e=>e.mi<=NEARBY_MILES*2); paintPaper(host,w,h,near.length>=3? near : P,{ pins:P, ins:mapInsets() });
 }
 // sign-up map: a real Mapbox overview of LA in the brand style, with every event as a dot. Look-only (no pan/zoom).
 // Falls back to the drawn Paper map if Mapbox can't load.
