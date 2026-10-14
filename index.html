@@ -122,7 +122,7 @@ img{ max-width:100% }
 .mapwrap .toggle button.on{ background:var(--paper-2); color:var(--ink) } .mapwrap .toggle button{ color:var(--muted) }
 .maplabel{ position:absolute; left:14px; bottom:10px; z-index:4; font-family:var(--hand); font-size:18px; color:var(--red); pointer-events:none }
 .pin{ width:28px; height:28px; border-radius:50%; background:var(--green); border:none; box-shadow:0 3px 8px rgba(0,0,0,.28); display:grid; place-items:center; position:relative; cursor:pointer; transform:translate(-50%,-50%); overflow:visible }
-.pin.big{ width:40px; height:40px; box-shadow:0 0 0 2px var(--paper),0 0 0 5px var(--sun),0 4px 10px rgba(0,0,0,.32); z-index:2 }  /* cream gap keeps the gold ring visible on a mustard pin */
+.pin.big{ box-shadow:0 0 0 2px var(--paper),0 0 0 5px var(--sun),0 4px 10px rgba(0,0,0,.32); z-index:2 }  /* same size as other pins; the cream gap keeps the gold ring visible on a mustard pin */
 .pin svg{ display:block }
 /* tier = pin shape (category = colour), growing with the tier: Pop-up dot, Hidden Gem triangle, Staple square, Headliner starburst */
 .ticon{ display:inline-grid; place-items:center; width:16px; height:16px; vertical-align:-3px; margin-right:2px } .ticon i{ display:block }
@@ -894,14 +894,14 @@ function kitSlides(){
      </ol>`
   ];
 }
-// map key: every pin is a green circle with its category's icon; Headliners are bigger with a gold ring.
+// map key: every pin is a circle in its group's color with its icon; Headliners get a gold ring.
 // In onboarding only your picked interests show (and no cluster row); the map's "?" shows everything.
 function legendHtml(mine){
   const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label)), keys=mine&&want.length? want : Object.keys(CATS);
   return `<div class="h1" id="kitTitle">The color shows what kind.</div>
      <div class="lgcats">${keys.map(k=>`<span>${catDot(k,26)}${CATS[k].label}</span>`).join('')}</div>
      ${keys.length<Object.keys(CATS).length?`<p class="sub" style="font-size:13px;margin-top:8px">Those are your picks. Tap <b>?</b> on the map anytime for all four.</p>`:''}
-     <div class="lgrow" style="margin-top:14px"><span class="lgico"><span class="pin big" style="position:static;transform:none;width:34px;height:34px;cursor:default;background:${CATS.shows.bg}">${catIcon('shows',18)}</span></span><div><b>Bigger with a gold ring = Headliner</b><span>${KINDS.cornerstone.blurb}</span></div></div>
+     <div class="lgrow" style="margin-top:14px"><span class="lgico"><span class="pin big" style="position:static;transform:none;width:28px;height:28px;cursor:default;background:${CATS.shows.bg}">${catIcon('shows',15)}</span></span><div><b>Gold ring = Headliner</b><span>${KINDS.cornerstone.blurb}</span></div></div>
      ${mine?'':`<div class="lgrow" style="border:none"><span class="lgico"><span class="cluster" style="width:28px;height:28px;font-size:13px;cursor:default">12</span></span><div><b>Numbers are groups</b><span>tap to zoom in</span></div></div>`}`;
 }
 function openLegend(){
@@ -1026,7 +1026,7 @@ let map=null, markers=[], paperDrawn=false;
 // small tier glyph for tabs, badges and the legend
 function tierIcon(k,size=14){ return k==='cornerstone'? `<span class="ticon"><i style="width:${size*.8}px;height:${size*.8}px;border-radius:50%;background:${C.green};box-shadow:0 0 0 2px ${C.sun}"></i></span>` : `<span class="ticon"></span>`; }
 function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev), big=k==='cornerstone';
-  el.className='pin'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,big?21:15)+(done?'<span class="chk">&check;</span>':'');
+  el.className='pin'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,15)+(done?'<span class="chk">&check;</span>':'');
   el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+CATS[catKey(ev.category)].label+(big?', Headliner':'')); el.tabIndex=0;
   el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
