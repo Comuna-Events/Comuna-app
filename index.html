@@ -17,7 +17,6 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=DM+Sans:wght@400;500;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{
@@ -612,7 +611,7 @@ img{ max-width:100% }
 (function(){
 /* ================= CONFIG =================
    Same data hookups as the original MVP. When this file is hosted on GitHub Pages,
-   the Mapbox map and the Google Sheet events load live. Anywhere they can't load
+   the Mapbox map and the Supabase events load live. Anywhere they can't load
    (offline, or a sandboxed preview), the app falls back to a hand-drawn "Paper" map
    and the demo events below, so nothing breaks.
 ============================================ */
@@ -620,7 +619,6 @@ const MAPBOX_TOKEN = "pk.eyJ1IjoiY3BpY2tlMjEiLCJhIjoiY212OGxveTQ1MDZ2MTJ5b2pxanM
 // Supabase: accounts, RSVPs, check-ins, points. The publishable key is safe in the page; row-level security protects the data.
 const SUPABASE_URL = "https://sjxxiammvvfxcnukkqhg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_sachUJlp8KvvBgCdg1fPGQ_cPmzOLzm";
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGbMDtE8wUEv8u4Y4OJxtgyaRS9T6IpMSpRqtCHbu43VREDm6suQaV6zSB5NSDSxxplI0IfWOXI9sM/pub?gid=2066216692&single=true&output=csv";   // "Comuna — LA Event Inventory (LIVE)" Google Sheet, Events tab
 const DEFAULT_CENTER = { lat: 34.0869, lng: -118.2702 }; // Silver Lake
 const NEARBY_MILES = 3.5;   // roughly a 15-minute weeknight drive in these neighborhoods
 const MAX_PICKS = 6;        // short list, not infinite scroll
@@ -696,7 +694,7 @@ function tierKey(t){ t=String(t||''); return /headlin|corner/i.test(t)?'cornerst
 function kindOf(p){ if(KINDS[p.kind]) return p.kind; return {immersive:'popup',workshops:'niche',film:'niche'}[p.sub||p.cat||p.category]||'regular'; }
 
 /* ---------- demo events (used when the Sheet can't be reached) ---------- */
-// events come from the Comuna Google Sheet (plus approved community events and the feed). Nothing fake is shown while it loads.
+// events come from the Supabase events table (plus approved community events and the feed). Nothing fake is shown while it loads.
 let events = [];
 let eventsState = 'loading';   // 'loading' | 'live' | 'error'
 
@@ -1159,7 +1157,7 @@ function openPicker(kind){
     overlay.classList.remove('on'); renderHome(); };
 }
 document.getElementById('mapHelp').onclick=openLegend;
-document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadSheet(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
+document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadEvents(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
 document.getElementById('tMap').onclick=()=>{ document.getElementById('homeScreen').classList.remove('home-list'); tMap.classList.add('on'); tList.classList.remove('on'); setTimeout(()=>{ map?map.resize():drawPaper(); },20); };
 document.getElementById('tList').onclick=()=>{ document.getElementById('homeScreen').classList.add('home-list'); tList.classList.add('on'); tMap.classList.remove('on'); };
 const tMap=document.getElementById('tMap'), tList=document.getElementById('tList');
@@ -1913,10 +1911,10 @@ function askHowWasIt(ev){
     S.rated=S.rated||[]; if(!S.rated.includes(ev.id)){ S.rated.push(ev.id); S.points+=PTS.rate; save(); toast(`Thanks! +${PTS.rate} points. That helps us pick good events.`); } else toast('Thanks! That helps us pick good events.'); };
 }
 
-/* ---------- live data (Google Sheet) ---------- */
-// Reads the "Comuna — LA Event Inventory" sheet (Events tab published as CSV).
-// Header row is found by its "Event Name" cell, so title rows above it are fine.
-// Rows without a street address are skipped; addresses become map pins via Mapbox geocoding (cached per device).
+/* ---------- live data (Supabase events table) ---------- */
+// Reads public.events (moved from the old Google Sheet; edit events in Supabase > Table Editor).
+// Rows without a street address are skipped. Rows with lat/lng filled in use them as the pin;
+// the rest become pins via Mapbox geocoding (cached per device).
 async function geocode(address){
   const key='geo:'+address.trim().toLowerCase();
   try{ const hit=localStorage.getItem(key); if(hit) return JSON.parse(hit); }catch(e){}
@@ -1937,36 +1935,36 @@ function fmtTime(v){
   return `${h}${m[2]==='00'?'':':'+m[2]} ${ap}`;
 }
 function whenText(r){
-  const t=fmtTime(r['start time']), d=parseDay(r['start date']), rec=(r['recurrence']||'').trim(), det=(r['recurrence detail']||'').trim();
+  const t=fmtTime(r.start_time), d=parseDay(r.start_date), rec=(r.recurrence||'').trim(), det=(r.recurrence_detail||'').trim();
   const day=d? d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : '';
   const lead= rec && !/one-off/i.test(rec) ? (det||rec) : day;
   return [lead,t].filter(Boolean).join(' · ');
 }
 async function mapLimit(items,n,fn){ let i=0; await Promise.all(Array.from({length:n},async()=>{ while(i<items.length){ const k=i++; await fn(items[k],k); } })); }
-function loadSheet(){
-  if(!SHEET_CSV_URL || !window.Papa){ eventsState='error'; return; }
+// Only these columns are readable from the app (see the grants in supabase/events.sql).
+const EVENT_COLS='event_id,name,category,tier,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,rsvp_required,ticket_url,age,host,source_url,status,verified,lat,lng';
+async function loadEvents(){
+  if(!sb){ eventsState='error'; return; }
   eventsState=events.length?'live':'loading';
-  fetch(SHEET_CSV_URL).then(r=>{ if(!r.ok) throw 0; return r.text(); }).then(async txt=>{
-    const grid=Papa.parse(txt,{skipEmptyLines:true}).data;
-    const hi=grid.findIndex(row=>row.some(c=>/^event name/i.test(String(c).trim())));
-    if(hi<0) throw 0;
-    const keys=grid[hi].map(c=>String(c).replace(/\*/g,'').trim().toLowerCase());
+  try{
+    const { data, error } = await sb.from('events').select(EVENT_COLS).not('street_address','is',null).order('event_id');
+    if(error) throw error;
     const today=new Date(); today.setHours(0,0,0,0);
-    let rows=grid.slice(hi+1).map(row=>Object.fromEntries(keys.map((k,i)=>[k,(row[i]||'').trim()])))
-      .filter(r=>r['event name'] && r['street address'])                       // no address yet → not shown
-      .filter(r=>!/cancel|past|archiv/i.test(r['status']||''))                 // everything else shows, verified or not
-      .filter(r=>{ if(!/one-off|seasonal/i.test(r['recurrence']||'')) return true; const end=parseDay(r['end date'])||parseDay(r['start date']); return !end || end>=today; });
-    await mapLimit(rows,6,async r=>{ const c=await geocode([r['street address'],r['city']||'Los Angeles',r['zip'],'CA'].filter(Boolean).join(', ')); if(c){ r.lng=c[0]; r.lat=c[1]; } });
-    rows=rows.filter(r=>r.lat!=null);
-    if(!rows.length) throw 0;
+    let rows=data
+      .filter(r=>r.name && String(r.street_address).trim())                     // no address yet → not shown
+      .filter(r=>!/cancel|past|archiv/i.test(r.status||''))                    // everything else shows, verified or not
+      .filter(r=>{ if(!/one-off|seasonal/i.test(r.recurrence||'')) return true; const end=parseDay(r.end_date)||parseDay(r.start_date); return !end || end>=today; });
+    await mapLimit(rows.filter(r=>r.lat==null||r.lng==null),6,async r=>{ const c=await geocode([r.street_address,r.city||'Los Angeles',r.zip,'CA'].filter(Boolean).join(', ')); if(c){ r.lng=c[0]; r.lat=c[1]; } });
+    rows=rows.filter(r=>r.lat!=null && r.lng!=null);
+    if(!rows.length) throw new Error('no events with a map location');
     const catMap=c=>{ c=c||''; const lc=c.trim().toLowerCase(); if(SUBCATS[lc]||CATS[lc]) return lc;
       const hit=Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===lc)||Object.keys(CATS).find(k=>CATS[k].label.toLowerCase()===lc); if(hit) return hit;
       return /comedy|improv|theat|perform|drag/i.test(c)?'comedy':/film|movie|cinema|screening|media|podcast/i.test(c)?'film':/immersive|experien|installation/i.test(c)?'immersive':/night|club|dj|dance party|bar/i.test(c)?'nightlife':/music|concert|jazz|art|gallery|museum/i.test(c)?'music':/dinner|food|drink|supper|coffee|wine|beer/i.test(c)?'food':/fitness|wellness|yoga|run|health|medit/i.test(c)?'wellness':/workshop|class|craft|making|learn|lecture|talk/i.test(c)?'workshops':/hike|outdoor|beach|park|nature|garden/i.test(c)?'outdoors':/sport|game|trivia|volley|pickle|soccer|basketball/i.test(c)?'sports':/meetup|social|mixer|networking|speed/i.test(c)?'social':/market|shop|vintage|flea/i.test(c)?'markets':'community'; };
-    events=rows.map((r,i)=>({ id:(parseInt(String(r['event id']||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r['event id']).replace(/\D/g,'')) : 100+i, eid:r['event id']||'', title:r['event name'], venue:r['venue name']||'', lat:r.lat, lng:r.lng, area:r['neighborhood']||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r['host / organizer']||'', desc:r['short description']||'', ...(c=>({ sub:c, category:catKey(c) }))(catMap(r['primary category'])), kind:tierKey(r['tier']), parking:r['parking & transit']||'', alcohol:undefined,
-      address:[r['street address'],r['city'],r['zip']].filter(Boolean).join(', '), price:r['free / paid']||'', age:r['age']||'', setting:r['indoor / outdoor']||'', rsvpReq:/^y/i.test(r['rsvp required?']||''), verified:/^(y|true|✓|verified)/i.test(String(r['verified']||'').trim()),
-      ticket:r['ticket / rsvp link']||'', source:r['source url']||'', rec:r['recurrence']||'', recDetail:r['recurrence detail']||'', start:parseDay(r['start date']), end:parseDay(r['end date']), t0:r['start time']||'', t1:r['end time']||'' }));
+    events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', ...(c=>({ sub:c, category:catKey(c) }))(catMap(r.category)), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
+      address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), price:r.price_type||'', age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
+      ticket:r.ticket_url||'', source:r.source_url||'', rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
     eventsState='live'; if(current==='home') renderHome(); loadGoing(); loadSubmissions();
-  }).catch(()=>{ if(eventsState!=='live'){ eventsState='error'; if(current==='home') renderHome(); } });
+  }catch(e){ console.warn('Events failed to load', e); if(eventsState!=='live'){ eventsState='error'; if(current==='home') renderHome(); } }
 }
 
 /* ---------- demo chrome ---------- */
@@ -1991,7 +1989,7 @@ if("serviceWorker" in navigator){
 function boot(){
   ['asideMark','onbMark','homeMark'].forEach(id=>wordmark(document.getElementById(id)));
   buildOnb(); updateDot(); current=''; go('onb1',false); history=[];
-  tryMapbox(); loadSheet();
+  tryMapbox(); loadEvents();
   checkAccount().then(flushFeedback);   // returning user: keep the profile in sync
 
 }
