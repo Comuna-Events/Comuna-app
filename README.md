@@ -23,5 +23,5 @@ Once installed, the dev harness (title, jump bar, restart button) is hidden auto
 
 ## Notes
 
-- This is still a front-end-only build: nothing you do in it is saved to a server, and closing/reopening resets anything not backed by the Google Sheet. See the "productizing" conversation for what it takes to wire up a real backend.
+- This is still a front-end-only build: nothing you do in it is saved to a server, and closing/reopening resets anything not saved to Supabase (events, accounts, RSVPs, check-ins). See the "productizing" conversation for what it takes to wire up a real backend.
 - If you want a shareable link in the next five minutes without touching GitHub Pages settings, you can also drag this whole folder onto https://app.netlify.com/drop for an instant temporary URL, useful for a quick same-day test before wiring up the permanent GitHub Pages link.
