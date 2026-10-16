@@ -284,7 +284,6 @@ img{ max-width:100% }
 .calgrid .day.sel span{ background:var(--green); color:var(--paper); border-color:var(--green) }
 .calgrid .day.mine span{ background:var(--red); color:var(--paper) }
 .calgrid .day.mine.sel span{ box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--red) }
-.calgrid .day i{ position:absolute; bottom:1px; width:5px; height:5px; border-radius:50%; background:var(--sun) }
 .dayhead{ font-size:19px; font-weight:700; margin:18px 0 4px }
 .dayhead span{ color:var(--muted); font-weight:500 }
 .dayev{ display:flex; gap:12px; align-items:center; background:var(--card); border-radius:16px; padding:12px; margin-top:10px; width:100%; text-align:left }
@@ -1693,7 +1692,7 @@ function renderPlans(){
   for(let n=1;n<=new Date(y,m+1,0).getDate();n++){
     const d=new Date(y,m,n), evs=byDay[ymd(d)]||[], mine=evs.some(e=>S.rsvp.includes(e.id));
     const cls=['day',d<t?'past':'',+d===+t?'today':'',+d===+calSel?'sel':'',mine?'mine':''].join(' ');
-    g+=`<button class="${cls}" data-day="${n}"><span>${n}</span>${evs.length&&!mine?'<i></i>':''}</button>`;
+    g+=`<button class="${cls}" data-day="${n}"><span>${n}</span></button>`;   // only your own plans are marked (red); no dots for other events
   }
   document.getElementById('calGrid').innerHTML=g;
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
