@@ -1648,13 +1648,33 @@ const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const ymd=d=>`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
 const today0=()=>{ const d=new Date(); d.setHours(0,0,0,0); return d; };
 let calSel=today0(), calView=new Date(calSel.getFullYear(),calSel.getMonth(),1);
-// Events only carry a weekday ("Tue · 8:00 PM"), so place each on its next occurrence from today.
+// Fallback for events with no start date: the weekday at the start of their time text ("Tue · 8:00 PM"), next one from today.
 function evDate(ev){ const w=WD.indexOf(String(ev.time||'').slice(0,3)); if(w<0) return null; const d=today0(); d.setDate(d.getDate()+((w-d.getDay()+7)%7)); return d; }
+// does this event happen on this day (local midnight)? Same recurrence rules as nextDate.
+const FULL_WD=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+function occursOn(ev,day){
+  const d0=ev.start, rec=(ev.rec||'').toLowerCase();
+  if(!d0){   // no start date: weekly events named like "Every Thursday" still land on that weekday
+    const w=FULL_WD.findIndex(n=>(ev.recDetail||'').toLowerCase().includes(n));
+    if(w>=0 && /weekly|daily/.test(rec)) return /daily/.test(rec) || day.getDay()===w;
+    const e=evDate(ev); return !!e && +e===+day;
+  }
+  if(day<d0 || (ev.end && day>ev.end)) return false;
+  const diff=Math.round((day-d0)/864e5);
+  if(/daily/.test(rec)) return true;
+  if(/biweekly/.test(rec)) return diff%14===0;
+  if(/weekly/.test(rec)) return diff%7===0;
+  if(/monthly/.test(rec)) return day.getDay()===d0.getDay() && Math.ceil(day.getDate()/7)===Math.ceil(d0.getDate()/7);
+  return ev.end? true : diff===0;   // one-off or seasonal: its date, or every day of its run
+}
 function ordinal(n){ const v=n%100; return n+(['th','st','nd','rd'][(v-20)%10]||['th','st','nd','rd'][v]||'th'); }
 function renderPlans(){
   enrich();
-  const byDay={}; events.forEach(ev=>{ const d=evDate(ev); if(d) (byDay[ymd(d)]=byDay[ymd(d)]||[]).push(ev); });
   const t=today0(), y=calView.getFullYear(), m=calView.getMonth();
+  // every day of the month on view, plus the selected day (it can be in another month)
+  const byDay={}, days=[...Array(new Date(y,m+1,0).getDate())].map((_,i)=>new Date(y,m,i+1));
+  if(calSel.getFullYear()!==y || calSel.getMonth()!==m) days.push(calSel);
+  days.forEach(d=>{ byDay[ymd(d)]=events.filter(ev=>occursOn(ev,d)); });
   document.getElementById('calMonth').textContent=calView.toLocaleString('en-US',{month:'long'})+(y!==t.getFullYear()?' '+y:'');
   let g=WD.map(w=>`<div class="wd">${w}</div>`).join('')+'<div></div>'.repeat(calView.getDay());
   for(let n=1;n<=new Date(y,m+1,0).getDate();n++){
@@ -1666,7 +1686,7 @@ function renderPlans(){
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
   const card=ev=>{ const inn=S.rsvp.includes(ev.id), done=S.checked.includes(ev.id);
-    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${ev.title}${vCheck(ev,14)}</div><div class="u">${ev.venue} · ${ev.time.split('·').pop().trim()}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}</div>`; };
+    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${ev.title}${vCheck(ev,14)}</div><div class="u">${[ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · ')}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}</div>`; };
   const mineL=dayEvs.filter(ev=>S.rsvp.includes(ev.id)), also=dayEvs.filter(ev=>!S.rsvp.includes(ev.id)).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
     : `<div class="empty"><span class="hand">free ${isT?'tonight':'that day'}?</span>Nothing saved for this day yet. Tap "Interested" on an event and it lands here.</div>`;
