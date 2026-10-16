@@ -1,21 +1,34 @@
 -- Comuna: nightly event ingest (Instagram, TikTok, Eventbrite, Luma, Partiful, city calendars, ...).
 -- Run once in Supabase > SQL Editor; safe to re-run.
+-- Then: Project Settings > Data API > Exposed schemas, add "ingest" (so the ingest functions can reach it).
 --
---  event_sources     the accounts / pages / calendars the 3am job checks. Add rows in Table Editor.
---  event_candidates  what the job found. Nothing here shows in the app until it's promoted.
---  ingest_runs       one row per platform per night, so you can see whether last night worked.
+-- Everything lives in its own "ingest" schema, so it's kept apart from what the app uses:
+-- pick "ingest" in the schema dropdown at the top of Table Editor.
 --
---  Review: Table Editor > event_candidates, filter status = 'new'. Fix any fields, then promote it:
---    select public.promote_candidate(123);   -- returns the new EVT id, lands in events as 'Needs verification'
+--  ingest.event_sources     the accounts / pages / calendars the 3am job checks. Add rows in Table Editor.
+--  ingest.event_candidates  what the job found. Nothing here shows in the app until it's promoted.
+--  ingest.ingest_runs       one row per platform per night, so you can see whether last night worked.
+--
+--  Review: Table Editor > ingest > event_candidates, filter status = 'new'. Fix any fields, then promote it:
+--    select ingest.promote_candidate(123);   -- returns the new EVT id, lands in events as 'Needs verification'
 --  Not an event / already listed: set status to 'rejected' / 'duplicate' instead.
 --
---  The ingest functions write with the service role key, which skips RLS. The app (anon / signed-in users)
---  can't read or write any of these tables.
+--  Only the dashboard and the ingest functions (service role key) can read or write here; the app can't.
+
+create schema if not exists ingest;
+revoke all on schema ingest from public, anon, authenticated;
+grant usage on schema ingest to service_role;
+
+-- First version of this file put the tables in public; move them over (no-op once moved).
+alter table if exists public.event_sources    set schema ingest;
+alter table if exists public.ingest_runs      set schema ingest;
+alter table if exists public.event_candidates set schema ingest;
+drop function if exists public.promote_candidate(bigint);
 
 -- Platforms the ingest knows about. Add a value here when someone starts a new one.
 --   instagram, tiktok, eventbrite, luma, partiful, meetup, city_calendar, venue_website, newsletter, other
 
-create table if not exists public.event_sources (
+create table if not exists ingest.event_sources (
   id               bigint generated always as identity primary key,
   platform         text not null check (platform in ('instagram','tiktok','eventbrite','luma','partiful',
                      'meetup','city_calendar','venue_website','newsletter','other')),
@@ -32,10 +45,10 @@ create table if not exists public.event_sources (
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
-create unique index if not exists event_sources_platform_handle_key on public.event_sources (platform, lower(handle));
-create index if not exists event_sources_active_idx on public.event_sources (platform) where active;
+create unique index if not exists event_sources_platform_handle_key on ingest.event_sources (platform, lower(handle));
+create index if not exists event_sources_active_idx on ingest.event_sources (platform) where active;
 
-create table if not exists public.ingest_runs (
+create table if not exists ingest.ingest_runs (
   id                  bigint generated always as identity primary key,
   platform            text not null,
   status              text not null default 'running'
@@ -49,14 +62,14 @@ create table if not exists public.ingest_runs (
   error               text,
   details             jsonb                -- anything else worth keeping: per-source errors, cost, model used
 );
-create index if not exists ingest_runs_platform_idx on public.ingest_runs (platform, started_at desc);
+create index if not exists ingest_runs_platform_idx on ingest.ingest_runs (platform, started_at desc);
 
 -- Fields mirror public.events so promoting is a straight copy. No value checks here on purpose:
 -- a bad AI guess (e.g. an unknown recurrence) shouldn't drop the row; promote_candidate catches it instead.
-create table if not exists public.event_candidates (
+create table if not exists ingest.event_candidates (
   id                 bigint generated always as identity primary key,
-  source_id          bigint references public.event_sources(id) on delete set null,
-  run_id             bigint references public.ingest_runs(id) on delete set null,
+  source_id          bigint references ingest.event_sources(id) on delete set null,
+  run_id             bigint references ingest.ingest_runs(id) on delete set null,
   platform           text not null,
   external_id        text not null,        -- the post / event id on that platform; re-runs update instead of duplicating
   posted_at          timestamptz,          -- when the post went up
@@ -99,31 +112,35 @@ create table if not exists public.event_candidates (
   updated_at         timestamptz not null default now(),
   unique (platform, external_id)
 );
-create index if not exists event_candidates_review_idx on public.event_candidates (status, start_date);
-create index if not exists event_candidates_source_idx on public.event_candidates (source_id);
+create index if not exists event_candidates_review_idx on ingest.event_candidates (status, start_date);
+create index if not exists event_candidates_source_idx on ingest.event_candidates (source_id);
 
 -- updated_at (events_touch comes from events.sql)
-drop trigger if exists events_touch on public.event_sources;
-create trigger events_touch before update on public.event_sources
+drop trigger if exists events_touch on ingest.event_sources;
+create trigger events_touch before update on ingest.event_sources
   for each row execute function public.events_touch();
-drop trigger if exists events_touch on public.event_candidates;
-create trigger events_touch before update on public.event_candidates
+drop trigger if exists events_touch on ingest.event_candidates;
+create trigger events_touch before update on ingest.event_candidates
   for each row execute function public.events_touch();
 
 -- Locked to the dashboard and the ingest functions (service role).
-alter table public.event_sources    enable row level security;
-alter table public.event_candidates enable row level security;
-alter table public.ingest_runs      enable row level security;
-revoke all on public.event_sources, public.event_candidates, public.ingest_runs from anon, authenticated;
+alter table ingest.event_sources    enable row level security;
+alter table ingest.event_candidates enable row level security;
+alter table ingest.ingest_runs      enable row level security;
+revoke all on all tables in schema ingest from anon, authenticated;
+grant all on all tables in schema ingest to service_role;
+grant usage, select on all sequences in schema ingest to service_role;
+alter default privileges in schema ingest grant all on tables to service_role;
+alter default privileges in schema ingest grant usage, select on sequences to service_role;
 
 -- Copy a reviewed candidate into events with the next EVT id. Returns that id.
-create or replace function public.promote_candidate(p_candidate_id bigint) returns text
+create or replace function ingest.promote_candidate(p_candidate_id bigint) returns text
 language plpgsql set search_path = '' as $$
 declare
-  c      public.event_candidates;
+  c      ingest.event_candidates;
   new_id text;
 begin
-  select * into c from public.event_candidates where id = p_candidate_id for update;
+  select * into c from ingest.event_candidates where id = p_candidate_id for update;
   if not found then raise exception 'No candidate with id %', p_candidate_id; end if;
   if c.status = 'promoted' then return c.promoted_event_id; end if;
   if c.name is null then raise exception 'Candidate % has no name yet', p_candidate_id; end if;
@@ -153,7 +170,7 @@ begin
     c.source_url, c.image_url, c.lat, c.lng,
     'Needs verification', 'nightly ingest', 'From event_candidates #' || c.id);
 
-  update public.event_candidates set status = 'promoted', promoted_event_id = new_id where id = c.id;
+  update ingest.event_candidates set status = 'promoted', promoted_event_id = new_id where id = c.id;
   return new_id;
 end $$;
-revoke execute on function public.promote_candidate(bigint) from public, anon, authenticated;
+revoke execute on function ingest.promote_candidate(bigint) from public, anon, authenticated;
