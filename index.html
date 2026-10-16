@@ -505,7 +505,7 @@ img{ max-width:100% }
 
     <!-- PASSPORT -->
     <section class="screen" data-s="passport">
-      <div class="topbar"><div style="display:flex;align-items:center;gap:10px"><div class="h1" style="color:var(--green)">Passport</div><img src="patches/pennant.webp" alt="Comuna Events pennant" style="width:96px;transform:rotate(-8deg) translateY(-2px);filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))"></div><button class="pill" data-go="profile">Profile</button></div>
+      <div class="topbar"><div style="display:flex;align-items:center;gap:10px"><div class="h1" style="color:var(--green)">Passport</div><img src="patches/passport-stamp.webp" alt="" style="height:42px;width:auto;transform:rotate(-8deg) translateY(-2px)"></div><button class="pill" data-go="profile">Profile</button></div>
       <div class="scroll">
         <div class="passcover">
           <div class="k" id="passName">Los Angeles</div>
@@ -964,6 +964,9 @@ function maybeDailyPicks(){
   const today=new Date().toDateString(); if(S.lastPicksDay===today) return;
   const picks=dailyPicks(); if(!picks.length) return;
   S.lastPicksDay=today; save();
+  showPicks(picks);
+}
+function showPicks(picks){
   const row=ev=>`<button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
     <div><div class="when">${KINDS[kindOf(ev)].label}</div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:''}</div></div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
@@ -1977,8 +1980,17 @@ async function loadEvents(){
 }
 
 /* ---------- demo chrome ---------- */
-const jumps=[['onb1','Intro'],['home','Map'],['plans','Plans'],['passport','Passport'],['alerts','Alerts'],['host','Host view']];
-document.getElementById('jump').innerHTML=jumps.map(j=>`<button data-go="${j[0]}">${j[1]}</button>`).join('');
+const jumps=[['onb1','Intro'],['kit','Starter kit',1],['picks','Top 4 today',1],['home','Map'],['plans','Plans'],['passport','Passport'],['alerts','Alerts'],['host','Host view']];
+document.getElementById('jump').innerHTML=jumps.map(j=>`<button data-${j[2]?'pop':'go'}="${j[0]}">${j[1]}</button>`).join('');
+// pop-up jumps: open the starter kit or today's Top 4 over the map, whatever was seen before
+document.getElementById('jump').addEventListener('click',e=>{
+  const b=e.target.closest('[data-pop]'); if(!b) return;
+  kitModal.classList.remove('on'); recModal.classList.remove('on');
+  if(b.dataset.pop==='kit'){ S.kitSeen=false; go('home'); openKit(); return; }   // as after sign-up: closing it hands off to the Top 4
+  go('home');
+  const picks=dailyPicks(); if(!picks.length){ toast('No picks nearby right now'); return; }
+  showPicks(picks);
+});
 document.getElementById('restart').onclick=async()=>{ await signOutLocal(); try{ localStorage.removeItem('comuna_v3'); }catch(e){} load(); filter=myCats().length?'mine':'All'; history=[]; current=''; go('onb1',false); renderHome(); updateDot(); toast('Demo reset'); };
 
 /* ---------- PWA: service worker registration ---------- */
