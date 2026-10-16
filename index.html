@@ -313,7 +313,7 @@ img{ max-width:100% }
 .stampgrid .slot{ text-align:center; font-size:11.5px; color:var(--muted) }
 .tabs{ display:flex; gap:6px; margin-top:14px; overflow-x:auto; scrollbar-width:none }
 .tabs::-webkit-scrollbar{ display:none }
-.tabs button{ flex:none; padding:8px 13px; border-radius:10px 10px 0 0; background:var(--paper-2); font-weight:700; font-size:13px; color:var(--muted) }
+.tabs button{ flex:1; padding:8px 13px; border-radius:10px 10px 0 0; background:var(--paper-2); font-weight:700; font-size:13px; color:var(--muted) }
 .tabs button.on{ background:var(--card); color:var(--green) }
 .page{ background:var(--card); border-radius:0 18px 18px 18px; padding:14px 12px 16px; position:relative; min-height:300px;
   background-image:repeating-linear-gradient(0deg, transparent 0 27px, rgba(107,103,90,.07) 27px 28px) }
@@ -523,13 +523,14 @@ img{ max-width:100% }
           <div class="k" id="passName">Los Angeles</div>
           <div class="big" id="passCount">3 of 8 neighborhoods</div>
           <div class="bar"><i id="passBar" style="width:37%"></i></div>
-          <div class="passstats"><div><b id="psStreak">0</b>patches</div><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
+          <div class="passstats"><div hidden><b id="psStreak">0</b>patches</div><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
           <div id="passSeal" style="position:absolute;right:-18px;top:-18px;opacity:.25"></div>
         </div>
         <div class="tabs" id="passTabs" role="tablist"></div>
         <div class="page" id="passPage"></div>
-        <div class="h2">Patches</div>
-        <div class="patches" id="patchList"></div>
+        <!-- patches: coming later; still rendered, just hidden. Remove "hidden" here and on the patches stat above to bring them back -->
+        <div id="patchSec" hidden><div class="h2">Patches</div>
+        <div class="patches" id="patchList"></div></div>
         <div class="h2" id="lbTitle">Top 5 explorers</div>
         <div class="hand" style="font-size:21px;color:var(--red);margin:-2px 0 8px;line-height:1.15">Top 5 at the end of the month win gift cards to their favorite spots!</div>
         <div class="lb" id="lbList"></div>
@@ -542,7 +543,7 @@ img{ max-width:100% }
       <div class="scroll">
         <div class="prof"><div class="avatar" id="pfAvatar"></div><div><div style="font-weight:700;font-size:19px" id="pfName"></div><div class="sub" id="pfHood"></div></div></div>
         <div class="stats3"><div><b id="pfStamps">0</b>stamps</div><div><b id="pfVisits">0</b>check-ins</div><div><b id="pfStreak">0</b>neighborhoods</div></div>
-        <button class="linkrow" data-go="passport">Your passport <span>Stamps, patches, points</span></button>
+        <button class="linkrow" data-go="passport">Your passport <span>Stamps and points</span></button>
         <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
