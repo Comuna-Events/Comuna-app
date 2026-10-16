@@ -599,7 +599,7 @@ const HOODS = [
   { name:'Silver Lake',  lat:34.0869, lng:-118.2702, glyph:'ripple', color:C.blue },
   { name:'Echo Park',    lat:34.0782, lng:-118.2606, glyph:'lotus',  color:C.red },
   { name:'Los Feliz',    lat:34.1063, lng:-118.2848, glyph:'palm',   color:C.green },
-  { name:'Frogtown',     lat:34.0985, lng:-118.2440, glyph:'river',  color:C.blue },
+  { name:'Elysian Valley',lat:34.0985,lng:-118.2440, glyph:'river',  color:C.blue },
   { name:'Griffith Park',lat:34.1184, lng:-118.3004, glyph:'peak',   color:C.green },
   { name:'Downtown',     lat:34.0478, lng:-118.2563, glyph:'tower',  color:C.ink },
   { name:'Highland Park',lat:34.1115, lng:-118.1920, glyph:'sun',    color:C.sun },
@@ -609,6 +609,8 @@ const HOODS = [
   { name:'West Hollywood',lat:34.0900,lng:-118.3617, glyph:'sun',    color:C.ink,  city:'West Hollywood' },
   { name:'Culver City',  lat:34.0211, lng:-118.3965, glyph:'tower',  color:C.sun,  city:'Culver City' }
 ];
+// old names still saved on profiles, boards and phones
+const HOOD_RENAMED = { 'Frogtown':'Elysian Valley' };
 
 /* ---------- categories: each gets a colored dot ---------- */
 // Brand Guide v2 core colors (Signal Red, Ink, Comuna Green, Map Blue, Sun) plus deeper and lighter tints of them, one per category.
@@ -675,7 +677,8 @@ let S;
 function load(){ try{ const r=localStorage.getItem('comuna_v3'); S = r? Object.assign(JSON.parse(JSON.stringify(START)), JSON.parse(r)) : JSON.parse(JSON.stringify(START)); }catch(e){ S=JSON.parse(JSON.stringify(START)); }
   // interests saved before the four groups used the detailed category names
   const toGroup=t=>{ const k=Object.keys(SUBCATS).find(k=>SUBCATS[k].label===t); return k? CATS[catKey(k)].label : t; };
-  S.interests=[...new Set((S.interests||[]).map(toGroup))].filter(t=>Object.values(CATS).some(c=>c.label===t)); }
+  S.interests=[...new Set((S.interests||[]).map(toGroup))].filter(t=>Object.values(CATS).some(c=>c.label===t));
+  S.nb=HOOD_RENAMED[S.nb]||S.nb; }
 function save(){ try{ localStorage.setItem('comuna_v3', JSON.stringify(S)); }catch(e){} }
 load();
 // older builds saved a sample passport (18 check-ins, 4 wk streak, 1,240 points) for people who hadn't signed up yet
@@ -688,7 +691,7 @@ function hoodOf(p){ let best=HOODS[0], d=1e9; HOODS.forEach(h=>{ const m=miles(p
 function cityOf(h){ return h.city || 'Los Angeles'; }
 function visitedHoods(){ const o={}; Object.values(S.places).forEach(p=>{ const h=hoodOf(p).name; o[h]=(o[h]||0)+p.n; }); return o; }
 function visitedCities(){ const o={}; Object.values(S.places).forEach(p=>{ const c=cityOf(hoodOf(p)); o[c]=(o[c]||0)+p.n; }); return o; }
-function hoodByName(n){ return HOODS.find(h=>h.name===n) || HOODS[0]; }
+function hoodByName(n){ n=HOOD_RENAMED[n]||n; return HOODS.find(h=>h.name===n) || HOODS[0]; }
 
 /* ---------- brand SVG ---------- */
 function glyph(kind,c){
