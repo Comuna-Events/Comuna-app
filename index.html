@@ -240,9 +240,6 @@ img{ max-width:100% }
 .recmodal .h1{ color:var(--green); margin:6px 0 4px }
 .recmodal .why{ font-size:11px; color:var(--muted); margin-top:2px }
 /* neighborhood starter kit: shown once, right after sign-up */
-.kit .box{ min-height:62% }
-.kitdots{ display:flex; gap:6px; margin-bottom:14px } .kitdots i{ flex:1; height:4px; border-radius:2px; background:#E2D5BA } .kitdots i.on{ background:var(--green) }
-.kitnav{ display:grid; grid-template-columns:1fr 2fr; gap:10px; margin-top:18px }
 .kitstats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 6px }
 .kitstat{ background:var(--card); border-radius:16px; padding:14px } .kitstat b{ display:block; font-family:var(--display); font-weight:900; font-size:40px; line-height:1; color:var(--green) } .kitstat span{ font-size:12.5px; color:var(--muted) }
 .kitsteps{ margin:12px 0 0; padding:0; list-style:none; counter-reset:k } .kitsteps li{ counter-increment:k; display:grid; grid-template-columns:34px 1fr; gap:10px; padding:10px 0; border-bottom:1px dashed #DCCDAE; font-size:14px }
@@ -253,9 +250,6 @@ img{ max-width:100% }
 .lgico{ width:34px; display:grid; place-items:center; flex:none } .lgico .ticon{ width:auto; height:auto; margin:0 }
 .editint{ margin-left:auto; font-size:12.5px; font-weight:700; color:var(--green); text-transform:none; letter-spacing:0; text-decoration:underline; text-underline-offset:3px }
 .lgcats{ display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; font-size:13.5px; margin-top:8px } .lgcats > span{ display:inline-flex; align-items:center; gap:8px }
-.kitpts .kk{ font-family:inherit; font-size:inherit; color:inherit; font-weight:700 } .kitpts.sub2{ margin-left:18px; padding:8px 14px; font-size:13px } .kitpts.sub2 b{ font-size:17px }
-.kitpts{ display:flex; justify-content:space-between; align-items:center; background:var(--card); border-radius:14px; padding:12px 14px; margin-top:8px; font-size:14px } .kitpts b{ font-family:var(--display); font-weight:900; font-size:22px; color:var(--red) }
-.kitart{ display:flex; justify-content:center; align-items:center; gap:4px; margin:10px 0 2px }
 .stampmodal{ position:absolute; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(36,77,58,.94); color:var(--paper); flex-direction:column; text-align:center; padding:30px }
 .stampmodal.on{ display:flex }
 .stampmodal .stampbox{ animation:thunk .45s cubic-bezier(.2,1.6,.4,1) both }
@@ -598,9 +592,8 @@ img{ max-width:100% }
       <button class="btn green" id="recClose" style="margin-top:16px">Explore the map</button>
     </div></div>
     <div class="recmodal kit" id="kitModal" role="dialog" aria-modal="true" aria-labelledby="kitTitle"><div class="box">
-      <div class="kitdots" id="kitDots"></div>
       <div id="kitBody"></div>
-      <div class="kitnav"><button class="btn ghost" id="kitBack">Back</button><button class="btn primary" id="kitNext">Next</button></div>
+      <button class="btn primary" id="kitNext" style="margin-top:18px">Let's go</button>
     </div></div>
     <div class="stampmodal" id="stampModal" role="dialog" aria-modal="true"></div>
     <div class="toast" id="toast"></div>
@@ -979,37 +972,21 @@ function maybeDailyPicks(){
   document.getElementById('recList').innerHTML=picks.map(row).join('');
   setTimeout(()=>document.getElementById('recModal').classList.add('on'),350);
 }
-/* ---------- neighborhood starter kit ---------- */
-let kitStep=0;
+/* ---------- neighborhood starter kit: one card, right after sign-up ---------- */
+// Points, the map key and gift cards are explained where they happen (the check-in stamp, the map's "?", the Passport),
+// so the welcome only covers the basics and hands off to today's Top 4.
 const kitModal=document.getElementById('kitModal');
-function kitSlides(){
+function kitHtml(){
   enrich();
   const drive20=events.filter(ev=>mins(ev.mi)<=20).length, all=events.length, first=(S.name||'').split(' ')[0], hood=S.nb||'your neighborhood';
-  const stamp=STAMP_IMG[hood]? hoodStamp(hood,80,-8) : omark(64);
-  return [
-    `<div class="k">Neighborhood starter kit</div><div class="h1" id="kitTitle">Welcome to ${hood}${first?`, ${first}`:''}.</div>
+  return `<div class="k">Neighborhood starter kit</div><div class="h1" id="kitTitle">Welcome to ${hood}${first?`, ${first}`:''}.</div>
      <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
-     <p class="hand" style="font-size:26px;color:var(--red);margin-top:14px;transform:rotate(-2deg);transform-origin:left">New events get added daily!</p>`,
-    `<div class="k">How it works</div><div class="h1" id="kitTitle">Find it. Save it. Show up.</div>
      <ol class="kitsteps">
-      <li><div><b>Explore the map</b><span>Tap any pin.</span></div></li>
+      <li><div><b>Explore the map</b><span>Tap any pin. Tap <b style="display:inline">?</b> anytime for what the colors mean.</span></div></li>
       <li><div><b>Tap "Interested"</b><span>It saves to your Plans.</span></div></li>
-      <li><div><b>Check in when you're there</b><span>Collect the stamp.</span></div></li>
-     </ol>`,
-    `<div class="k">Your passport</div><div class="h1" id="kitTitle">Collect stamps, points and patches.</div>
-     <div class="kitart">${stamp}</div>
-     <div class="kitpts"><span><b class="kk">Save it.</b> Tap Interested or RSVP</span><b>+10</b></div>
-     <div class="kitpts"><span><b class="kk">Go.</b> Check in when you're there</span><b>+100</b></div>
-     <div class="kitpts sub2"><span>Bonus: first visit, saved ahead, rated it</span><b>+85</b></div>
-     <div class="kitpts"><span><b class="kk">Share it.</b> Add an event we approve</span><b>+25</b></div>`,
-    `<div class="k">Reading the map</div>${legendHtml(true)}`,
-    `<div class="k">A few more things</div><div class="h1" id="kitTitle">You're all set.</div>
-     <ol class="kitsteps">
-      <li><div><b>Your daily Top 4</b><span>Four picks near you, every day.</span></div></li>
-      <li><div><b>Win gift cards</b><span class="hand" style="display:block;font-size:22px;color:var(--red);line-height:1.15;margin:2px 0 4px">Top 5 in ${hood} each month win!</span><span>Check in to 3+ events to qualify.</span></div></li>
-      <li><div><b>Know something cool?</b><span>Tap + to add it. Earn +25 when we approve it.</span></div></li>
-     </ol>`
-  ];
+      <li><div><b>Check in when you're there</b><span>Collect the stamp and earn points.</span></div></li>
+     </ol>
+     <p class="hand" style="font-size:22px;color:var(--red);margin-top:10px;line-height:1.15;transform:rotate(-1.5deg);transform-origin:left">Top 5 in ${hood} each month win gift cards!</p>`;
 }
 // map key: every pin is a circle in its group's color with its icon; Headliners get a gold ring.
 // In onboarding only your picked interests show (and no cluster row); the map's "?" shows everything.
@@ -1025,18 +1002,13 @@ function openLegend(){
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Reading the map</div>${legendHtml(false).replace('id="kitTitle"','')}`;
   overlay.classList.add('on'); document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
 }
-function renderKit(){
-  const sl=kitSlides(), last=kitStep===sl.length-1;
-  document.getElementById('kitDots').innerHTML=sl.map((_,i)=>`<i class="${i<=kitStep?'on':''}"></i>`).join('');
-  document.getElementById('kitBody').innerHTML=sl[kitStep];
-  document.getElementById('kitBack').style.visibility=kitStep?'visible':'hidden';
-  document.getElementById('kitNext').textContent=last? 'Let\'s go' : 'Next';
-  kitModal.querySelector('.box').scrollTop=0;
+function openKit(){
+  document.getElementById('kitBody').innerHTML=kitHtml();
+  document.getElementById('kitNext').textContent=(S.lastPicksDay!==new Date().toDateString() && dailyPicks().length)? 'See today\'s Top 4' : 'Start exploring';
+  kitModal.classList.add('on');
 }
-function openKit(){ kitStep=0; renderKit(); kitModal.classList.add('on'); }
 function closeKit(){ kitModal.classList.remove('on'); S.kitSeen=true; save(); maybeDailyPicks(); }
-document.getElementById('kitNext').onclick=()=>{ if(kitStep<kitSlides().length-1){ kitStep++; renderKit(); } else closeKit(); };
-document.getElementById('kitBack').onclick=()=>{ if(kitStep){ kitStep--; renderKit(); } };
+document.getElementById('kitNext').onclick=closeKit;
 kitModal.addEventListener('click',e=>{ if(e.target===kitModal) closeKit(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && kitModal.classList.contains('on')) closeKit(); });
 
@@ -1985,12 +1957,29 @@ if("serviceWorker" in navigator){
   });
 }
 
+/* ---------- your location: the spot saved at sign-up goes stale once you move (e.g. signed up at work, open it at home) ---------- */
+// On launch and whenever the app comes back after a while, quietly re-read it for people who already shared it.
+// Only "you are here" moves (map, distances, Top 4); your neighborhood, and its leaderboard, stay what you signed up with.
+let locAt=0;
+async function refreshLoc(){
+  if(!S.signedUp || !S.loc || !navigator.geolocation || Date.now()-locAt<10*6e4) return;
+  try{ if(navigator.permissions && (await navigator.permissions.query({name:'geolocation'})).state==='denied') return; }catch(e){}
+  locAt=Date.now();
+  navigator.geolocation.getCurrentPosition(p=>{
+    const loc={lat:p.coords.latitude,lng:p.coords.longitude};
+    if(miles(loc,S.loc)<0.25) return;   // GPS jitter, not a move
+    S.loc=loc; save(); rebuildMap(); if(current==='home') renderHome(); dbProfile();
+  },()=>{}, {timeout:10000, maximumAge:5*6e4});
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') refreshLoc(); });
+
 /* ---------- boot ---------- */
 function boot(){
   ['asideMark','onbMark','homeMark'].forEach(id=>wordmark(document.getElementById(id)));
   buildOnb(); updateDot(); current=''; go('onb1',false); history=[];
   tryMapbox(); loadEvents();
   checkAccount().then(flushFeedback);   // returning user: keep the profile in sync
+  refreshLoc();
 
 }
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(boot); else boot();
