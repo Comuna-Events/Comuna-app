@@ -238,6 +238,9 @@ img{ max-width:100% }
 .recmodal .box{ background:var(--paper); width:100%; max-height:86%; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; border-radius:26px 26px 0 0; padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px)) }
 .recmodal .k{ font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red) }
 .recmodal .h1{ color:var(--green); margin:6px 0 4px }
+.recmodal .grab{ margin:-10px auto 14px; touch-action:none }
+.recmodal .pickhd{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red); margin:16px 0 6px 4px }
+.recmodal .pickhd + .pick{ margin-top:0 }
 .recmodal .why{ font-size:11px; color:var(--muted); margin-top:2px }
 /* neighborhood starter kit: shown once, right after sign-up */
 .kitstats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 6px }
@@ -586,9 +589,9 @@ img{ max-width:100% }
 
     <div class="overlay" id="overlay"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
     <div class="recmodal" id="recModal" role="dialog" aria-modal="true" aria-labelledby="recTitle"><div class="box">
-      <div class="k" id="recKicker">Picked for you today</div>
+      <div class="grab" aria-hidden="true"></div>
+      <div class="k" id="recKicker">Picked for you</div>
       <div class="h1" id="recTitle">Your week, nearby</div>
-      <p class="sub" id="recSub"></p>
       <div id="recList"></div>
       <button class="btn green" id="recClose" style="margin-top:16px">Explore the map</button>
     </div></div>
@@ -967,12 +970,11 @@ function maybeDailyPicks(){
   showPicks(picks);
 }
 function showPicks(picks){
-  const row=ev=>`<button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
-    <div><div class="when">${KINDS[kindOf(ev)].label}</div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:''}</div></div>
+  const row=ev=>`<div class="pickhd">${KINDS[kindOf(ev)].label}</div><button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
+    <div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:''}</div></div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
   const first=(S.name||'').split(' ')[0];
   document.getElementById('recTitle').textContent=first?`${first}, your Top 4 today`:'Your Top 4 today';
-  document.getElementById('recSub').textContent='One of each, close to you. New picks every day.';
   document.getElementById('recList').innerHTML=picks.map(row).join('');
   setTimeout(()=>document.getElementById('recModal').classList.add('on'),350);
 }
@@ -1529,20 +1531,22 @@ function openSheet(id){
 }
 overlay.addEventListener('click',e=>{ if(e.target===overlay) overlay.classList.remove('on'); });
 
-/* swipe the event sheet down to close (touch, or drag with a mouse). Only starts when the sheet is scrolled to the top. */
-(function(){
+/* swipe a sheet down to close (touch, or drag with a mouse). Only starts when it's scrolled to the top. */
+function swipeToClose(sheet,close){
   let y0=null, dy=0, t0=0;
   const start=y=>{ if(sheet.scrollTop>0) return; y0=y; dy=0; t0=Date.now(); sheet.style.transition='none'; };
   const move=(y,e)=>{ if(y0===null) return; dy=Math.max(0,y-y0); if(dy>0){ sheet.style.transform=`translateY(${dy}px)`; if(e&&e.cancelable) e.preventDefault(); } };
   const end=()=>{ if(y0===null) return; const fast=dy/(Date.now()-t0+1)>0.6; y0=null; sheet.style.transition='transform .2s ease-out';
-    if(dy>110 || (fast && dy>40)){ sheet.style.transform='translateY(100%)'; setTimeout(()=>{ overlay.classList.remove('on'); sheet.style.transform=''; sheet.style.transition=''; },200); }
+    if(dy>110 || (fast && dy>40)){ sheet.style.transform='translateY(100%)'; setTimeout(()=>{ close(); sheet.style.transform=''; sheet.style.transition=''; },200); }
     else { sheet.style.transform=''; } dy=0; };
   sheet.addEventListener('touchstart',e=>start(e.touches[0].clientY),{passive:true});
   sheet.addEventListener('touchmove',e=>move(e.touches[0].clientY,e),{passive:false});
   sheet.addEventListener('touchend',end); sheet.addEventListener('touchcancel',end);
   sheet.addEventListener('mousedown',e=>{ if(e.target.closest('button,a,input')) return; start(e.clientY); });
   window.addEventListener('mousemove',e=>move(e.clientY)); window.addEventListener('mouseup',end);
-})();
+}
+swipeToClose(sheet,()=>overlay.classList.remove('on'));
+swipeToClose(document.querySelector('#recModal .box'),()=>recModal.classList.remove('on'));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ overlay.classList.remove('on'); document.getElementById('stampModal').classList.remove('on'); } });
 function shareEv(ev){
   const link=okRsvpLink(ev)||(ev.source&&!isRoundup(ev.source)?ev.source:'')||location.origin+location.pathname;
