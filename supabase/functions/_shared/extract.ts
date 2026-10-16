@@ -39,6 +39,8 @@ export interface ExtractedEvent {
 }
 
 const text = { type: "string" };
+// The API allows at most 16 nullable fields per schema, so free-text fields use "" for "not stated"
+// (turned back into null after parsing) and only the choice fields and rsvp_required are nullable.
 const orNull = (schema: object) => ({ anyOf: [schema, { type: "null" }] });
 const oneOf = (values: string[]) => orNull({ type: "string", enum: values });
 
@@ -46,28 +48,28 @@ const EVENT_SCHEMA = {
   type: "object",
   properties: {
     name: text,
-    description: orNull(text),
-    category: orNull(text),
+    description: text,
+    category: text,
     tags: { type: "array", items: text },
-    start_date: orNull(text),
-    end_date: orNull(text),
-    start_time: orNull(text),
-    end_time: orNull(text),
+    start_date: text,
+    end_date: text,
+    start_time: text,
+    end_time: text,
     recurrence: oneOf(RECURRENCE),
-    recurrence_detail: orNull(text),
-    venue: orNull(text),
-    street_address: orNull(text),
-    city: orNull(text),
-    zip: orNull(text),
-    neighborhood: orNull(text),
+    recurrence_detail: text,
+    venue: text,
+    street_address: text,
+    city: text,
+    zip: text,
+    neighborhood: text,
     setting: oneOf(SETTING),
     price_type: oneOf(PRICE_TYPE),
     rsvp_required: orNull({ type: "boolean" }),
-    ticket_url: orNull(text),
+    ticket_url: text,
     age: oneOf(AGE),
-    host: orNull(text),
+    host: text,
     confidence: { type: "number" },
-    notes: orNull(text),
+    notes: text,
   },
   required: [
     "name", "description", "category", "tags", "start_date", "end_date", "start_time", "end_time",
@@ -88,12 +90,12 @@ const SYSTEM = `You read social posts and event listings for Comuna, an app that
 
 Return every event the post announces. Return an empty list when it announces none: a recap of something that already happened, a promo or giveaway with no event, a menu or product post, an online-only event, or an event outside the Los Angeles area.
 
-Fill each field only from what the post (and any flyer image) actually says; use null when it doesn't say. Never invent an address, price or time.
+Fill each field only from what the post (and any flyer image) actually says. When it doesn't say, use an empty string for text fields and null for the others. Never invent an address, price or time.
 - Dates are YYYY-MM-DD and times are 24-hour HH:MM. Resolve "this Saturday" or "next Friday" against the date the post went up.
 - For a repeating event ("every Tuesday"), set recurrence and recurrence_detail, and start_date to the next occurrence on or after today.
 - Leave out events whose last date is before today.
 - confidence is 0 to 1: how sure you are this is a real, public, upcoming in-person event with the date right.
-- notes: one short line on anything you were unsure about or had to guess, or null.`;
+- notes: one short line on anything you were unsure about or had to guess, or an empty string.`;
 
 export async function extractEvents(post: SourcePost, source: Source): Promise<ExtractedEvent[]> {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
@@ -140,5 +142,14 @@ async function ask(
   if (response.stop_reason === "max_tokens") throw new Error("Claude's answer was cut off");
 
   const json = response.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
-  return (JSON.parse(json) as { events: ExtractedEvent[] }).events;
+  const { events } = JSON.parse(json) as { events: ExtractedEvent[] };
+  return events.filter((event) => event.name.trim()).map((event) => ({ ...event, ...blanksToNull(event) }));
+}
+
+function blanksToNull(event: ExtractedEvent): Partial<ExtractedEvent> {
+  const fixed: Record<string, null> = {};
+  for (const [key, value] of Object.entries(event)) {
+    if (typeof value === "string" && value.trim() === "") fixed[key] = null;
+  }
+  return fixed;
 }
