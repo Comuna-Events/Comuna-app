@@ -19,7 +19,7 @@ const UA = "ComunaEvents/1.0 (https://comuna-events.github.io)";
 // Southern California, generously: anything outside is a wrong match, not one of our events
 const inArea = (lat: number, lng: number) => lat > 33.2 && lat < 35.0 && lng > -119.6 && lng < -116.8;
 
-type Row = { event_id: string; street_address: string; city: string | null; zip: string | null };
+type Row = { event_id: string; street_address: string; city: string | null; zip: string | null; venue: string | null };
 type Point = { lat: number; lng: number; by: string };
 
 async function census(address: string): Promise<Point | null> {
@@ -31,11 +31,14 @@ async function census(address: string): Promise<Point | null> {
   return c ? { lat: c.y, lng: c.x, by: "census" } : null;
 }
 
-let lastNominatim = 0;
-async function nominatim(address: string): Promise<Point | null> {
-  const wait = lastNominatim + 1100 - Date.now();   // their limit is one request a second
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  lastNominatim = Date.now();
+// their limit is one request a second: lookups wait their turn in a single queue
+let nominatimQueue: Promise<unknown> = Promise.resolve();
+function nominatim(address: string): Promise<Point | null> {
+  const turn = nominatimQueue.then(() => nominatimNow(address));
+  nominatimQueue = turn.catch(() => null).then(() => new Promise((r) => setTimeout(r, 1100)));
+  return turn;
+}
+async function nominatimNow(address: string): Promise<Point | null> {
   const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q=" + encodeURIComponent(address);
   const res = await fetch(url, { headers: { "user-agent": UA } });
   if (!res.ok) return null;
@@ -44,10 +47,15 @@ async function nominatim(address: string): Promise<Point | null> {
 }
 
 async function locate(r: Row): Promise<Point | null> {
-  const address = [r.street_address, r.city || "Los Angeles", "CA", r.zip].filter(Boolean).join(", ");
-  for (const lookup of [census, nominatim]) {
+  const city = r.city || "Los Angeles";
+  const address = [r.street_address, city, "CA", r.zip].filter(Boolean).join(", ");
+  // last resort, the venue's name: covers "Main St"-style addresses with no number, and places OSM knows by name
+  const venue = r.venue ? [r.venue.replace(/\s*\(.*?\)\s*/g, " ").trim(), city, "CA"].join(", ") : "";
+  const tries: [typeof census, string][] = [[census, address], [nominatim, address]];
+  if (venue) tries.push([nominatim, venue]);
+  for (const [lookup, q] of tries) {
     try {
-      const p = await lookup(address);
+      const p = await lookup(q);
       if (p && inArea(p.lat, p.lng)) return p;
     } catch (_) { /* try the next one */ }
   }
@@ -59,7 +67,7 @@ Deno.serve(async (req) => {
   if (!secret || req.headers.get("x-geocode-secret") !== secret) return new Response("Not allowed", { status: 401 });
 
   const started = Date.now();
-  const { data: rows, error } = await db.from("events").select("event_id,street_address,city,zip")
+  const { data: rows, error } = await db.from("events").select("event_id,street_address,city,zip,venue")
     .is("lat", null).not("street_address", "is", null).neq("street_address", "").order("event_id").limit(1000);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
