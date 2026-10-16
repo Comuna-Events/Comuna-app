@@ -3,11 +3,12 @@
 // offline data strategy, just enough for a demo/beta build to qualify
 // as an installable PWA on iOS and Android.
 
-const CACHE_NAME = "third-space-demo-v68";
+const CACHE_NAME = "third-space-demo-v69";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./places.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

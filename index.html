@@ -18,6 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=DM+Sans:wght@400;500;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="places.js"></script>
 <style>
 :root{
   --paper:#F3E7D1; --paper-2:#EFE2C8; --card:#FBF6EA; --ink:#26251F; --muted:#6B675A; --line:#E2D5BC;
@@ -511,7 +512,7 @@ img{ max-width:100% }
       <div class="scroll">
         <div class="passcover">
           <div class="k" id="passName">Los Angeles</div>
-          <div class="big" id="passCount">3 of 8 neighborhoods</div>
+          <div class="big" id="passCount">0 places, 0 neighborhoods</div>
           <div class="bar"><i id="passBar" style="width:37%"></i></div>
           <div class="passstats"><div hidden><b id="psStreak">0</b>patches</div><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
           <div id="passSeal" style="position:absolute;right:-18px;top:-18px;opacity:.25"></div>
@@ -594,21 +595,34 @@ const MAX_PICKS = 6;        // short list, not infinite scroll
 
 const C = { paper:'#F3E7D1', card:'#FBF6EA', ink:'#26251F', green:'#244D3A', red:'#C9533D', sun:'#D6A638', blue:'#4B66A8', muted:'#6B675A' };
 
-/* ---------- neighborhoods (each gets a passport stamp) ---------- */
-const HOODS = [
+/* ---------- neighborhoods and cities (each gets a passport stamp) ---------- */
+// Every City of LA neighborhood and LA County city, with its boundary, from places.js (scripts/build-places.mjs).
+// These first ones keep their hand-picked glyph, color and center; Silver Lake stays first, the fallback for unknown names.
+const HOOD_LOOK = [
   { name:'Silver Lake',  lat:34.0869, lng:-118.2702, glyph:'ripple', color:C.blue },
   { name:'Echo Park',    lat:34.0782, lng:-118.2606, glyph:'lotus',  color:C.red },
   { name:'Los Feliz',    lat:34.1063, lng:-118.2848, glyph:'palm',   color:C.green },
-  { name:'Frogtown',     lat:34.0985, lng:-118.2440, glyph:'river',  color:C.blue },
+  { name:'Elysian Valley',lat:34.0985,lng:-118.2440, glyph:'river',  color:C.blue },
   { name:'Griffith Park',lat:34.1184, lng:-118.3004, glyph:'peak',   color:C.green },
   { name:'Downtown',     lat:34.0478, lng:-118.2563, glyph:'tower',  color:C.ink },
   { name:'Highland Park',lat:34.1115, lng:-118.1920, glyph:'sun',    color:C.sun },
   { name:'Santa Monica', lat:34.0195, lng:-118.4912, glyph:'wave',   color:C.blue, city:'Santa Monica' },
   { name:'Venice',       lat:33.9850, lng:-118.4695, glyph:'wave',   color:C.sun },
-  { name:'Beverly Hills',lat:34.0736, lng:-118.4004, glyph:'palm',   color:C.red,  city:'Beverly Hills' },
-  { name:'West Hollywood',lat:34.0900,lng:-118.3617, glyph:'sun',    color:C.ink,  city:'West Hollywood' },
-  { name:'Culver City',  lat:34.0211, lng:-118.3965, glyph:'tower',  color:C.sun,  city:'Culver City' }
+  { name:'Beverly Hills',lat:34.0736, lng:-118.4004, glyph:'palm',   color:C.red, city:'Beverly Hills' },
+  { name:'West Hollywood',lat:34.0900,lng:-118.3617, glyph:'sun',    color:C.ink, city:'West Hollywood' },
+  { name:'Culver City',  lat:34.0211, lng:-118.3965, glyph:'tower',  color:C.sun, city:'Culver City' }
 ];
+// everywhere else gets a glyph and color picked from its name, so its stamp looks the same on every phone
+const GLYPHS=['ripple','lotus','palm','river','peak','tower','sun','wave'], INKS=[C.blue,C.red,C.green,C.ink,C.sun];
+const nameHash=n=>[...n].reduce((h,ch)=>(h*31+ch.charCodeAt(0))>>>0,7);
+const HOODS = (()=>{
+  const look=Object.fromEntries(HOOD_LOOK.map(h=>[h.name,h]));
+  const all=(typeof PLACE_DATA!=='undefined'? PLACE_DATA : HOOD_LOOK).map(p=>{ const h=nameHash(p.name);
+    // a city is its own city; a neighborhood is in the City of LA
+    return { glyph:GLYPHS[h%GLYPHS.length], color:INKS[(h>>3)%INKS.length], ...p, ...look[p.name], ...(p.type==='city'?{city:p.name}:{}) }; });
+  return [...HOOD_LOOK.map(h=>all.find(p=>p.name===h.name)).filter(Boolean), ...all.filter(p=>!look[p.name])];
+})();
+const HOOD_RENAMED = { 'Frogtown':'Elysian Valley' };
 
 /* ---------- categories: each gets a colored dot ---------- */
 // Brand Guide v2 core colors (Signal Red, Ink, Comuna Green, Map Blue, Sun) plus deeper and lighter tints of them, one per category.
@@ -675,7 +689,8 @@ let S;
 function load(){ try{ const r=localStorage.getItem('comuna_v3'); S = r? Object.assign(JSON.parse(JSON.stringify(START)), JSON.parse(r)) : JSON.parse(JSON.stringify(START)); }catch(e){ S=JSON.parse(JSON.stringify(START)); }
   // interests saved before the four groups used the detailed category names
   const toGroup=t=>{ const k=Object.keys(SUBCATS).find(k=>SUBCATS[k].label===t); return k? CATS[catKey(k)].label : t; };
-  S.interests=[...new Set((S.interests||[]).map(toGroup))].filter(t=>Object.values(CATS).some(c=>c.label===t)); }
+  S.interests=[...new Set((S.interests||[]).map(toGroup))].filter(t=>Object.values(CATS).some(c=>c.label===t));
+  S.nb=HOOD_RENAMED[S.nb]||S.nb; }
 function save(){ try{ localStorage.setItem('comuna_v3', JSON.stringify(S)); }catch(e){} }
 load();
 // older builds saved a sample passport (18 check-ins, 4 wk streak, 1,240 points) for people who hadn't signed up yet
@@ -684,11 +699,18 @@ if(!S.signedUp) Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:
 /* ---------- geometry ---------- */
 function miles(a,b){ const R=3958.8, dLa=(b.lat-a.lat)*Math.PI/180, dLo=(b.lng-a.lng)*Math.PI/180; const x=Math.sin(dLa/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
 function origin(){ return S.loc || DEFAULT_CENTER; }
-function hoodOf(p){ let best=HOODS[0], d=1e9; HOODS.forEach(h=>{ const m=miles(p,h); if(m<d){d=m;best=h;} }); return best; }
+function inRing(x,y,r){ let c=false; for(let i=0,j=r.length-2;i<r.length;j=i,i+=2){ const xi=r[i],yi=r[i+1],xj=r[j],yj=r[j+1]; if((yi>y)!==(yj>y) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) c=!c; } return c; }
+function inPlace(p,h){ const b=h.bbox; return !!b && p.lng>=b[0] && p.lng<=b[2] && p.lat>=b[1] && p.lat<=b[3] && h.shapes.some(s=>inRing(p.lng,p.lat,s[0]) && !s.slice(1).some(r=>inRing(p.lng,p.lat,r))); }
+function hoodOf(p){ if(p.lat==null||p.lng==null) return HOODS[0];
+  const k=p.lat+','+p.lng; if(hoodOf.memo.has(k)) return hoodOf.memo.get(k);
+  let best=HOODS.find(h=>inPlace(p,h));
+  if(!best){ let d=1e9; HOODS.forEach(h=>{ const m=miles(p,h); if(m<d){d=m;best=h;} }); }
+  hoodOf.memo.set(k,best); return best; }
+hoodOf.memo=new Map();
 function cityOf(h){ return h.city || 'Los Angeles'; }
 function visitedHoods(){ const o={}; Object.values(S.places).forEach(p=>{ const h=hoodOf(p).name; o[h]=(o[h]||0)+p.n; }); return o; }
 function visitedCities(){ const o={}; Object.values(S.places).forEach(p=>{ const c=cityOf(hoodOf(p)); o[c]=(o[c]||0)+p.n; }); return o; }
-function hoodByName(n){ return HOODS.find(h=>h.name===n) || HOODS[0]; }
+function hoodByName(n){ n=HOOD_RENAMED[n]||n; return HOODS.find(h=>h.name===n) || HOODS[0]; }
 
 /* ---------- brand SVG ---------- */
 function glyph(kind,c){
@@ -1098,7 +1120,15 @@ function editInterests(){
 function editHood(){
   const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Your neighborhood</div>
     <h2 style="font-size:28px">Where's home base?</h2><p class="sub">You'll compete on this neighborhood's monthly leaderboard.${S.nb?` Points you've already earned stay on ${S.nb}'s board.`:''}</p>
-    <div class="picklist">${HOODS.map(h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${h.name}"><span>${h.name}</span>${h.name===S.nb?'<em>✓</em>':''}</button>`).join('')}</div>`;
+    <input class="field" id="hoodQ" type="search" placeholder="Search ${HOODS.length} neighborhoods and cities" autocomplete="off" aria-label="Search neighborhoods and cities">
+    <div class="picklist" id="hoodList"></div>`;
+    // closest first; typing searches all of them
+    const o=origin(), q=document.getElementById('hoodQ'), row=h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${escH(h.name)}"><span>${escH(h.name)}<small>${h.city?'City':'Los Angeles'} · ${miles(o,h).toFixed(1)} mi</small></span>${h.name===S.nb?'<em>✓</em>':''}</button>`;
+    const list=()=>{ const t=q.value.trim().toLowerCase(), byMi=(a,b)=>miles(o,a)-miles(o,b);
+      const hits=t? HOODS.filter(h=>h.name.toLowerCase().includes(t)).sort((a,b)=>(a.name.toLowerCase().startsWith(t)?0:1)-(b.name.toLowerCase().startsWith(t)?0:1) || byMi(a,b))
+                  : [...HOODS].sort(byMi).slice(0,20);
+      document.getElementById('hoodList').innerHTML= hits.length? hits.map(row).join('') : `<div class="empty">No neighborhood or city called "${escH(q.value.trim())}" in LA County yet.</div>`; };
+    q.oninput=list; list();
     document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
     sheet.querySelector('.picklist').onclick=e=>{ const b=e.target.closest('[data-hood]'); if(!b) return;
       const h=hoodByName(b.dataset.hood); overlay.classList.remove('on'); if(h.name===S.nb) return;
@@ -1227,8 +1257,10 @@ function styleMapbox(m=map){
   }catch(e){} });
   // Comuna's own neighborhood labels, in the uppercase, tracked style of the guide
   try{
-    m.addSource('comuna-hoods',{type:'geojson',data:{type:'FeatureCollection',features:HOODS.map(h=>({type:'Feature',properties:{name:h.name.toUpperCase()},geometry:{type:'Point',coordinates:[h.lng,h.lat]}}))}});
-    m.addLayer({id:'comuna-hood-labels',type:'symbol',source:'comuna-hoods',minzoom:11,layout:{'text-field':['get','name'],'text-font':['DIN Pro Bold','Arial Unicode MS Bold'],'text-size':['interpolate',['linear'],['zoom'],11,11,15,15],'text-letter-spacing':.25,'text-offset':[0,-2.2]},paint:{'text-color':MAPCOL.label,'text-opacity':.55,'text-halo-color':MAPCOL.halo,'text-halo-width':1.5}});
+    // all of them: cities from zoom 11, neighborhoods from 12; where labels collide Mapbox keeps the bigger place
+    m.addSource('comuna-hoods',{type:'geojson',data:{type:'FeatureCollection',features:HOODS.map(h=>({type:'Feature',properties:{name:h.name.toUpperCase(),city:h.city?1:0,size:h.bbox?(h.bbox[2]-h.bbox[0])*(h.bbox[3]-h.bbox[1]):0},geometry:{type:'Point',coordinates:[h.lng,h.lat]}}))}});
+    m.addLayer({id:'comuna-hood-labels',type:'symbol',source:'comuna-hoods',minzoom:11,filter:['==',['get','city'],1],layout:{'symbol-sort-key':['-',['get','size']],'text-field':['get','name'],'text-font':['DIN Pro Bold','Arial Unicode MS Bold'],'text-size':['interpolate',['linear'],['zoom'],11,11,15,15],'text-letter-spacing':.25,'text-offset':[0,-2.2]},paint:{'text-color':MAPCOL.label,'text-opacity':.55,'text-halo-color':MAPCOL.halo,'text-halo-width':1.5}});
+    m.addLayer({id:'comuna-hood-labels-hoods',type:'symbol',source:'comuna-hoods',minzoom:12,filter:['==',['get','city'],0],layout:{'symbol-sort-key':['-',['get','size']],'text-field':['get','name'],'text-font':['DIN Pro Bold','Arial Unicode MS Bold'],'text-size':['interpolate',['linear'],['zoom'],11,11,15,15],'text-letter-spacing':.25,'text-offset':[0,-2.2]},paint:{'text-color':MAPCOL.label,'text-opacity':.55,'text-halo-color':MAPCOL.halo,'text-halo-width':1.5}});
   }catch(e){}
 }
 function setMapStatus(live){ const el=document.getElementById('mapStatus'); if(el) el.textContent = live ? 'Map: live Mapbox, styled to Brand Guide v2.' : 'Map: Paper preview. The live Mapbox map loads when this file runs on the team\'s own site (Mapbox tokens are locked to approved domains).'; }
@@ -1277,7 +1309,8 @@ function paintPaper(host,w,h,P,opts={}){
   for(let x=-w; x<w*2; x+=sp*(0.8+R()*0.5)) s+=`<line x1="${x}" y1="${-h}" x2="${x}" y2="${h*2}"/>`;
   for(let y=-h; y<h*2; y+=sp*(0.8+R()*0.5)) s+=`<line x1="${-w}" y1="${y}" x2="${w*2}" y2="${y}"/>`;
   s+=`</g><path d="M${-10} ${h*.62} C${w*.3} ${h*.5} ${w*.55} ${h*.72} ${w+10} ${h*.4}" fill="none" stroke="#FFFFFF" stroke-width="7"/><path d="M${w*.22} ${-10} C${w*.3} ${h*.4} ${w*.18} ${h*.7} ${w*.3} ${h+10}" fill="none" stroke="#FFFFFF" stroke-width="5"/>`;
-  HOODS.forEach(H=>{ const p=proj(H); if(p.x<30||p.x>w-30||p.y<20||p.y>h-20) return; s+=`<text x="${p.x}" y="${p.y-22}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="15" letter-spacing="2" fill="#26251F" opacity=".55">${H.name.toUpperCase()}</text>`; });
+  const placed=[];
+  HOODS.forEach(H=>{ const p=proj(H); if(p.x<30||p.x>w-30||p.y<20||p.y>h-20) return; if(placed.some(q=>Math.abs(q.x-p.x)<H.name.length*6+40&&Math.abs(q.y-p.y)<24)) return; placed.push(p); s+=`<text x="${p.x}" y="${p.y-22}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="15" letter-spacing="2" fill="#26251F" opacity=".55">${H.name.toUpperCase()}</text>`; });
   s+='</svg>';
   host.innerHTML=s;
   const o=proj(origin()); const you=document.createElement('div'); you.className='youare'; you.style.left=o.x+'px'; you.style.top=o.y+'px'; you.innerHTML=omark(30); host.appendChild(you);
@@ -1699,7 +1732,7 @@ function mysteryPatch(){
 function renderPassport(){
   const places=S.places, H=visitedHoods();
   const nP=Object.keys(places).length, nH=Object.keys(H).length;
-  document.getElementById('passCount').textContent=`${nP} places, ${nH} neighborhoods`;
+  document.getElementById('passCount').textContent=`${nP} places, ${nH} neighborhood${nH===1?'':'s'}`;
   document.getElementById('passBar').style.width=Math.min(100,nH/HOODS.length*100)+'%';
   document.getElementById('psStreak').textContent=PATCHES.filter(x=>x.ok()).length; document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
   document.getElementById('passSeal').innerHTML=omark(130,'#F3E7D1','#F3E7D1');
@@ -1720,7 +1753,9 @@ function renderPassport(){
       `</div><div class="pagenote">${list.length} place${list.length===1?'':'s'} stamped</div>`;
   } else if(passTab==='hoods'){
     html=`<div class="ph"><b>Neighborhoods</b><span>earned with your first place in each</span></div><div class="pagegrid">`+
-      HOODS.map((h,i)=> H[h.name]? `<div class="slot">${STAMP_IMG[h.name] ? hoodStamp(h.name,128,rots[i%rots.length])+`<div class="pagenote" style="margin-top:4px">${H[h.name]} visit${H[h.name]>1?'s':''}</div>` : stampSVG(h.name.toUpperCase(),`${H[h.name]} VISIT${H[h.name]>1?'S':''} · COMUNA`,h.glyph,h.color,132,rots[i%rots.length])}</div>` : `<div class="slot"><div class="ghost-stamp">${h.name}?</div></div>`).join('')+`</div>`;
+      HOODS.filter(h=>H[h.name]).map((h,i)=>`<div class="slot">${STAMP_IMG[h.name] ? hoodStamp(h.name,128,rots[i%rots.length])+`<div class="pagenote" style="margin-top:4px">${H[h.name]} visit${H[h.name]>1?'s':''}</div>` : stampSVG(h.name.toUpperCase(),`${H[h.name]} VISIT${H[h.name]>1?'S':''} · COMUNA`,h.glyph,h.color,132,rots[i%rots.length])}</div>`).join('')+
+      HOODS.filter(h=>!H[h.name]).sort((a,b)=>miles(origin(),a)-miles(origin(),b)).slice(0,nH%2?1:2).map(h=>`<div class="slot"><div class="ghost-stamp">${escH(h.name)}?</div></div>`).join('')+
+      `</div><div class="pagenote">${nH} of ${HOODS.length} neighborhoods and cities</div>`;
   }
   document.getElementById('passPage').innerHTML=html;
   document.getElementById('patchList').innerHTML=PATCHES.map(p=>{ const ok=p.ok(); return `<div class="patch ${ok?'':'locked'}">${!ok? mysteryPatch() : p.img?`<img src="${p.img}" alt="${p.t} patch" width="128" height="138" loading="lazy">`:patchSVG(p.t,p.s,p.sc,92,110)}<div>${ok?'Earned':'Not yet'}</div></div>`; }).join('');
