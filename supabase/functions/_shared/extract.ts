@@ -4,7 +4,7 @@
 import Anthropic from "npm:@anthropic-ai/sdk";
 import type { Source, SourcePost } from "./ingest.ts";
 
-const MODEL = "claude-opus-5-5";
+const MODEL = "claude-sonnet-5-5";
 
 // Allowed values match the checks on public.events, so a promoted candidate never fails on these.
 const RECURRENCE = ["One-off", "Daily", "Weekly", "Biweekly", "Monthly", "Seasonal / Annual"];
