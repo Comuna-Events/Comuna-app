@@ -71,7 +71,8 @@ create table if not exists ingest.event_candidates (
   source_id          bigint references ingest.event_sources(id) on delete set null,
   run_id             bigint references ingest.ingest_runs(id) on delete set null,
   platform           text not null,
-  external_id        text not null,        -- the post / event id on that platform; re-runs update instead of duplicating
+  external_id        text not null,        -- which event this is (account + name + date), so the same event found twice is one row
+  post_id            text,                 -- the post / page it came from, so the job doesn't read it twice
   posted_at          timestamptz,          -- when the post went up
   raw                jsonb,                -- the original caption / page / API response the AI read
 
@@ -114,6 +115,8 @@ create table if not exists ingest.event_candidates (
 );
 create index if not exists event_candidates_review_idx on ingest.event_candidates (status, start_date);
 create index if not exists event_candidates_source_idx on ingest.event_candidates (source_id);
+alter table ingest.event_candidates add column if not exists post_id text;   -- added after the first version
+create index if not exists event_candidates_post_idx on ingest.event_candidates (platform, post_id);
 
 -- updated_at (events_touch comes from events.sql)
 drop trigger if exists events_touch on ingest.event_sources;
