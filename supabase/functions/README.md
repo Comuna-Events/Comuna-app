@@ -66,4 +66,4 @@ that `post_id` from `event_candidates`.
   reads it. If the image link isn't publicly reachable, the post is read from the text alone.
 - Posts with no event are saved with status `rejected` (and posts with only events we already have, with
   `duplicate`) so they aren't read and paid for again. Filter on `rejected` to check what the AI skipped.
-- Each new post or changed page costs one Claude call (`claude-opus-5-5` at low effort). The model is set at the top of `_shared/extract.ts`.
+- Each new post or changed page costs one Claude call (`claude-sonnet-5-5` at low effort). The model is set at the top of `_shared/extract.ts`.
