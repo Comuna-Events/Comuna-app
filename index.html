@@ -210,6 +210,8 @@ img{ max-width:100% }
 @keyframes up{ from{ transform:translateY(40px); opacity:.6 } to{ transform:none; opacity:1 } }
 @media (prefers-reduced-motion:reduce){ .sheet{ animation:none } }
 .grab{ width:42px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px; cursor:grab }
+.sheet .sback{ position:sticky; top:0; float:left; margin:-4px 0 0 -8px; height:32px; padding:0 12px 0 6px; border-radius:16px; background:var(--card); color:var(--muted); font-size:13px; font-weight:600; display:flex; align-items:center; gap:2px; z-index:2 }
+.sheet .sback ~ .cat{ clear:both; padding-top:10px }
 .sheet .x{ position:sticky; top:0; float:right; margin:-4px -8px 0 0; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); font-size:20px; line-height:1; display:grid; place-items:center; z-index:2 }
 .sheet .cat{ color:var(--red); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase }
 .sheet h2{ font-family:var(--display); font-weight:900; font-size:30px; line-height:.95; text-transform:uppercase; margin:6px 0 6px; color:var(--green) }
@@ -238,6 +240,7 @@ img{ max-width:100% }
 .recmodal .box{ background:var(--paper); width:100%; max-height:86%; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; border-radius:26px 26px 0 0; padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px)) }
 .recmodal .k{ font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red) }
 .recmodal .h1{ color:var(--green); margin:6px 0 4px }
+.recmodal #recTitle{ white-space:nowrap }
 .recmodal .grab{ margin:-10px auto 14px; touch-action:none }
 .recmodal .pickhd{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red); margin:16px 0 6px 4px }
 .recmodal .pickhd + .pick{ margin-top:0 }
@@ -976,8 +979,10 @@ function showPicks(picks){
   const first=(S.name||'').split(' ')[0];
   document.getElementById('recTitle').textContent=first?`${first}, your Top 4 today`:'Your Top 4 today';
   document.getElementById('recList').innerHTML=picks.map(row).join('');
-  setTimeout(()=>document.getElementById('recModal').classList.add('on'),350);
+  setTimeout(()=>{ document.getElementById('recModal').classList.add('on'); fitLine(document.getElementById('recTitle')); },350);
 }
+// shrink a heading until it fits on one line (names make "…, your Top 4 today" longer)
+function fitLine(el,min=18){ el.style.fontSize=''; let fs=parseFloat(getComputedStyle(el).fontSize); while(el.scrollWidth>el.clientWidth && fs>min){ fs--; el.style.fontSize=fs+'px'; } }
 /* ---------- neighborhood starter kit: one card, right after sign-up ---------- */
 // Points, the map key and gift cards are explained where they happen (the check-in stamp, the map's "?", the Passport),
 // so the welcome only covers the basics and hands off to today's Top 4.
@@ -1020,7 +1025,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && kitModal.classLi
 
 const recModal=document.getElementById('recModal');
 document.getElementById('recClose').onclick=()=>recModal.classList.remove('on');
-recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; } const r=e.target.closest('[data-rec]'); if(r){ recModal.classList.remove('on'); openSheet(+r.dataset.rec); } });
+recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; } const r=e.target.closest('[data-rec]'); if(r){ recModal.classList.remove('on'); openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList.remove('on'); });
 
 /* ---------- home ---------- */
@@ -1489,7 +1494,7 @@ function addToCalendar(ev){
 /* ---------- event sheet ---------- */
 const overlay=document.getElementById('overlay'), sheet=document.getElementById('sheet');
 const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
-function openSheet(id){
+function openSheet(id,back){   // back: optional, adds a "Top 4" button that returns to where you came from
   const ev=events.find(e=>e.id===id); if(!ev) return; enrich();
   const inn=S.rsvp.includes(id), done=S.checked.includes(id);
   const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
@@ -1502,7 +1507,7 @@ function openSheet(id){
   const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
     : `<button class="btn primary" id="rsvpBtn">${needsRsvp(ev)?'RSVP':'Interested'}</button>`;
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?'<button class="sback" id="sheetBack" aria-label="Back to your Top 4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Top 4</button>':''}<div class="grab"></div>
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label} · ${ev.area||ev.hood}</div>
     <h2>${ev.verified? ev.title.replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : ev.title}</h2>
     <div class="evwhen">${ev.start?nextWhen(ev):(ev.time||'Soon')}</div>
@@ -1523,6 +1528,7 @@ function openSheet(id){
   const el=sheet.querySelector('.evlink'); if(el) el.addEventListener('click',()=>track(ev,'link'));
   const vb=document.getElementById('vBtn'); if(vb) vb.onclick=()=>toast('Verified by Comuna: a real venue, organization or established host');
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
   const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); if(needsRsvp(ev)) window.open(okRsvpLink(ev),'_blank','noopener'); S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
