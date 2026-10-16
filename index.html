@@ -531,6 +531,7 @@ img{ max-width:100% }
         <div class="prof"><div class="avatar" id="pfAvatar"></div><div><div style="font-weight:700;font-size:19px" id="pfName"></div><div class="sub" id="pfHood"></div></div></div>
         <div class="stats3"><div><b id="pfStamps">0</b>stamps</div><div><b id="pfVisits">0</b>check-ins</div><div><b id="pfStreak">0</b>neighborhoods</div></div>
         <button class="linkrow" data-go="passport">Your passport <span>Stamps, patches, points</span></button>
+        <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
         <button class="linkrow" data-go="host" style="background:var(--green);color:var(--paper)">See it as a host <span style="color:#CFC3AB">Ten Speed Coffee</span></button>
@@ -944,7 +945,7 @@ document.getElementById('signOut').onclick=async()=>{
 };
 function shortName(){ const p=(S.name||'').split(' ').filter(Boolean); return p.length? p[0]+(p[1]?` ${p[p.length-1][0].toUpperCase()}.`:'') : 'You'; }
 function renderNames(){ const n=shortName(); document.getElementById('passName').textContent=`${n} · Los Angeles`; document.getElementById('pfName').textContent=n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
-  document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : 'Not signed in'; }
+  document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : 'Not signed in'; document.getElementById('pfNb').textContent=S.nb||'Pick one'; }
 
 /* ---------- daily Top 4: one Headliner, Staple, Hidden Gem and Pop-up near you, once a day ---------- */
 function dailyPicks(){
@@ -1113,6 +1114,21 @@ function editInterests(){
   };
   draw(); overlay.classList.add('on');
 }
+// your home neighborhood: the one you compete in on the leaderboard. Set at sign-up from where you were, which can be
+// work or a friend's place, so you can change it here. Where the map centers follows your live location, not this.
+function editHood(){
+  const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Your neighborhood</div>
+    <h2 style="font-size:28px">Where's home base?</h2><p class="sub">You'll compete on this neighborhood's monthly leaderboard. Your points this month come with you.</p>
+    <div class="picklist">${HOODS.map(h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${h.name}"><span>${h.name}</span>${h.name===S.nb?'<em>✓</em>':''}</button>`).join('')}</div>`;
+    document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+    sheet.querySelector('.picklist').onclick=e=>{ const b=e.target.closest('[data-hood]'); if(!b) return;
+      const h=hoodByName(b.dataset.hood); overlay.classList.remove('on'); if(h.name===S.nb) return;
+      S.nb=h.name; if(!S.loc){ S.loc={lat:h.lat,lng:h.lng}; rebuildMap(); }
+      save(); dbProfile(); renderNames(); toast(`Home base is now ${h.name}`); };
+  };
+  draw(); overlay.classList.add('on');
+}
+document.getElementById('pfNbBtn').onclick=editHood;
 function openPicker(kind){
   const row=(attr,k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" ${attr}="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   let body;
