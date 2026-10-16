@@ -288,6 +288,13 @@ img{ max-width:100% }
 .dayhead span{ color:var(--muted); font-weight:500 }
 .dayev{ display:flex; gap:12px; align-items:center; background:var(--card); border-radius:16px; padding:12px; margin-top:10px; width:100%; text-align:left }
 .dayev .x{ flex:1; min-width:0 }
+/* "Also happening": one row of cards you swipe sideways, edge to edge */
+.alsorow{ display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; margin:0 -20px; padding:10px 20px 4px; scroll-padding:0 20px; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x pan-y; cursor:grab; -webkit-overflow-scrolling:touch }
+.alsorow::-webkit-scrollbar{ display:none }
+.alsorow .dayev{ flex:0 0 80%; margin-top:0; scroll-snap-align:start }
+.alsorow .dayev .t{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.alsorow .dayev .u{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.alsorow.dragging{ scroll-snap-type:none; cursor:grabbing }
 .dayev .t{ font-weight:700; font-size:15.5px }
 .dayev .u{ font-size:12.5px; color:var(--muted); margin-top:2px }
 .dayev .tag{ font-size:11px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.06em }
@@ -501,10 +508,10 @@ img{ max-width:100% }
         <div class="dayhead" id="dayHead"></div>
         <div class="h2">Your plans</div>
         <div id="planList"></div>
-        <div class="h2" id="alsoHead">Also happening</div>
-        <div id="alsoList"></div>
         <div class="h2">Invites from friends</div>
         <div id="inviteList"></div>
+        <div class="h2" id="alsoHead">Also happening</div>
+        <div id="alsoList" class="alsorow"></div>
       </div>
     </section>
 
@@ -1807,15 +1814,17 @@ document.querySelectorAll('.recmodal .box').forEach(box=>{ let down=false, y0=0,
   window.addEventListener('pointerup',()=>{ if(!down) return; down=false; box.style.cursor=''; });
   box.addEventListener('click',e=>{ if(moved){ e.stopPropagation(); e.preventDefault(); moved=false; } },true);
 });
-/* ---------- picks row: drag with a mouse too (touch already swipes natively) ---------- */
-(function(){
-  const row=document.getElementById('picks'); let down=false, x0=0, s0=0, moved=false;
+/* ---------- sideways card rows (map picks, Plans' "Also happening"): drag with a mouse too (touch already swipes natively) ---------- */
+function dragRow(row,card){
+  let down=false, x0=0, s0=0, moved=false;
   row.addEventListener('pointerdown',e=>{ if(e.pointerType!=='mouse') return; down=true; moved=false; x0=e.clientX; s0=row.scrollLeft; });
   window.addEventListener('pointermove',e=>{ if(!down) return; const dx=e.clientX-x0; if(Math.abs(dx)>4){ moved=true; row.classList.add('dragging'); } row.scrollLeft=s0-dx; });
   window.addEventListener('pointerup',()=>{ if(!down) return; down=false;
-    if(row.classList.contains('dragging')){ row.classList.remove('dragging'); const c=row.querySelector('.pick'); if(c){ const w=c.offsetWidth+10; row.scrollTo({left:Math.round(row.scrollLeft/w)*w, behavior:'smooth'}); } } });
+    if(row.classList.contains('dragging')){ row.classList.remove('dragging'); const c=row.querySelector(card); if(c){ const w=c.offsetWidth+10; row.scrollTo({left:Math.round(row.scrollLeft/w)*w, behavior:'smooth'}); } } });
   row.addEventListener('click',e=>{ if(moved){ e.stopPropagation(); e.preventDefault(); moved=false; } },true);
-})();
+}
+dragRow(document.getElementById('picks'),'.pick');
+dragRow(document.getElementById('alsoList'),'.dayev');
 
 /* ---------- Supabase ---------- */
 // Every write also lives in local storage first, so the app keeps working offline or if Supabase is down.
