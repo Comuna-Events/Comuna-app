@@ -28,6 +28,14 @@ add a special case for that site in `ingest-web/index.ts`.
   - `INGEST_SECRET`: any long random string; callers must send it as the `x-ingest-secret` header
   - plus whatever your platform needs (e.g. `APIFY_TOKEN`, `META_ACCESS_TOKEN`)
 - Project Settings > Data API > Exposed schemas includes `ingest`.
+- Run `supabase/ingest_schedule.sql` in SQL Editor (after storing `INGEST_SECRET` in Vault, as its top says).
+  That schedules the nightly run (10:00 UTC, 3am LA time in summer) and adds `ingest.run()`.
+
+## Run it by hand
+
+In SQL Editor: `select ingest.run();` for every web source, or `select ingest.run('ingest-web', 1);` for one source.
+It returns right away; check `ingest.ingest_runs` and `ingest.event_candidates` a couple of minutes later.
+When a new platform's function is deployed, add it to `ingest.run_nightly()` in `ingest_schedule.sql`.
 
 ## Try it
 
