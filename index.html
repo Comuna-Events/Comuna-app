@@ -313,7 +313,7 @@ img{ max-width:100% }
 .stampgrid .slot{ text-align:center; font-size:11.5px; color:var(--muted) }
 .tabs{ display:flex; gap:6px; margin-top:14px; overflow-x:auto; scrollbar-width:none }
 .tabs::-webkit-scrollbar{ display:none }
-.tabs button{ flex:none; padding:8px 13px; border-radius:10px 10px 0 0; background:var(--paper-2); font-weight:700; font-size:13px; color:var(--muted) }
+.tabs button{ flex:1; padding:8px 13px; border-radius:10px 10px 0 0; background:var(--paper-2); font-weight:700; font-size:13px; color:var(--muted) }
 .tabs button.on{ background:var(--card); color:var(--green) }
 .page{ background:var(--card); border-radius:0 18px 18px 18px; padding:14px 12px 16px; position:relative; min-height:300px;
   background-image:repeating-linear-gradient(0deg, transparent 0 27px, rgba(107,103,90,.07) 27px 28px) }
@@ -363,26 +363,16 @@ img{ max-width:100% }
 .alert .t{ font-weight:700; font-size:14px } .alert .s{ font-size:12.5px; color:var(--muted); margin-top:2px } .alert .w{ font-size:11px; color:var(--muted); margin-top:4px }
 .back{ display:inline-flex; align-items:center; gap:6px; font-weight:700; font-size:14px; padding:6px 0 }
 
-/* ---------- host ---------- */
-.hostscr{ background:var(--ink); color:var(--paper) }
-.hostscr .scroll{ padding-bottom:40px }
-.hostscr .back{ color:#CFC3AB }
-.hostscr .h1{ color:var(--paper) }
-.hostscr .sub{ color:#B9AE97 }
-.hostbig{ background:var(--green); border-radius:20px; padding:18px; margin-top:14px }
-.hostbig .k{ font-size:12px; color:var(--sun); font-weight:700; letter-spacing:.06em; text-transform:uppercase }
-.hostbig .v{ font-family:var(--display); font-weight:900; font-size:52px; line-height:1; margin:4px 0 2px }
-.hostbig .s{ font-size:13px; color:#DDD1B8 }
-.hostgrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px }
-.hostgrid div{ background:#34322A; border-radius:14px; padding:12px; font-size:11.5px; color:#B9AE97 }
-.hostgrid b{ display:block; font-family:var(--display); font-weight:900; font-size:26px; color:var(--paper) }
-.bill{ background:var(--paper); color:var(--ink); border-radius:18px; padding:16px; margin-top:12px }
-.bill .line{ display:flex; justify-content:space-between; font-size:14px; padding:6px 0; border-bottom:1px dashed var(--line) }
-.bill .line:last-child{ border:0; font-weight:700; font-size:15.5px }
-.hostrow{ display:flex; justify-content:space-between; align-items:center; background:#34322A; border-radius:14px; padding:13px 14px; margin-top:8px; font-size:14px }
-.hostrow small{ color:#B9AE97; display:block; font-size:12px; margin-top:2px }
-.hostrow button{ background:var(--sun); color:var(--ink); border-radius:30px; padding:7px 12px; font-weight:700; font-size:12.5px }
-.hostscr .h2{ color:var(--sun) }
+/* ---------- profile: dark, so it reads apart from the Passport ---------- */
+.darkscr{ background:var(--ink); color:var(--paper) }
+.darkscr .h1{ color:var(--paper) }
+.darkscr .sub{ color:#B9AE97 }
+.darkscr .pill{ background:#34322A; color:var(--paper) }
+.darkscr .prof .avatar{ background:var(--sun); color:var(--ink) }
+.darkscr .stats3 div{ background:#34322A; color:#B9AE97 }
+.darkscr .stats3 b{ color:var(--paper) }
+.darkscr .linkrow{ background:#34322A; color:var(--paper) }
+.darkscr .linkrow span{ color:#B9AE97 }
 
 /* ---------- nav ---------- */
 .nav{ position:absolute; z-index:30; display:grid; grid-template-columns:repeat(4,1fr); left:16px; right:16px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); padding:6px; border-radius:40px;
@@ -523,13 +513,14 @@ img{ max-width:100% }
           <div class="k" id="passName">Los Angeles</div>
           <div class="big" id="passCount">3 of 8 neighborhoods</div>
           <div class="bar"><i id="passBar" style="width:37%"></i></div>
-          <div class="passstats"><div><b id="psStreak">0</b>patches</div><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
+          <div class="passstats"><div hidden><b id="psStreak">0</b>patches</div><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
           <div id="passSeal" style="position:absolute;right:-18px;top:-18px;opacity:.25"></div>
         </div>
         <div class="tabs" id="passTabs" role="tablist"></div>
         <div class="page" id="passPage"></div>
-        <div class="h2">Patches</div>
-        <div class="patches" id="patchList"></div>
+        <!-- patches: coming later; still rendered, just hidden. Remove "hidden" here and on the patches stat above to bring them back -->
+        <div id="patchSec" hidden><div class="h2">Patches</div>
+        <div class="patches" id="patchList"></div></div>
         <div class="h2" id="lbTitle">Top 5 explorers</div>
         <div class="hand" style="font-size:21px;color:var(--red);margin:-2px 0 8px;line-height:1.15">Top 5 at the end of the month win gift cards to their favorite spots!</div>
         <div class="lb" id="lbList"></div>
@@ -537,16 +528,15 @@ img{ max-width:100% }
     </section>
 
     <!-- PROFILE -->
-    <section class="screen" data-s="profile">
-      <div class="topbar"><div class="h1" style="color:var(--green)">Profile</div><button class="pill" data-go="passport">&larr; Passport</button></div>
+    <section class="screen darkscr" data-s="profile">
+      <div class="topbar"><div class="h1">Profile</div><button class="pill" data-go="passport">&larr; Passport</button></div>
       <div class="scroll">
         <div class="prof"><div class="avatar" id="pfAvatar"></div><div><div style="font-weight:700;font-size:19px" id="pfName"></div><div class="sub" id="pfHood"></div></div></div>
         <div class="stats3"><div><b id="pfStamps">0</b>stamps</div><div><b id="pfVisits">0</b>check-ins</div><div><b id="pfStreak">0</b>neighborhoods</div></div>
-        <button class="linkrow" data-go="passport">Your passport <span>Stamps, patches, points</span></button>
+        <button class="linkrow" data-go="passport">Your passport <span>Stamps and points</span></button>
         <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
-        <button class="linkrow" data-go="host" style="background:var(--green);color:var(--paper)">See it as a host <span style="color:#CFC3AB">Ten Speed Coffee</span></button>
         <button class="linkrow" id="dbCheck">Account sync <span id="dbStatusPf">Tap to check</span></button>
         <button class="linkrow" id="signOut">Sign out <span id="pfEmail"></span></button>
       </div>
@@ -561,33 +551,6 @@ img{ max-width:100% }
       </div>
     </section>
 
-    <!-- HOST -->
-    <section class="screen hostscr" data-s="host">
-      <div class="topbar"><button class="back" data-go="profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Back to the app</button></div>
-      <div class="scroll">
-        <p class="sub" style="color:var(--sun);font-weight:700">Host portal</p>
-        <div class="h1" style="font-size:40px">Ten Speed Coffee</div>
-        <p class="sub">Be discovered by your neighborhood.</p>
-        <div class="hostbig">
-          <div class="k">Verified check-ins this month</div>
-          <div class="v" id="hostCheckins">87</div>
-          <div class="s">Neighbors who found you on Comuna and scanned in at the door.</div>
-        </div>
-        <div class="hostgrid"><div><b>$8,940</b>spend by Comuna guests</div><div><b>312</b>neighbors reached</div><div><b>23</b>regulars with 5+ stamps</div></div>
-        <div class="bill">
-          <div class="line"><span>Listing fee</span><span>$40</span></div>
-          <div class="line"><span id="billVisits">87 verified visits × $5</span><span id="billVisitAmt">$435</span></div>
-          <div class="line"><span>You pay this month</span><span id="billTotal">$475</span></div>
-        </div>
-        <p class="sub" style="margin-top:8px;font-size:12px">You only pay for people who actually walk in. No check-in, no charge.</p>
-        <div class="h2">Coming up</div>
-        <div class="hostrow"><div>Silver Lake Supper Club<small>Thu 7:00 PM · 7 guests</small></div><span class="hand" style="color:var(--sun);font-size:19px">nearly full</span></div>
-        <div class="hostrow"><div>Latte art hour<small>Tue 7:00 PM · 6 guests</small></div></div>
-        <div class="h2">Point redemptions to approve</div>
-        <div id="redemptionList"></div>
-        <button class="btn primary" id="postEvent" style="margin-top:16px">Post something for this week</button>
-      </div>
-    </section>
 
     <nav class="nav" id="nav">
       <button data-go="home" data-nav="home" aria-label="Map"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B675A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17s-5-4.6-5-8.5a5 5 0 0 1 10 0c0 3.9-5 8.5-5 8.5z"/><circle cx="12" cy="8.5" r="1.8"/><path d="M8 16.2c-2.4.4-4 1.2-4 2.1 0 1.5 3.6 2.7 8 2.7s8-1.2 8-2.7c0-.9-1.6-1.7-4-2.1"/></svg></button>
@@ -815,7 +778,7 @@ function go(id, push=true){
   if(push) history.push(current);
   current=id;
   screens.forEach(s=>s.classList.toggle('on', s.dataset.s===id));
-  nav.classList.toggle('hide', ['onb1','onb2','onb3','onb4','onb5','host','alerts'].includes(id));
+  nav.classList.toggle('hide', ['onb1','onb2','onb3','onb4','onb5','alerts'].includes(id));
   nav.querySelectorAll('button').forEach(b=>{ const on=b.dataset.nav===id; b.classList.toggle('on',on); b.querySelector('svg').setAttribute('stroke', on?C.green:C.muted); });
   if(id==='onb1') document.getElementById('signinLink').style.display=S.signedUp?'none':'';
   if(id==='home'){ renderHome(); maybeDailyPicks(); setTimeout(()=>{ if(map) map.resize(); else drawPaper(); },30); }
@@ -823,7 +786,6 @@ function go(id, push=true){
   if(id==='passport') renderPassport();
   if(id==='profile') renderProfile();
   if(id==='alerts'){ renderAlerts(); S.alertsSeen=[...new Set([...(S.alertsSeen||[]),...ALERTS.map(a=>a.key)])].slice(-200); save(); updateDot(); }
-  if(id==='host') renderHost();
   if(id==='onb2'){ drawMini(); locNext.disabled=!S.loc; }
   if(id==='onb3') renderInterests();
   if(id==='onb4') suUpdate();
@@ -1789,20 +1751,6 @@ function renderAlerts(){
 document.getElementById('alertList').addEventListener('click',e=>{ const a=e.target.closest('[data-alert-ev]'); if(a) openSheet(+a.dataset.alertEv); });
 function updateDot(){ buildAlerts(); const n=unseen().length, d=document.getElementById('alertDot'); d.textContent=n; d.style.display=n?'grid':'none'; }
 
-/* ---------- host ---------- */
-let hostExtra=0;
-function renderHost(){
-  const n=87+S.checked.filter(id=>{ const e=events.find(x=>x.id===id); return e&&e.venue==='Ten Speed Coffee'; }).length+hostExtra;
-  document.getElementById('hostCheckins').textContent=n;
-  document.getElementById('billVisits').textContent=`${n} verified visits × $5`;
-  document.getElementById('billVisitAmt').textContent='$'+(n*5);
-  document.getElementById('billTotal').textContent='$'+(n*5+40);
-  const pend=[['Ana P.','$10 credit'],['Sam T.','$10 credit'],['Jordan M.','$10 credit']].filter((_,i)=>!(S.approved||[]).includes(i));
-  document.getElementById('redemptionList').innerHTML=pend.length? pend.map((p)=>`<div class="hostrow"><div>${p[0]}<small>${p[1]} · 500 pts</small></div><button data-approve="${p[0]}">Approve</button></div>`).join('') : `<p class="sub" style="margin-top:6px">All caught up.</p>`;
-}
-document.getElementById('redemptionList').addEventListener('click',e=>{ const b=e.target.closest('[data-approve]'); if(!b) return; const names=['Ana P.','Sam T.','Jordan M.']; S.approved=S.approved||[]; S.approved.push(names.indexOf(b.dataset.approve)); save(); renderHost(); toast('Approved'); });
-document.getElementById('postEvent').onclick=()=>toast('Posting opens in the next build');
-
 /* keep the Mapbox corner controls just below the header, whatever its height */
 function syncHeadH(){ const h=document.querySelector('#homeScreen .homehead'); if(h&&h.offsetHeight) document.getElementById('homeScreen').style.setProperty('--headh',(h.offsetHeight-6)+'px'); }
 window.addEventListener('resize',syncHeadH); setTimeout(syncHeadH,0);
@@ -1998,7 +1946,7 @@ async function loadEvents(){
 }
 
 /* ---------- demo chrome ---------- */
-const jumps=[['onb1','Intro'],['kit','Starter kit',1],['picks','Top 4 today',1],['home','Map'],['plans','Plans'],['passport','Passport'],['alerts','Alerts'],['host','Host view']];
+const jumps=[['onb1','Intro'],['kit','Starter kit',1],['picks','Top 4 today',1],['home','Map'],['plans','Plans'],['passport','Passport'],['alerts','Alerts']];
 document.getElementById('jump').innerHTML=jumps.map(j=>`<button data-${j[2]?'pop':'go'}="${j[0]}">${j[1]}</button>`).join('');
 // pop-up jumps: open the starter kit or today's Top 4 over the map, whatever was seen before
 document.getElementById('jump').addEventListener('click',e=>{
