@@ -89,7 +89,9 @@ async function runIngest(name: string, platforms: string[], fetchPosts: FetchPos
         last_checked_at: new Date().toISOString(), last_success_at: new Date().toISOString(), last_error: null,
       }).eq("id", source.id);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      // Database errors are plain objects, not Errors, so read their message too.
+      const message = err instanceof Error ? err.message
+        : (err as { message?: string })?.message ?? JSON.stringify(err);
       errors.push({ source: source.handle, error: message });
       await db.from("event_sources").update({ last_checked_at: new Date().toISOString(), last_error: message })
         .eq("id", source.id);
@@ -108,12 +110,15 @@ async function runIngest(name: string, platforms: string[], fetchPosts: FetchPos
 }
 
 // Every row remembers the post it came from (post_id), so a post we've read before isn't paid for again.
+// Asked in batches: the ids go into the request URL, and a feed's ids can be long (they include its URL).
 async function dropAlreadySeen(db: Db, platform: string, posts: SourcePost[]) {
-  if (posts.length === 0) return posts;
-  const { data, error } = await db.from("event_candidates").select("post_id")
-    .eq("platform", platform).in("post_id", posts.map((p) => p.externalId));
-  if (error) throw error;
-  const seen = new Set((data ?? []).map((row: { post_id: string }) => row.post_id));
+  const seen = new Set<string>();
+  for (let i = 0; i < posts.length; i += 10) {
+    const { data, error } = await db.from("event_candidates").select("post_id")
+      .eq("platform", platform).in("post_id", posts.slice(i, i + 10).map((p) => p.externalId));
+    if (error) throw new Error(`Checking which posts were already read: ${error.message}`);
+    for (const row of (data ?? []) as { post_id: string }[]) seen.add(row.post_id);
+  }
   return posts.filter((p) => !seen.has(p.externalId));
 }
 
