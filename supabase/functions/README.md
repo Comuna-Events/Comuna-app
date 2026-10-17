@@ -18,8 +18,14 @@ To add a platform, copy `ingest-instagram/`, rename it, and change the platform 
 
 **Web sources:** add a row with platform `city_calendar` or `venue_website` and the page's full URL as `handle`.
 `ingest-web` downloads the page, turns it into text and lets the AI find the events. If a source fails
-with "almost no text", the site loads its events with JavaScript: look for its iCal / RSS feed or API and
-add a special case for that site in `ingest-web/index.ts`.
+with "almost no text", or finds no events on a page that clearly lists some, the site loads its events with
+JavaScript. Look for what the page loads them from, and use that as the handle instead:
+- a JSON feed or API (e.g. `https://www.hollywoodbowl.com/events/feed`): read as one post per event;
+- an RSS / Atom feed (e.g. a city calendar's RSS link): one post per item;
+- schema.org JSON-LD in the page (most Ticketmaster / Live Nation venue pages): add `#jsonld` to the page URL.
+
+Put `{today}` or `{today+N}` in a handle for APIs that take a date range; it's filled in on every run.
+Anything else needs a special case in `ingest-web/index.ts`.
 
 ## One-time setup (the project owner does this once)
 
@@ -29,7 +35,8 @@ add a special case for that site in `ingest-web/index.ts`.
   - plus whatever your platform needs (e.g. `APIFY_TOKEN`, `META_ACCESS_TOKEN`)
 - Project Settings > Data API > Exposed schemas includes `ingest`.
 - Run `supabase/ingest_schedule.sql` in SQL Editor (after storing `INGEST_SECRET` in Vault, as its top says).
-  That schedules the nightly run (10:00 UTC, 3am LA time in summer) and adds `ingest.run()`.
+  That schedules the nightly run (a call every 5 minutes from 10:00 to 11:55 UTC, 3-5am LA time in summer,
+  since one call only gets through a dozen or so sources) and adds `ingest.run()`.
 
 ## Run it by hand
 
