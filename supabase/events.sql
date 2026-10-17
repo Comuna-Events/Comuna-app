@@ -1,7 +1,8 @@
 -- Comuna: event inventory (moved here from the "Comuna — LA Event Inventory (LIVE)" Google Sheet).
 -- Run once in Supabase > SQL Editor; safe to re-run.
 -- Add and edit events in Supabase > Table Editor > events. The app reads this table directly.
---  Allowed values match the old sheet's Lists tab; category and neighborhood are free text.
+--  Allowed values match the old sheet's Lists tab; neighborhood is free text.
+--  category is one of the app's six (see categories.sql, which maps anything else on save).
 --  Rows with no street_address, or a status of Cancelled / Past / archived, don't show in the app.
 --  lat/lng fill themselves in from the address (see geocode.sql); only type them to move a pin by hand.
 --  Any still blank, the app looks up from the address on the phone.

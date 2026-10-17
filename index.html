@@ -2033,7 +2033,7 @@ function whenText(r){
 }
 async function mapLimit(items,n,fn){ let i=0; await Promise.all(Array.from({length:n},async()=>{ while(i<items.length){ const k=i++; await fn(items[k],k); } })); }
 // Only these columns are readable from the app (see the grants in supabase/events.sql).
-const EVENT_COLS='event_id,name,category,tier,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,rsvp_required,ticket_url,age,host,source_url,status,verified,lat,lng';
+const EVENT_COLS='event_id,name,category,tier,tags,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,rsvp_required,ticket_url,age,host,source_url,status,verified,lat,lng';
 async function loadEvents(){
   if(!sb){ eventsState='error'; return; }
   eventsState=events.length?'live':'loading';
@@ -2051,7 +2051,10 @@ async function loadEvents(){
     const catMap=c=>{ c=c||''; const lc=c.trim().toLowerCase(); if(SUBCATS[lc]||CATS[lc]) return lc;
       const hit=Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===lc)||Object.keys(CATS).find(k=>CATS[k].label.toLowerCase()===lc); if(hit) return hit;
       return /comedy|improv|theat|perform|drag/i.test(c)?'comedy':/film|movie|cinema|screening|media|podcast/i.test(c)?'film':/immersive|experien|installation/i.test(c)?'immersive':/night|club|dj|dance party|bar/i.test(c)?'nightlife':/music|concert|jazz|art|gallery|museum/i.test(c)?'music':/dinner|food|drink|supper|coffee|wine|beer/i.test(c)?'food':/fitness|wellness|yoga|run|health|medit/i.test(c)?'wellness':/workshop|class|craft|making|learn|lecture|talk/i.test(c)?'workshops':/hike|outdoor|beach|park|nature|garden/i.test(c)?'outdoors':/sport|game|trivia|volley|pickle|soccer|basketball/i.test(c)?'sports':/meetup|social|mixer|networking|speed/i.test(c)?'social':/market|shop|vintage|flea/i.test(c)?'markets':'community'; };
-    events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', ...(c=>({ sub:c, category:catKey(c) }))(catMap(r.category)), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
+    // category is one of the six; the detailed kind (shown on the event page, and used to guess a missing tier) comes from the tags
+    const subOf=r=>{ const g=catKey(catMap(r.category)), tags=r.tags||[],
+      t=tags.map(x=>Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===String(x).toLowerCase())).find(Boolean)||catMap(tags.join(' ')); return { category:g, sub: SUB_GROUP[t]===g && !CATS[t]? t : '' }; };
+    events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
       address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), price:r.price_type||'', age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
       ticket:r.ticket_url||'', source:r.source_url||'', rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
     eventsState='live'; if(current==='home') renderHome(); loadGoing(); loadSubmissions();
