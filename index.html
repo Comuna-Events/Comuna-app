@@ -147,6 +147,7 @@ img{ max-width:100% }
 .mapboxgl-marker .pin{ transform:none }
 /* venue pin: many events at one spot share a single pin with a count; tapping it lists them by day */
 .pin.venue{ z-index:3; box-shadow:3px -3px 0 -1px var(--paper),3px -3px 0 0 #DCCDAE,0 3px 8px rgba(0,0,0,.28) }
+.pin.mix .mixn{ width:20px; height:20px; border-radius:50%; background:var(--paper); color:var(--ink); font-family:var(--display); font-weight:800; font-size:12.5px; line-height:1; display:grid; place-items:center }
 .pin.venue.big{ box-shadow:0 0 0 2px var(--paper),0 0 0 5px var(--sun),0 4px 10px rgba(0,0,0,.32) }
 .pin .cnt{ position:absolute; right:-9px; top:-9px; min-width:19px; height:19px; padding:0 4px; border-radius:10px; background:var(--ink); color:var(--paper); font-family:var(--display); font-weight:800; font-size:11.5px; line-height:1; display:grid; place-items:center; border:2px solid var(--paper) }
 .vday{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red); margin:18px 0 6px 2px }
@@ -1224,10 +1225,15 @@ function drawClusters(){
 // events in the order they next happen; ones with no upcoming date go last
 function bySoonest(list){ const t=ev=>{ const d=nextDate(ev), h=hm(ev.t0); return d? +d+(h?(h[0]*60+h[1])*6e4:0) : Infinity; };
   return list.slice().sort((a,b)=>t(a)-t(b)); }
-// one pin for a busy venue: the next event's color and icon, plus how many are happening there
+// one pin for a busy venue, with how many are happening there: one kind of event keeps that kind's color and icon;
+// a mix shows the count in a cream pin ringed with each kind's color, sized by how many of each
 function venuePinEl(list){ const evs=bySoonest(list), ev=evs[0], n=evs.length, el=document.createElement('div');
-  const big=evs.some(e=>kindOf(e)==='cornerstone');
-  el.className='pin venue'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,15)+`<span class="cnt">${n>99?'99+':n}</span>`;
+  const big=evs.some(e=>kindOf(e)==='cornerstone'), tally={}; evs.forEach(e=>{ const k=catKey(e.category); tally[k]=(tally[k]||0)+1; });
+  const kinds=Object.keys(tally).sort((a,b)=>tally[b]-tally[a]);
+  el.className='pin venue'+(big?' big':'')+(kinds.length>1?' mix':'');
+  if(kinds.length>1){ let at=0; el.style.background='conic-gradient('+kinds.map(k=>{ const from=at; at+=tally[k]/n*100; return `${CATS[k].bg} ${from}% ${at}%`; }).join(',')+')';
+    el.innerHTML=`<span class="mixn">${n>99?'99+':n}</span>`; }
+  else { el.style.background=CATS[kinds[0]].bg; el.innerHTML=catIcon(ev.category,15)+`<span class="cnt">${n>99?'99+':n}</span>`; }
   el.setAttribute('role','button'); el.setAttribute('aria-label',`${n} events at ${venueName(evs)}`); el.tabIndex=0;
   el.onclick=e=>{ e.stopPropagation(); openVenue(evs); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openVenue(evs); }; return el; }
 // the street line of an event's address ("1822 W Sunset Blvd"), or '' when it has none
