@@ -54,13 +54,13 @@ Deno.serve(async (req) => {
 
   const started = Date.now();
   const { data: rows, error } = await db.from("events").select("event_id,street_address,city,zip")
-    .is("lat", null).not("street_address", "is", null).neq("street_address", "").order("event_id").limit(1000);
+    .is("lat", null).not("street_address", "is", null).neq("street_address", "").order("created_at", { ascending: false }).limit(1000);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   const filled: string[] = [], notFound: string[] = [];
   let next = 0;
-  // a few lookups at a time
-  await Promise.all(Array.from({ length: 5 }, async () => {
+  // newest events first, so addresses the Census never finds don't hold up new ones; several lookups at a time
+  await Promise.all(Array.from({ length: 10 }, async () => {
     while (next < rows.length && Date.now() - started < TIME_BUDGET_MS) {
       const r = rows[next++] as Row;
       const p = await locate(r);

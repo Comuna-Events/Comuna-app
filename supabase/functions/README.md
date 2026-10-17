@@ -1,8 +1,10 @@
 # Nightly event ingest
 
 Each night one function per platform reads the accounts in `ingest.event_sources`, has Claude pull the
-events out of each new post, and saves them to `ingest.event_candidates` for review. Nothing reaches the
-app until someone runs `select ingest.promote_candidate(<id>);`.
+events out of each new post, and saves them to `ingest.event_candidates`. At 12:10 UTC `ingest.auto_promote()`
+moves the clear-cut ones into the app: upcoming, in person, AI confidence 0.8+, a street address, and not the
+same event as one already there (see `supabase/event_autopromote.sql`). The rest stay `new` for review; promote
+one by hand with `select ingest.promote_candidate(<id>);`.
 
 ```
 _shared/ingest.ts      shared: loads sources, skips posts already read, saves candidates, logs ingest_runs
