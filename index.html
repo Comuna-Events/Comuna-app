@@ -14,6 +14,16 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Comuna" />
 <meta name="mobile-web-app-capable" content="yes" />
+<script>
+/* iPhone home-screen app: on launch iOS sizes the viewport one status bar short (100dvh and innerHeight both) until the first scroll,
+   leaving an empty strip under the app. The app fills the whole screen there, so size the page to the screen instead. */
+(function(){
+  if(!navigator.standalone || !/iPhone|iPod/.test(navigator.userAgent)) return;
+  const fit=()=>{ const land=matchMedia('(orientation: landscape)').matches;
+    document.documentElement.style.height=(land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height))+'px'; };
+  fit(); addEventListener('resize',fit); addEventListener('orientationchange',fit);
+})();
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=DM+Sans:wght@400;500;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
