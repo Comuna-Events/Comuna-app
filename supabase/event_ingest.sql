@@ -6,7 +6,7 @@
 -- pick "ingest" in the schema dropdown at the top of Table Editor.
 --
 --  ingest.event_sources     the accounts / pages / calendars the 3am job checks. Add rows in Table Editor.
---  ingest.event_candidates  what the job found. Nothing here shows in the app until it's promoted.
+--  ingest.event_candidates  what the job found. Clear-cut ones are promoted nightly (event_autopromote.sql).
 --  ingest.ingest_runs       one row per platform per night, so you can see whether last night worked.
 --
 --  Review: Table Editor > ingest > event_candidates, filter status = 'new'. Fix any fields, then promote it:
