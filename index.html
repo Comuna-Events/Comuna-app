@@ -1974,17 +1974,30 @@ function askHowWasIt(ev){
 // Reads public.events (moved from the old Google Sheet; edit events in Supabase > Table Editor).
 // Rows without a street address are skipped. Rows with lat/lng filled in use them as the pin;
 // the rest become pins via Mapbox geocoding (cached per device).
-async function geocode(address){
-  const key='geo:'+address.trim().toLowerCase();
+// on-phone lookup for events the server couldn't place (it skips addresses it can't match exactly, often landmarks
+// like "200 Santa Monica Pier"). The address first; if Mapbox isn't sure of the street, the venue by name.
+async function geocode(address,venue){
+  const key='geo2:'+address.trim().toLowerCase();
   try{ const hit=localStorage.getItem(key); if(hit) return JSON.parse(hit); }catch(e){}
   if(!MAPBOX_TOKEN) return null;
+  const keep=c=>{ try{ localStorage.setItem(key,JSON.stringify(c)); }catch(e){} return c; };
+  let guess=null;
   try{
     const r=await fetch('https://api.mapbox.com/search/geocode/v6/forward?q='+encodeURIComponent(address)+'&proximity=-118.30,34.06&country=us&limit=1&access_token='+MAPBOX_TOKEN);
-    if(!r.ok) return null;
-    const f=(await r.json()).features?.[0]; if(!f) return null;
-    const c=f.geometry.coordinates; try{ localStorage.setItem(key,JSON.stringify(c)); }catch(e){}
-    return c;
-  }catch(e){ return null; }
+    const f=r.ok && (await r.json()).features?.[0];
+    if(f){ const mc=f.properties?.match_code||{};
+      if(mc.confidence==='exact' || mc.confidence==='high' || (mc.street==='matched' && mc.address_number==='matched')) return keep(f.geometry.coordinates);
+      guess=f.geometry.coordinates; }
+  }catch(e){}
+  // the venue's own name, without notes like "(meet under the sign)", searched as a place in LA
+  const name=String(venue||'').replace(/\(.*?\)/g,'').split(/,| - /)[0].trim();
+  if(name){ try{
+    const city=address.split(',').slice(1,2).join('').trim();
+    const r=await fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent([name,city].filter(Boolean).join(', '))+'.json?proximity=-118.30,34.06&bbox=-118.95,33.65,-117.65,34.40&country=us&types=poi&limit=1&access_token='+MAPBOX_TOKEN);
+    const f=r.ok && (await r.json()).features?.[0];
+    if(f) return keep(f.center);
+  }catch(e){} }
+  return guess? keep(guess) : null;
 }
 function parseDay(v){ if(!v) return null; const d=new Date(String(v).trim().replace(/^(\d{4})-(\d\d)-(\d\d)$/,'$1/$2/$3')); return isNaN(d)? null : d; }
 function fmtTime(v){
@@ -2013,7 +2026,7 @@ async function loadEvents(){
       .filter(r=>r.name && String(r.street_address).trim())                     // no address yet → not shown
       .filter(r=>!/cancel|past|archiv/i.test(r.status||''))                    // everything else shows, verified or not
       .filter(r=>{ if(!/one-off|seasonal/i.test(r.recurrence||'')) return true; const end=parseDay(r.end_date)||parseDay(r.start_date); return !end || end>=today; });
-    await mapLimit(rows.filter(r=>r.lat==null||r.lng==null),6,async r=>{ const c=await geocode([r.street_address,r.city||'Los Angeles',r.zip,'CA'].filter(Boolean).join(', ')); if(c){ r.lng=c[0]; r.lat=c[1]; } });
+    await mapLimit(rows.filter(r=>r.lat==null||r.lng==null),6,async r=>{ const c=await geocode([r.street_address,r.city||'Los Angeles',r.zip,'CA'].filter(Boolean).join(', '),r.venue); if(c){ r.lng=c[0]; r.lat=c[1]; } });
     rows=rows.filter(r=>r.lat!=null && r.lng!=null);
     if(!rows.length) throw new Error('no events with a map location');
     const catMap=c=>{ c=c||''; const lc=c.trim().toLowerCase(); if(SUBCATS[lc]||CATS[lc]) return lc;
