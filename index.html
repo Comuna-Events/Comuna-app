@@ -639,9 +639,9 @@ const HOOD_RENAMED = { 'Frogtown':'Elysian Valley' };
 
 /* ---------- categories: each gets a colored dot ---------- */
 // Brand Guide v2 core colors (Signal Red, Ink, Comuna Green, Map Blue, Sun) plus deeper and lighter tints of them, one per category.
-/* the detailed categories in the Sheet; the event page still shows these */
+/* the detailed kinds within the six; the event page shows the short name as a tag */
 const SUBCATS = {
-  music:     { label:'Music & Arts',             short:'Music & Arts', bg:'#4B66A8', ex:'concerts, gallery nights, art walks' },
+  music:     { label:'Music & Arts',             short:'Music',        bg:'#4B66A8', ex:'concerts, gallery nights, art walks' },
   food:      { label:'Food & Drink',             short:'Food',         bg:'#C9533D', ex:'food festivals, tastings, night markets' },
   wellness:  { label:'Health & Wellness',        short:'Wellness',     bg:'#244D3A', ex:'free yoga, sound baths, meditation' },
   workshops: { label:'Workshops & Learning',     short:'Workshops',    bg:'#D6A638', ex:'classes, talks, author readings' },
@@ -1587,7 +1587,7 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
     <div class="evwhen">${ev.start?nextWhen(ev):(ev.time||'Soon')}</div>
     <a class="evwhere" href="${directionsUrl(ev)}" target="_blank" rel="noopener">${ev.venue} <span>· ${mins(ev.mi)} min away</span></a>
     ${recurs&&ev.recDetail?`<div class="evrec">${ev.recDetail}</div>`:''}
-    <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${x}</span>`).join('')}</div>
+    <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${SUBCATS[ev.sub]?`<span>${SUBCATS[ev.sub].short}</span>`:''}${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${x}</span>`).join('')}</div>
     ${ev.desc?`<p class="desc">${ev.desc}</p>`:''}
     ${meta?`<div class="evmeta">${meta}</div>`:''}
     ${(ev.parking||ev.alcohol!==undefined)?`<div class="practical">${ev.parking?`Parking: ${ev.parking}<br>`:''}${ev.alcohol===true?'Drinks available, 21+ to drink':ev.alcohol===false?'Alcohol-free':''}</div>`:''}
