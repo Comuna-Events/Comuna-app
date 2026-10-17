@@ -1167,9 +1167,9 @@ function pinEl(ev,i){ const el=document.createElement('div'); const done=S.check
   el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
    Recomputed after every pan/zoom, so bubbles split apart as you zoom. At street level (zoom 15+) nothing
-   clusters; a busy address (VENUE_MIN or more events) shows as one venue pin with a count that opens its list,
-   and a few events sharing a spot fan out in a small ring so each one can be tapped. */
-let lastPins=[]; const CLUSTER_PX=44, FAN_PX=14, VENUE_MIN=4;
+   clusters; an address with more than one event shows as one venue pin with a count that opens its list, and
+   events at different addresses that land on top of each other fan out in a small ring so each one can be tapped. */
+let lastPins=[]; const CLUSTER_PX=44, FAN_PX=14, VENUE_MIN=2;
 function drawClusters(){
   if(!map) return; const you=markers.you; markers.forEach(m=>m.remove()); markers=[]; markers.you=you;
   const z=map.getZoom(), all=lastPins, sel=all.find(e=>e.id===selId);
@@ -1180,7 +1180,7 @@ function drawClusters(){
   const near=(list,radius)=>{ const groups=[]; list.forEach(ev=>{ const pt=map.project([ev.lng,ev.lat]); const g=groups.find(g=>Math.hypot(g.x-pt.x,g.y-pt.y)<radius);
     if(g){ g.list.push(ev); g.x=(g.x*(g.list.length-1)+pt.x)/g.list.length; g.y=(g.y*(g.list.length-1)+pt.y)/g.list.length; } else groups.push({x:pt.x,y:pt.y,list:[ev]}); }); return groups; };
   if(z>=PIN_ZOOM){
-    // street: full pins; a busy address becomes one venue pin, a few events sharing a spot fan out in a small ring
+    // street: full pins; a shared address becomes one venue pin, other pins that overlap fan out in a small ring
     setDots([]);
     const venues=byAddress(rest).filter(l=>l.length>=VENUE_MIN), inVenue=new Set(venues.flat());
     venues.forEach(l=>markers.push(new mapboxgl.Marker({element:venuePinEl(l)}).setLngLat([l[0].lng,l[0].lat]).addTo(map)));
