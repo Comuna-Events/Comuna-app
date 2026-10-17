@@ -195,3 +195,8 @@ revoke execute on function public.events_request_geocode() from public, anon, au
 
 -- 12:10 UTC: after the last nightly ingest call (every 5 minutes from 10:00 to 11:55, see ingest_schedule.sql)
 select cron.schedule('nightly-auto-promote', '10 12 * * *', 'select ingest.auto_promote()');
+
+-- One geocode run only gets through a few dozen Census lookups, so after a big night look up the rest in a few
+-- more passes (12:20-12:50 UTC), while any event added in the last day still has no pin.
+select cron.schedule('nightly-geocode', '20-50/10 12 * * *',
+  $$select public.request_event_geocode() where exists (select 1 from public.events where lat is null and street_address ~ '^\s*\d' and created_at > now() - interval '1 day')$$);
