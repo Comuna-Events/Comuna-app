@@ -757,7 +757,13 @@ function glyph(kind,c){
 let sid=0;
 // illustrated neighborhood stamps (stamps/*.png); places without one fall back to the drawn SVG stamp
 const STAMP_IMG = { 'Silver Lake':'silver-lake', 'Echo Park':'echo-park', 'Los Feliz':'los-feliz', 'Downtown':'downtown', 'Santa Monica':'santa-monica',
-  'Venice':'venice', 'Beverly Hills':'beverly-hills', 'West Hollywood':'west-hollywood', 'Culver City':'culver-city' };
+  'Venice':'venice', 'Beverly Hills':'beverly-hills', 'West Hollywood':'west-hollywood', 'Culver City':'culver-city',
+  'Burbank':'burbank', 'Hollywood':'hollywood', 'Pasadena':'pasadena', 'Koreatown':'koreatown', 'Highland Park':'highland-park',
+  'Glendale':'glendale', 'Mid-Wilshire':'mid-wilshire', 'Westwood':'westwood', 'Brentwood':'brentwood', 'Sawtelle':'sawtelle',
+  'Fairfax':'fairfax', 'Studio City':'studio-city',
+  'Eagle Rock':'eagle-rock', 'Sherman Oaks':'sherman-oaks', 'Leimert Park':'leimert-park', 'Griffith Park':'griffith-park',
+  'North Hollywood':'north-hollywood', 'Exposition Park':'exposition-park', 'East Hollywood':'east-hollywood', 'Inglewood':'inglewood',
+  'Beverly Grove':'beverly-grove', 'Atwater Village':'atwater-village', 'Mar Vista':'mar-vista', 'Long Beach':'long-beach' };
 // inked rubber-stamp impressions; light=true picks the pale-ink version for dark backgrounds
 function hoodStamp(name,size,rot,light){
   return `<img src="stamps/${STAMP_IMG[name]}${light?'-light':''}.png" alt="${name} stamp" width="${size}" height="${size}" style="transform:rotate(${rot||0}deg);display:block;margin:0 auto">`;

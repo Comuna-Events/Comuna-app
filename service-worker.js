@@ -3,7 +3,7 @@
 // offline data strategy, just enough for a demo/beta build to qualify
 // as an installable PWA on iOS and Android.
 
-const CACHE_NAME = "third-space-demo-v79";
+const CACHE_NAME = "third-space-demo-v82";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -22,6 +22,30 @@ const APP_SHELL = [
   "./stamps/beverly-hills.png",
   "./stamps/west-hollywood.png",
   "./stamps/culver-city.png",
+  "./stamps/burbank.png",
+  "./stamps/hollywood.png",
+  "./stamps/pasadena.png",
+  "./stamps/koreatown.png",
+  "./stamps/highland-park.png",
+  "./stamps/glendale.png",
+  "./stamps/mid-wilshire.png",
+  "./stamps/westwood.png",
+  "./stamps/brentwood.png",
+  "./stamps/sawtelle.png",
+  "./stamps/fairfax.png",
+  "./stamps/studio-city.png",
+  "./stamps/eagle-rock.png",
+  "./stamps/sherman-oaks.png",
+  "./stamps/leimert-park.png",
+  "./stamps/griffith-park.png",
+  "./stamps/north-hollywood.png",
+  "./stamps/exposition-park.png",
+  "./stamps/east-hollywood.png",
+  "./stamps/inglewood.png",
+  "./stamps/beverly-grove.png",
+  "./stamps/atwater-village.png",
+  "./stamps/mar-vista.png",
+  "./stamps/long-beach.png",
   "./stamps/santa-monica-light.png",
   "./stamps/silver-lake-light.png",
   "./stamps/west-hollywood-light.png",
