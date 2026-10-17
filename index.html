@@ -135,6 +135,16 @@ img{ max-width:100% }
 .cluster{ z-index:21; border-radius:50%; background:var(--card); color:var(--green); border:2px solid var(--green); box-shadow:0 2px 6px rgba(0,0,0,.18); display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:15px; cursor:pointer }
 .pin .chk{ position:absolute; right:-8px; top:-8px; width:16px; height:16px; border-radius:50%; background:var(--green); color:var(--paper); font-size:11px; font-weight:700; display:grid; place-items:center; border:2px solid var(--paper) }
 .mapboxgl-marker .pin{ transform:none }
+/* venue pin: many events at one spot share a single pin with a count; tapping it lists them by day */
+.pin.venue{ z-index:3; box-shadow:3px -3px 0 -1px var(--paper),3px -3px 0 0 #DCCDAE,0 3px 8px rgba(0,0,0,.28) }
+.pin.venue.big{ box-shadow:0 0 0 2px var(--paper),0 0 0 5px var(--sun),0 4px 10px rgba(0,0,0,.32) }
+.pin .cnt{ position:absolute; right:-9px; top:-9px; min-width:19px; height:19px; padding:0 4px; border-radius:10px; background:var(--ink); color:var(--paper); font-family:var(--display); font-weight:800; font-size:11.5px; line-height:1; display:grid; place-items:center; border:2px solid var(--paper) }
+.vday{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red); margin:18px 0 6px 2px }
+.vrow{ display:flex; gap:12px; align-items:center; width:100%; text-align:left; background:var(--card); border-radius:14px; padding:10px 14px; margin-top:8px }
+.vday + .vrow{ margin-top:0 }
+.vrow > div{ min-width:0; flex:1 }
+.vrow .t{ font-weight:700; font-size:15px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.vrow .m{ font-size:12.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px }
 
 @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(201,83,61,.55) } 100%{ box-shadow:0 0 0 14px rgba(201,83,61,0) } }
 @media (prefers-reduced-motion:reduce){ .pin.live{ animation:none } }
@@ -212,6 +222,7 @@ img{ max-width:100% }
 @media (prefers-reduced-motion:reduce){ .sheet{ animation:none } }
 .grab{ width:42px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px; cursor:grab }
 .sheet .sback{ position:sticky; top:0; float:left; margin:-4px 0 0 -8px; height:32px; padding:0 12px 0 6px; border-radius:16px; background:var(--card); color:var(--muted); font-size:13px; font-weight:600; display:flex; align-items:center; gap:2px; z-index:2 }
+.sheet .sback{ max-width:60% } .sheet .sback svg{ flex:none }
 .sheet .sback ~ .cat{ clear:both; padding-top:10px }
 .sheet .x{ position:sticky; top:0; float:right; margin:-4px -8px 0 0; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); font-size:20px; line-height:1; display:grid; place-items:center; z-index:2 }
 .sheet .cat{ color:var(--red); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase }
@@ -1156,8 +1167,9 @@ function pinEl(ev,i){ const el=document.createElement('div'); const done=S.check
   el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
    Recomputed after every pan/zoom, so bubbles split apart as you zoom. At street level (zoom 15+) nothing
-   clusters; events sharing an address fan out in a small ring so each one can be tapped. */
-let lastPins=[]; const CLUSTER_PX=44, FAN_PX=14;
+   clusters; a few events sharing an address fan out in a small ring so each one can be tapped, and a busy venue
+   (VENUE_MIN or more) shows as one pin with a count that opens the venue's list. */
+let lastPins=[]; const CLUSTER_PX=44, FAN_PX=14, VENUE_MIN=4;
 function drawClusters(){
   if(!map) return; const you=markers.you; markers.forEach(m=>m.remove()); markers=[]; markers.you=you;
   const z=map.getZoom(), all=lastPins, sel=all.find(e=>e.id===selId);
@@ -1168,9 +1180,10 @@ function drawClusters(){
   rest.forEach(ev=>{ const pt=map.project([ev.lng,ev.lat]); const g=groups.find(g=>Math.hypot(g.x-pt.x,g.y-pt.y)<radius);
     if(g){ g.list.push(ev); g.x=(g.x*(g.list.length-1)+pt.x)/g.list.length; g.y=(g.y*(g.list.length-1)+pt.y)/g.list.length; } else groups.push({x:pt.x,y:pt.y,list:[ev]}); });
   if(street){
-    // street: full pins; events sharing a spot fan out in a small ring so each one can be tapped
+    // street: full pins; a few events sharing a spot fan out in a small ring, a busy spot becomes one venue pin
     setDots([]);
     groups.forEach(g=>{ const n=g.list.length, ring=n===1? 0 : 16+n*3;
+      if(n>=VENUE_MIN){ markers.push(new mapboxgl.Marker({element:venuePinEl(g.list)}).setLngLat(map.unproject([g.x,g.y])).addTo(map)); return; }
       g.list.forEach((ev,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n;
         markers.push(new mapboxgl.Marker({element:pinEl(ev),offset:[Math.round(ring*Math.cos(a)),Math.round(ring*Math.sin(a))]}).setLngLat([ev.lng,ev.lat]).addTo(map)); }); });
     return; }
@@ -1186,6 +1199,37 @@ function drawClusters(){
       map.easeTo({center:cam.center,zoom:Math.min(PIN_ZOOM-0.5,Math.max(CLUSTER_ZOOM+0.5,cam.zoom)),duration:500}); };
     el.onclick=zoomIn; el.onkeydown=e=>{ if(e.key==='Enter') zoomIn(); };
     markers.push(new mapboxgl.Marker({element:el}).setLngLat(map.unproject([g.x,g.y])).addTo(map)); });
+}
+// events in the order they next happen; ones with no upcoming date go last
+function bySoonest(list){ const t=ev=>{ const d=nextDate(ev), h=hm(ev.t0); return d? +d+(h?(h[0]*60+h[1])*6e4:0) : Infinity; };
+  return list.slice().sort((a,b)=>t(a)-t(b)); }
+// one pin for a busy venue: the next event's color and icon, plus how many are happening there
+function venuePinEl(list){ const evs=bySoonest(list), ev=evs[0], n=evs.length, el=document.createElement('div');
+  const big=evs.some(e=>kindOf(e)==='cornerstone');
+  el.className='pin venue'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,15)+`<span class="cnt">${n>99?'99+':n}</span>`;
+  el.setAttribute('role','button'); el.setAttribute('aria-label',`${n} events at ${venueName(evs)}`); el.tabIndex=0;
+  el.onclick=e=>{ e.stopPropagation(); openVenue(evs); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openVenue(evs); }; return el; }
+// the venue's name when its events agree on one, else a plain fallback
+function venueName(list){ const v=list[0].venue; return v && list.every(e=>(e.venue||'').trim().toLowerCase()===v.trim().toLowerCase())? v : 'This spot'; }
+// venue sheet: everything happening at one spot, grouped by day; opening an event comes back here
+function openVenue(list){
+  const evs=bySoonest(list), name=venueName(evs), today=new Date(); today.setHours(0,0,0,0);
+  const dayOf=ev=>{ const d=nextDate(ev); if(!d) return ev.time? String(ev.time).split('·')[0].trim() : 'Coming up';
+    const diff=Math.round((d-today)/864e5); return diff===0?'Today':diff===1?'Tomorrow':d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); };
+  let rows='', last=null;
+  evs.forEach(ev=>{ const day=dayOf(ev), done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
+    if(day!==last){ rows+=`<div class="vday">${day}</div>`; last=day; }
+    const time=ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim();
+    rows+=`<button class="vrow" data-vev="${ev.id}">${catDot(ev.category,24)}<div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${[time,(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label,done?'Stamped':inn?'Saved':''].filter(Boolean).join(' · ')}</div></div></button>`; });
+  const ev=evs[0];
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
+    <div class="cat">${evs.length} events here</div>
+    <h2>${name}</h2>
+    ${name!=='This spot'?`<a class="evwhere" href="${directionsUrl(ev)}" target="_blank" rel="noopener">${ev.area||ev.hood||''} <span>· ${mins(ev.mi)} min away</span></a>`:''}
+    ${rows}`;
+  overlay.classList.add('on'); sheet.scrollTop=0;
+  document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  sheet.querySelectorAll('[data-vev]').forEach(b=>b.onclick=()=>openSheet(+b.dataset.vev,()=>openVenue(list),name==='This spot'?'All here':name));
 }
 // events shown as small dots: their group's color, tap one to open it
 function setDots(list){
@@ -1486,7 +1530,7 @@ function addToCalendar(ev){
 /* ---------- event sheet ---------- */
 const overlay=document.getElementById('overlay'), sheet=document.getElementById('sheet');
 const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
-function openSheet(id,back){   // back: optional, adds a "Top 4" button that returns to where you came from
+function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back button (labelled backLabel) that returns to where you came from
   const ev=events.find(e=>e.id===id); if(!ev) return; enrich();
   const inn=S.rsvp.includes(id), done=S.checked.includes(id);
   const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
@@ -1499,7 +1543,7 @@ function openSheet(id,back){   // back: optional, adds a "Top 4" button that ret
   const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
     : `<button class="btn primary" id="rsvpBtn">${needsRsvp(ev)?'RSVP':'Interested'}</button>`;
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?'<button class="sback" id="sheetBack" aria-label="Back to your Top 4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Top 4</button>':''}<div class="grab"></div>
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${backLabel==='Top 4'?'your Top 4':backLabel}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>${backLabel}</button>`:''}<div class="grab"></div>
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label} · ${ev.area||ev.hood}</div>
     <h2>${ev.verified? ev.title.replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : ev.title}</h2>
     <div class="evwhen">${ev.start?nextWhen(ev):(ev.time||'Soon')}</div>
