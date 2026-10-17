@@ -11,6 +11,10 @@ const RECURRENCE = ["One-off", "Daily", "Weekly", "Biweekly", "Monthly", "Season
 const PRICE_TYPE = ["Free", "Paid", "Donation / Pay-what-you-can"];
 const SETTING = ["Indoor", "Outdoor", "Both"];
 const AGE = ["All ages", "18+", "21+"];
+// The app's six categories; public.events maps anything else onto them, but asking for one keeps the detail in tags.
+const CATEGORY = [
+  "Food & Drink", "Arts & Entertainment", "Classes & Workshops", "Active & Outdoors", "Markets & Shopping", "Community & Social",
+];
 
 export interface ExtractedEvent {
   name: string;
@@ -49,7 +53,7 @@ const EVENT_SCHEMA = {
   properties: {
     name: text,
     description: text,
-    category: text,
+    category: oneOf(CATEGORY),
     tags: { type: "array", items: text },
     start_date: text,
     end_date: text,
@@ -94,6 +98,7 @@ Fill each field only from what the post (and any flyer image) actually says. Whe
 - Dates are YYYY-MM-DD and times are 24-hour HH:MM. Resolve "this Saturday" or "next Friday" against the date the post went up.
 - For a repeating event ("every Tuesday"), set recurrence and recurrence_detail, and start_date to the next occurrence on or after today.
 - Leave out events whose last date is before today.
+- category is the closest of the six: Food & Drink (tastings, supper clubs, food festivals), Arts & Entertainment (concerts, comedy, theater, film, galleries, DJ nights, dance), Classes & Workshops (classes, workshops, talks, readings), Active & Outdoors (run clubs, yoga, hikes, sports), Markets & Shopping (farmers, flea and makers markets, pop-up shops), Community & Social (meetups, trivia and game nights, family events, festivals, volunteering, civic). Put the specific kind ("comedy", "jazz", "book club") in tags.
 - confidence is 0 to 1: how sure you are this is a real, public, upcoming in-person event with the date right.
 - notes: one short line on anything you were unsure about or had to guess, or an empty string.`;
 
