@@ -1167,8 +1167,8 @@ function pinEl(ev,i){ const el=document.createElement('div'); const done=S.check
   el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
    Recomputed after every pan/zoom, so bubbles split apart as you zoom. At street level (zoom 15+) nothing
-   clusters; a few events sharing an address fan out in a small ring so each one can be tapped, and a busy venue
-   (VENUE_MIN or more) shows as one pin with a count that opens the venue's list. */
+   clusters; a busy address (VENUE_MIN or more events) shows as one venue pin with a count that opens its list,
+   and a few events sharing a spot fan out in a small ring so each one can be tapped. */
 let lastPins=[]; const CLUSTER_PX=44, FAN_PX=14, VENUE_MIN=4;
 function drawClusters(){
   if(!map) return; const you=markers.you; markers.forEach(m=>m.remove()); markers=[]; markers.you=you;
@@ -1176,18 +1176,20 @@ function drawClusters(){
   if(sel){ const el=pinEl(sel); el.classList.add('sel'); markers.push(new mapboxgl.Marker({element:el}).setLngLat([sel.lng,sel.lat]).addTo(map)); }
   const rest=sel? all.filter(e=>e!==sel) : all;
   if(z>=CLUSTER_ZOOM && z<PIN_ZOOM){ setDots(rest); return; }   // neighborhood: every event is a dot
-  const street=z>=PIN_ZOOM, radius=street? FAN_PX : CLUSTER_PX, groups=[];
-  rest.forEach(ev=>{ const pt=map.project([ev.lng,ev.lat]); const g=groups.find(g=>Math.hypot(g.x-pt.x,g.y-pt.y)<radius);
-    if(g){ g.list.push(ev); g.x=(g.x*(g.list.length-1)+pt.x)/g.list.length; g.y=(g.y*(g.list.length-1)+pt.y)/g.list.length; } else groups.push({x:pt.x,y:pt.y,list:[ev]}); });
-  if(street){
-    // street: full pins; a few events sharing a spot fan out in a small ring, a busy spot becomes one venue pin
+  // events closer than `radius` px on screen form one group
+  const near=(list,radius)=>{ const groups=[]; list.forEach(ev=>{ const pt=map.project([ev.lng,ev.lat]); const g=groups.find(g=>Math.hypot(g.x-pt.x,g.y-pt.y)<radius);
+    if(g){ g.list.push(ev); g.x=(g.x*(g.list.length-1)+pt.x)/g.list.length; g.y=(g.y*(g.list.length-1)+pt.y)/g.list.length; } else groups.push({x:pt.x,y:pt.y,list:[ev]}); }); return groups; };
+  if(z>=PIN_ZOOM){
+    // street: full pins; a busy address becomes one venue pin, a few events sharing a spot fan out in a small ring
     setDots([]);
-    groups.forEach(g=>{ const n=g.list.length, ring=n===1? 0 : 16+n*3;
-      if(n>=VENUE_MIN){ markers.push(new mapboxgl.Marker({element:venuePinEl(g.list)}).setLngLat(map.unproject([g.x,g.y])).addTo(map)); return; }
+    const venues=byAddress(rest).filter(l=>l.length>=VENUE_MIN), inVenue=new Set(venues.flat());
+    venues.forEach(l=>markers.push(new mapboxgl.Marker({element:venuePinEl(l)}).setLngLat([l[0].lng,l[0].lat]).addTo(map)));
+    near(rest.filter(ev=>!inVenue.has(ev)),FAN_PX).forEach(g=>{ const n=g.list.length, ring=n===1? 0 : 16+n*3;
       g.list.forEach((ev,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n;
         markers.push(new mapboxgl.Marker({element:pinEl(ev),offset:[Math.round(ring*Math.cos(a)),Math.round(ring*Math.sin(a))]}).setLngLat([ev.lng,ev.lat]).addTo(map)); }); });
     return; }
   // city: nearby events merge into cream bubbles; an event on its own stays a dot
+  const groups=near(rest,CLUSTER_PX);
   setDots(groups.filter(g=>g.list.length===1).map(g=>g.list[0]));
   groups.filter(g=>g.list.length>1).forEach(g=>{
     const n=g.list.length;
@@ -1209,27 +1211,44 @@ function venuePinEl(list){ const evs=bySoonest(list), ev=evs[0], n=evs.length, e
   el.className='pin venue'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,15)+`<span class="cnt">${n>99?'99+':n}</span>`;
   el.setAttribute('role','button'); el.setAttribute('aria-label',`${n} events at ${venueName(evs)}`); el.tabIndex=0;
   el.onclick=e=>{ e.stopPropagation(); openVenue(evs); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openVenue(evs); }; return el; }
-// the venue's name when its events agree on one, else a plain fallback
-function venueName(list){ const v=list[0].venue; return v && list.every(e=>(e.venue||'').trim().toLowerCase()===v.trim().toLowerCase())? v : 'This spot'; }
+// the street line of an event's address ("1822 W Sunset Blvd"), or '' when it has none
+function streetOf(ev){ return String(ev.address||'').split(',').map(x=>x.trim()).find(x=>/^\d/.test(x))||''; }
+// events grouped by street address, so "1410 W. Temple Street" and "1410 W Temple St" match; the same street line
+// far apart (another city's Main St) stays separate. Events with no street address are left out.
+function byAddress(list){
+  const ab={street:'st',avenue:'ave',boulevard:'blvd',drive:'dr',road:'rd',place:'pl',west:'w',east:'e',north:'n',south:'s'};
+  const key=ev=>streetOf(ev).toLowerCase().replace(/[.,#]/g,'').replace(/\b(street|avenue|boulevard|drive|road|place|west|east|north|south)\b/g,w=>ab[w]).replace(/\s+/g,' ');
+  const groups=new Map();
+  list.forEach(ev=>{ const k=key(ev); if(!k) return; const gs=groups.get(k)||[]; groups.set(k,gs);
+    const g=gs.find(g=>metersBetween(g[0],ev)<300); g? g.push(ev) : gs.push([ev]); });
+  return [...groups.values()].flat();
+}
+// the venue's name: the one its events use most, both when two venues share a building (The Echo & Echoplex),
+// else its street address
+function venueName(list){
+  const c=new Map(); list.forEach(e=>{ const v=String(e.venue||'').trim(); if(!v) return; const o=c.get(v.toLowerCase())||{v,n:0}; o.n++; c.set(v.toLowerCase(),o); });
+  const names=[...c.values()].sort((a,b)=>b.n-a.n).map(o=>o.v);
+  return names.length===2? names.join(' & ') : names[0]||streetOf(list[0])||'This spot';
+}
 // venue sheet: everything happening at one spot, grouped by day; opening an event comes back here
 function openVenue(list){
   const evs=bySoonest(list), name=venueName(evs), today=new Date(); today.setHours(0,0,0,0);
+  const mixed=new Set(evs.map(e=>String(e.venue||'').trim().toLowerCase())).size>1;   // two venues in one building: say which
   const dayOf=ev=>{ const d=nextDate(ev); if(!d) return ev.time? String(ev.time).split('·')[0].trim() : 'Coming up';
     const diff=Math.round((d-today)/864e5); return diff===0?'Today':diff===1?'Tomorrow':d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); };
   let rows='', last=null;
   evs.forEach(ev=>{ const day=dayOf(ev), done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
     if(day!==last){ rows+=`<div class="vday">${day}</div>`; last=day; }
-    const time=ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim();
-    rows+=`<button class="vrow" data-vev="${ev.id}">${catDot(ev.category,24)}<div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${[time,(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label,done?'Stamped':inn?'Saved':''].filter(Boolean).join(' · ')}</div></div></button>`; });
+    rows+=`<button class="vrow" data-vev="${ev.id}">${catDot(ev.category,24)}<div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${[ev.t0?fmtTime(ev.t0):'',mixed?ev.venue:'',(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label,done?'Stamped':inn?'Saved':''].filter(Boolean).join(' · ')}</div></div></button>`; });
   const ev=evs[0];
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
     <div class="cat">${evs.length} events here</div>
     <h2>${name}</h2>
-    ${name!=='This spot'?`<a class="evwhere" href="${directionsUrl(ev)}" target="_blank" rel="noopener">${ev.area||ev.hood||''} <span>· ${mins(ev.mi)} min away</span></a>`:''}
+    <a class="evwhere" href="${directionsUrl(ev)}" target="_blank" rel="noopener">${streetOf(ev)||ev.area||ev.hood||''} <span>· ${mins(ev.mi)} min away</span></a>
     ${rows}`;
   overlay.classList.add('on'); sheet.scrollTop=0;
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
-  sheet.querySelectorAll('[data-vev]').forEach(b=>b.onclick=()=>openSheet(+b.dataset.vev,()=>openVenue(list),name==='This spot'?'All here':name));
+  sheet.querySelectorAll('[data-vev]').forEach(b=>b.onclick=()=>openSheet(+b.dataset.vev,()=>openVenue(list),name));
 }
 // events shown as small dots: their group's color, tap one to open it
 function setDots(list){
