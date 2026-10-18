@@ -202,7 +202,7 @@ img{ max-width:100% }
 .maphelp{ position:absolute; left:10px; top:10px; z-index:5; width:34px; height:34px; border-radius:50%; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.12); font-family:var(--display); font-weight:900; font-size:19px; color:var(--green) }
 #homeScreen:not(.home-list) .maphelp{ top:auto; bottom:calc(var(--navh) + 72px) }
 .home-list .maphelp{ display:none }
-.maplocate{ position:absolute; left:54px; bottom:calc(var(--navh) + 67px); z-index:5; width:44px; height:44px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
+.maplocate{ position:absolute; left:54px; bottom:calc(var(--navh) + 72px); z-index:5; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
 .maplocate:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
 .maplocate:disabled{ cursor:wait; opacity:.65 }
 .maplocate[aria-busy="true"] svg{ animation:locating 1.2s linear infinite }
@@ -509,7 +509,7 @@ img{ max-width:100% }
         <div id="map"></div>
         <div class="toggle"><button class="on" id="tMap">Map</button><button id="tList">List</button></div>
         <button class="maphelp" id="mapHelp" aria-label="How to read the map">?</button>
-        <button class="maplocate" id="mapLocate" type="button" aria-label="Center map on my location" title="Center on my location" aria-busy="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>
+        <button class="maplocate" id="mapLocate" type="button" aria-label="Center map on my location" title="Center on my location" aria-busy="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>
         <div class="maplabel" id="mapNote"></div>
       </div>
       <div class="picks" id="picks"></div>
