@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 74 350 396" width="350" height="396">
+  <defs>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.28  0 0 0 0 0.2  0 0 0 0.16 0" result="g"/>
+      <feComposite in="g" in2="SourceGraphic" operator="in" result="gc"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="gc"/></feMerge>
+    </filter>
+    <clipPath id="roofClip"><path d="M172 150 L262 140 L186 236 L86 246 Z"/></clipPath>
+  </defs>
+
+  <g stroke="#2B2620" stroke-linejoin="round" stroke-linecap="round" filter="url(#grain)">
+    <!-- ground shadow -->
+    <ellipse cx="215" cy="446" rx="130" ry="16" fill="#C7CCB2" stroke="none"/>
+
+    <!-- legs -->
+    <path d="M178 352 C170 385 160 405 150 425" fill="none" stroke-width="14"/>
+    <path d="M250 348 C262 378 275 395 290 412" fill="none" stroke-width="14"/>
+
+    <!-- back shoe (left) -->
+    <path d="M118 432 C118 412 140 410 160 418 C176 424 182 438 176 446 C164 452 128 452 118 446 Z" fill="#F3EBDD" stroke-width="5"/>
+    <path d="M120 440 C140 446 162 446 177 442" fill="none" stroke-width="4"/>
+    <path d="M138 416 C146 412 158 414 164 420 L156 426 C150 422 144 421 138 422 Z" fill="#9DB5A0" stroke-width="3.5"/>
+    <!-- front shoe (right) -->
+    <path d="M272 420 C276 400 300 396 318 404 C336 412 338 430 330 438 C314 446 284 444 274 436 Z" fill="#F3EBDD" stroke-width="5"/>
+    <path d="M276 430 C296 438 318 438 332 432" fill="none" stroke-width="4"/>
+    <path d="M296 401 C306 397 318 400 324 408 L316 414 C310 409 302 407 294 409 Z" fill="#9DB5A0" stroke-width="3.5"/>
+
+    <!-- back arm + fist (left) -->
+    <path d="M118 290 C92 288 84 304 92 322" fill="none" stroke-width="14"/>
+    <path d="M70 330 C66 314 82 306 96 310 C110 306 122 316 118 330 C122 344 108 356 92 352 C76 356 66 344 70 330 Z" fill="#FBF6EA" stroke-width="5"/>
+    <path d="M80 322 C88 326 96 326 104 322 M82 336 C90 340 98 340 106 336" fill="none" stroke-width="3"/>
+
+    <!-- side wall -->
+    <path d="M100 242 L190 232 L198 362 L112 368 Z" fill="#DDCAA9" stroke-width="5.5"/>
+    <!-- little brick detail -->
+    <g fill="#CDB794" stroke-width="2.5">
+      <rect x="150" y="318" width="16" height="9" rx="1.5"/>
+      <rect x="160" y="330" width="16" height="9" rx="1.5"/>
+      <rect x="166" y="342" width="16" height="9" rx="1.5"/>
+    </g>
+
+    <!-- front gable wall -->
+    <path d="M190 232 L262 142 L318 222 L322 352 L198 362 Z" fill="#EEDFC6" stroke-width="5.5"/>
+
+    <!-- chimney -->
+    <path d="M136 168 L136 112 L166 108 L166 160 Z" fill="#E7D6B8" stroke-width="5"/>
+    <path d="M130 114 L130 102 L172 98 L172 110 Z" fill="#D9826A" stroke-width="4.5"/>
+
+    <!-- roof plane -->
+    <path d="M172 150 L262 140 L186 236 L86 246 Z" fill="#D9826A" stroke-width="5.5"/>
+    <g clip-path="url(#roofClip)" fill="none" stroke="#9E4E3B" stroke-width="3.5">
+      <path d="M150 178 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0"/>
+      <path d="M126 204 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0"/>
+      <path d="M100 230 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0"/>
+      <path d="M175 152 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0 q9 12 18 0"/>
+    </g>
+    <!-- eave edge -->
+    <path d="M86 246 L186 236 L186 244 L86 254 Z" fill="#B8614B" stroke-width="4.5"/>
+    <!-- front bargeboard -->
+    <path d="M178 238 L262 132 L330 226 L318 232 L262 154 L190 244 Z" fill="#D9826A" stroke-width="5"/>
+    <path d="M268 146 L322 224" fill="none" stroke="#9E4E3B" stroke-width="2.5"/>
+
+    <!-- waving arm + hand (right) -->
+    <path d="M318 292 C340 290 348 272 344 248" fill="none" stroke-width="14"/>
+    <path d="M328 254 C318 238 322 222 330 218 C332 204 340 196 346 204 C350 194 360 194 362 204 C368 198 378 202 374 214 C384 214 386 224 378 234 C376 250 364 260 348 260 Z" fill="#FBF6EA" stroke-width="5"/>
+    <path d="M346 206 L350 228 M362 206 L362 228 M373 216 L370 234" fill="none" stroke-width="3"/>
+    <path d="M326 252 C334 262 346 266 356 262" fill="none" stroke-width="4"/>
+
+    <!-- face: brows -->
+    <path d="M226 236 C232 228 242 227 248 231" fill="none" stroke-width="4"/>
+    <path d="M268 232 C274 226 284 228 288 234" fill="none" stroke-width="4"/>
+    <!-- eyes -->
+    <ellipse cx="240" cy="270" rx="17" ry="25" fill="#FBF6EA" stroke-width="4.5"/>
+    <ellipse cx="278" cy="268" rx="16" ry="24" fill="#FBF6EA" stroke-width="4.5"/>
+    <ellipse cx="244" cy="276" rx="11" ry="17" fill="#2B2620" stroke="none"/>
+    <ellipse cx="282" cy="274" rx="10.5" ry="16.5" fill="#2B2620" stroke="none"/>
+    <path d="M244 276 L235 263 A11 17 0 0 1 247 260 Z" fill="#FBF6EA" stroke="none"/>
+    <path d="M282 274 L273 261 A10.5 16.5 0 0 1 285 258 Z" fill="#FBF6EA" stroke="none"/>
+    <!-- mouth -->
+    <path d="M232 304 C242 312 278 312 292 300 C290 322 276 336 262 336 C246 336 234 322 232 304 Z" fill="#3A2A22" stroke-width="4.5"/>
+    <path d="M246 326 C252 318 266 316 278 322 C272 332 256 336 246 326 Z" fill="#E08C78" stroke="none"/>
+    <path d="M228 300 C230 304 234 306 236 306 M288 296 C290 300 294 302 296 302" fill="none" stroke-width="3"/>
+  </g>
+</svg>
