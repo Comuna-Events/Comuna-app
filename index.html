@@ -542,8 +542,8 @@ img{ max-width:100% }
       <div class="scroll">
         <div class="passcover">
           <div class="k" id="passName">Los Angeles</div>
-          <div class="big" id="passCount">0 places,
-0 neighborhoods,
+          <div class="big" id="passCount">0 places
+0 neighborhoods
 0 cities</div>
           <div class="bar"><i id="passBar" style="width:37%"></i></div>
           <div class="passstats"><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
@@ -1897,7 +1897,7 @@ let passTab='places';
 function renderPassport(){
   const places=S.places, H=visitedNbhds(), Cy=visitedCities();
   const nP=Object.keys(places).length, nH=Object.keys(H).length, nC=Object.keys(Cy).length;
-  document.getElementById('passCount').textContent=`${nP} place${nP===1?'':'s'},\n${nH} neighborhood${nH===1?'':'s'},\n${nC} cit${nC===1?'y':'ies'}`;
+  document.getElementById('passCount').textContent=`${nP} place${nP===1?'':'s'}\n${nH} neighborhood${nH===1?'':'s'}\n${nC} cit${nC===1?'y':'ies'}`;
   fitLine(document.getElementById('passCount'));
   document.getElementById('passBar').style.width=Math.min(100,(nH+nC)/(NBHDS.length+CITIES.length)*100)+'%';
   document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
