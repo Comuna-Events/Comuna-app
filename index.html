@@ -1062,11 +1062,12 @@ const myCats=()=>Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].
 const catOK=(ev,c)=> c==='All' || (c==='mine'? myCats().includes(ev.category) : ev.category===c);
 let filter=myCats().length?'mine':'All', when='week', tier='any';
 // time filter: next occurrence falls today / within 7 days / within 30 days (rolling windows)
-const WHEN=[['any','Anytime'],['tonight','Tonight'],['week','This week'],['month','This month']];
+const WHEN=[['any','Anytime'],['tonight','Today'],['week','This week'],['month','This month']];
 function inWindow(ev){
+  const d=ev.start? nextDate(ev) : null;
+  if(!d) return !ev.start && when==='any';
   if(when==='any') return true;
-  const d=ev.start? nextDate(ev) : null; if(!d) return false;
-  const today=new Date(); today.setHours(0,0,0,0); const days=Math.round((d-today)/864e5);
+  const today=eventNow(); today.setHours(0,0,0,0); const days=Math.max(0,Math.round((d-today)/864e5));
   return days>=0 && days < ({tonight:1,week:7,month:30})[when];
 }
 function enrich(){ const o=origin(); events.forEach(ev=>{ ev.mi=miles(o,ev); ev.hood=hoodOf(ev).name; }); }
@@ -1143,6 +1144,7 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
     + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
       : eventsState==='error'? `<button class="pick" id="retryEvents" style="grid-template-columns:1fr"><div><div class="t">Couldn't load events</div><div class="m2" style="display:block">Check your connection, then tap to try again</div></div></button>`
       : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches these filters</div><div class="m2" style="display:block">Try Anytime or Everything</div></div></div>`);
+  if(selId!==null && !P.some(ev=>ev.id===selId)) selId=null;
   const first=P[0]; document.getElementById('mapNote').textContent = first ? (first.live? `${first.title.split(' ').slice(0,2).join(' ')}: ${first.startsIn}` : '') : '';
   placePins(P);
 }
@@ -1580,23 +1582,47 @@ async function loadSubmissions(){
 
 /* ---------- event details: next date, badges, directions, calendar ---------- */
 function hm(v){ const m=String(v||'').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/); if(!m) return null; let h=+m[1]; if(m[3]){ const pm=/p/i.test(m[3]); h=h%12+(pm?12:0); } return [h,+m[2]]; }
-// next date this event happens (today or later), from its start date + recurrence
-function nextDate(ev){
-  const d0=ev.start; if(!d0) return null; const today=new Date(); today.setHours(0,0,0,0);
-  const rec=(ev.rec||'').toLowerCase(), step=/biweekly/.test(rec)?14 : /weekly/.test(rec)?7 : /daily/.test(rec)?1 : 0;
-  if(d0>=today) return d0;
-  if(/seasonal/.test(rec)) return (!ev.end||ev.end>=today)? today : null;
-  if(/monthly/.test(rec)){   // same "nth weekday" each month (e.g. first Friday), counted from the start date
-    const nth=Math.ceil(d0.getDate()/7), wd=d0.getDay();
-    for(let k=1;k<=13;k++){ const m=new Date(d0.getFullYear(),d0.getMonth()+k,1); m.setDate(1+((wd-m.getDay()+7)%7)+(nth-1)*7);
-      if(m.getMonth()!==(d0.getMonth()+k)%12) continue; if(m>=today) return (ev.end && m>ev.end)? null : m; }
-    return null; }
-  if(!step) return null;
-  const n=new Date(d0); while(n<today) n.setDate(n.getDate()+step); return (ev.end && n>ev.end)? null : n;
+// Event schedules are Los Angeles wall-clock times, even when browsing elsewhere.
+const EVENT_CLOCK=new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric',hourCycle:'h23'});
+function eventNow(){
+  const parts=Object.fromEntries(EVENT_CLOCK.formatToParts(new Date()).map(p=>[p.type,p.value]));
+  return new Date(+parts.year,+parts.month-1,+parts.day,+parts.hour,+parts.minute,+parts.second);
+}
+function occurrenceEnd(ev,day){
+  const endTime=hm(ev.t1); if(!endTime) return null; // no invented closing time
+  const end=new Date(day); end.setHours(endTime[0],endTime[1],0,0);
+  const startTime=hm(ev.t0);
+  if(startTime && endTime[0]*60+endTime[1]<=startTime[0]*60+startTime[1]) end.setDate(end.getDate()+1);
+  return end;
+}
+// Next unfinished occurrence; a recurring event advances after today's closing time.
+// This changes discovery only: occursOn still retains past dates for Plans/history.
+function nextDate(ev,now=eventNow()){
+  if(!ev.start) return null;
+  const today=new Date(now); today.setHours(0,0,0,0);
+  const yesterday=new Date(today); yesterday.setDate(yesterday.getDate()-1);
+  const startTime=hm(ev.t0), endTime=hm(ev.t1);
+  const overnight=startTime && endTime && endTime[0]*60+endTime[1]<=startTime[0]*60+startTime[1];
+  const lastOvernight=new Date(ev.start); lastOvernight.setDate(lastOvernight.getDate()+1);
+  const singleOvernight=overnight && /one-off/i.test(ev.rec||'') && (!ev.end || ev.end<=lastOvernight);
+  if(overnight && (!singleOvernight || +yesterday===+ev.start) && occursOn(ev,yesterday) && occurrenceEnd(ev,yesterday)>now) return yesterday;
+  if(singleOvernight && ev.start<today) return null;
+  if(ev.end && ev.end<today) return null;
+  if(!/daily|weekly|monthly|seasonal/.test((ev.rec||'').toLowerCase()) && !ev.end && ev.start<today) return null;
+  const day=new Date(ev.start>today?ev.start:today);
+  for(let i=0;i<367;i++,day.setDate(day.getDate()+1)){
+    if(ev.end && day>ev.end) return null;
+    if(!occursOn(ev,day)) continue;
+    const end=occurrenceEnd(ev,day);
+    if(!end || end>now) return new Date(day);
+    if(!ev.end && !/daily|weekly|monthly|seasonal/.test((ev.rec||'').toLowerCase())) return null;
+  }
+  return null;
 }
 function nextWhen(ev){
   const d=nextDate(ev); if(!d) return ev.time||'Soon';
-  const today=new Date(); today.setHours(0,0,0,0); const diff=Math.round((d-today)/864e5);
+  const today=eventNow(); today.setHours(0,0,0,0); const diff=Math.round((d-today)/864e5);
+  if(diff<0) return 'Happening now';
   const day=diff===0?'Today':diff===1?'Tomorrow':d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   return [day,fmtTime(ev.t0)].filter(Boolean).join(' · ');
 }
@@ -1790,7 +1816,7 @@ async function loadLeaderboard(){
 /* ---------- plans ---------- */
 const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const ymd=d=>`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
-const today0=()=>{ const d=new Date(); d.setHours(0,0,0,0); return d; };
+const today0=()=>{ const d=eventNow(); d.setHours(0,0,0,0); return d; };
 let calSel=today0(), calView=new Date(calSel.getFullYear(),calSel.getMonth(),1);
 // Fallback for events with no start date: the weekday at the start of their time text ("Tue · 8:00 PM"), next one from today.
 function evDate(ev){ const w=WD.indexOf(String(ev.time||'').slice(0,3)); if(w<0) return null; const d=today0(); d.setDate(d.getDate()+((w-d.getDay()+7)%7)); return d; }
@@ -1831,9 +1857,9 @@ function renderPlans(){
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
   const card=ev=>{ const inn=S.rsvp.includes(ev.id), done=S.checked.includes(ev.id);
     return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${ev.title}${vCheck(ev,14)}</div><div class="u">${[ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · ')}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!done?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">${needsRsvp(ev)?'Cancel RSVP':'Remove from Plans'}</button>`:''}</div>`; };
-  const mineL=dayEvs.filter(ev=>S.rsvp.includes(ev.id)), also=dayEvs.filter(ev=>!S.rsvp.includes(ev.id)).sort((a,b)=>(a.mi??99)-(b.mi??99));
+  const mineL=dayEvs.filter(ev=>S.rsvp.includes(ev.id)), also=dayEvs.filter(ev=>!S.rsvp.includes(ev.id) && (!isT || (nextDate(ev) && nextDate(ev)<=t))).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
-    : `<div class="empty"><span class="hand">free ${isT?'tonight':'that day'}?</span>Nothing saved for this day yet. Tap "Interested" on an event and it lands here.</div>`;
+    : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "Interested" on an event and it lands here.</div>`;
   document.getElementById('alsoHead').textContent=`Also happening ${isT?'today':calSel.toLocaleString('en-US',{weekday:'long'})}`;
   document.getElementById('alsoHead').hidden=!also.length;
   document.getElementById('alsoList').innerHTML=also.slice(0,15).map(card).join('');
@@ -2117,11 +2143,9 @@ async function loadEvents(){
   try{
     const { data, error } = await sb.from('events').select(EVENT_COLS).not('street_address','is',null).order('event_id');
     if(error) throw error;
-    const today=new Date(); today.setHours(0,0,0,0);
     let rows=data
       .filter(r=>r.name && String(r.street_address).trim())                     // no address yet → not shown
-      .filter(r=>!/cancel|past|archiv/i.test(r.status||''))                    // everything else shows, verified or not
-      .filter(r=>{ if(!/one-off|seasonal/i.test(r.recurrence||'')) return true; const end=parseDay(r.end_date)||parseDay(r.start_date); return !end || end>=today; });
+      .filter(r=>!/cancel|past|archiv/i.test(r.status||''));                   // retain dates for saved Plans; discovery filters finished occurrences
     await mapLimit(rows.filter(r=>r.lat==null||r.lng==null),6,async r=>{ const c=await geocode([r.street_address,r.city||'Los Angeles',r.zip,'CA'].filter(Boolean).join(', '),r.venue); if(c){ r.lng=c[0]; r.lat=c[1]; } });
     rows=rows.filter(r=>r.lat!=null && r.lng!=null);
     if(!rows.length) throw new Error('no events with a map location');
@@ -2180,6 +2204,15 @@ async function refreshLoc(){
   },()=>{}, {timeout:10000, maximumAge:5*6e4});
 }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') refreshLoc(); });
+
+// Keep time-sensitive discovery current while the app stays open or resumes.
+function refreshEventVisibility(){
+  if(document.visibilityState==='hidden') return;
+  if(current==='home'){ renderHome(); if(userMoved) cardsForView(); }
+  if(current==='plans') renderPlans();
+}
+setInterval(refreshEventVisibility,60000);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') refreshEventVisibility(); });
 
 /* ---------- boot ---------- */
 function boot(){
