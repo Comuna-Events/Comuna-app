@@ -726,6 +726,8 @@ function load(){ try{ const r=localStorage.getItem('comuna_v3'); S = r? Object.a
   S.nb=HOOD_RENAMED[S.nb]||S.nb; }
 function save(){ try{ localStorage.setItem('comuna_v3', JSON.stringify(S)); }catch(e){} }
 load();
+// This flag controls navigation only; Supabase still authenticates account access.
+if(S.signedUp) S.onboardingComplete=true;
 // older builds saved a sample passport (18 check-ins, 4 wk streak, 1,240 points) for people who hadn't signed up yet
 if(!S.signedUp) Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[] });
 
@@ -951,7 +953,7 @@ async function finishAuth(){
     S.name=p.name; S.points=p.points||0; if(p.neighborhood) S.nb=hoodByName(p.neighborhood).name;
     S.loc=(p.lat!=null && p.lng!=null)? {lat:p.lat,lng:p.lng} : null;
     S.interests=fixInterests(p.interests);
-    S.signedUp=true; S.kitSeen=true; S.joined=S.joined||new Date().toISOString().slice(0,10); save();
+    S.onboardingComplete=true; S.signedUp=true; S.kitSeen=true; S.joined=S.joined||new Date().toISOString().slice(0,10); save();
     rebuildMap(); renderNames(); flushFeedback();
     history=[]; filter=myCats().length?'mine':'All'; go('home');
     toast(again? 'You already have an account, so we signed you in. Welcome back!' : 'Welcome back, '+shortName());
@@ -960,7 +962,7 @@ async function finishAuth(){
   if(authMode==='signin'){ authMode='signup'; toast('Let\'s set up your passport'); history=[]; go('onb2'); return; }
   // real users start with an empty passport (the demo profile is only for showing the app before sign-up)
   freshPassport();
-  S.signedUp=true; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=new Date().toISOString().slice(0,10); save(); renderNames(); dbProfile(); flushFeedback();
+  S.onboardingComplete=true; S.signedUp=true; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=new Date().toISOString().slice(0,10); save(); renderNames(); dbProfile(); flushFeedback();
   history=[]; S.kitSeen=false; save(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
 }
 // back to a signed-out, empty passport (sign out, demo reset, or an account from before email sign-in)
@@ -971,7 +973,7 @@ async function signOutLocal(){
 document.getElementById('signOut').onclick=async()=>{
   if(!S.signedUp) return go('onb1');
   if(!confirm('Sign out of Comuna? Your passport stays with your account, so you can sign back in any time.')) return;
-  await signOutLocal(); renderNames(); history=[]; current=''; go('onb1',false); toast('Signed out');
+  await signOutLocal(); renderNames(); history=[]; current=''; openAuth('signin'); history=[]; toast('Signed out');
 };
 function shortName(){ const p=(S.name||'').split(' ').filter(Boolean); return p.length? p[0]+(p[1]?` ${p[p.length-1][0].toUpperCase()}.`:'') : 'You'; }
 function renderNames(){ const n=shortName(); document.getElementById('passName').textContent=`${n} · Los Angeles`; document.getElementById('pfName').textContent=n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
@@ -1936,7 +1938,7 @@ dragRow(document.getElementById('alsoList'),'.dayev');
 
 /* ---------- Supabase ---------- */
 // Every write also lives in local storage first, so the app keeps working offline or if Supabase is down.
-const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true}}) : null;
 // status line in the dev panel (🛠) so a phone test shows whether saves reach Supabase
 function dbStatus(msg,bad){ const el=document.getElementById('dbStatus'); if(el) el.textContent='Database: '+msg;
   const pf=document.getElementById('dbStatusPf'); if(pf) pf.textContent=msg; if(bad) toast('Sync problem: '+msg); }
@@ -1951,11 +1953,14 @@ async function dbUser(){
 // on launch: accounts from before email sign-in (anonymous) or removed on the server start over with an email sign-up
 async function checkAccount(){
   if(!sb || !S.signedUp) return;
-  const { data:{ session }, error } = await sb.auth.getSession(); if(error) return;   // offline: try again next launch
-  let ok=!!session && !session.user.is_anonymous;
-  if(ok){ const r=await sb.auth.getUser(); if(r.error && r.error.status>=400 && r.error.status<500) ok=false; }
-  if(ok){ authed=session.user; if(!S.email){ S.email=session.user.email||''; save(); renderNames(); } dbProfile(); return; }
-  await signOutLocal(); renderNames(); toast('Comuna now uses email sign-in. Tap Get started to set up your passport.');
+  try{
+    const { data:{ session }, error } = await sb.auth.getSession(); if(error) return;   // offline: keep the saved UI, retry next launch
+    let ok=!!session && !session.user.is_anonymous;
+    if(ok){ const r=await sb.auth.getUser(); if(r.error && [400,401,403,404].includes(r.error.status)) ok=false; }
+    if(ok){ authed=session.user; if(!S.email){ S.email=session.user.email||''; save(); renderNames(); } dbProfile(); return; }
+    await signOutLocal(); renderNames(); history=[]; openAuth('signin'); history=[];
+    toast('Please sign in again to reconnect your account.');
+  }catch(error){ console.warn('Session restore unavailable; keeping saved app state',error); }
 }
 async function dbProfile(){
   const u=await dbUser(); if(!u) return;
@@ -2167,7 +2172,11 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 /* ---------- boot ---------- */
 function boot(){
   ['asideMark','onbMark','homeMark'].forEach(id=>wordmark(document.getElementById(id)));
-  buildOnb(); updateDot(); current=''; go('onb1',false); history=[];
+  buildOnb(); updateDot(); renderNames(); current='';
+  if(S.signedUp){ save(); go('home',false); }
+  else if(S.onboardingComplete) openAuth('signin');
+  else go('onb1',false);
+  history=[];
   tryMapbox(); loadEvents();
   checkAccount().then(flushFeedback);   // returning user: keep the profile in sync
   refreshLoc();
