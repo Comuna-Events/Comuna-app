@@ -316,8 +316,10 @@ img{ max-width:100% }
 .calgrid .day.mine.sel span{ box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--red) }
 .dayhead{ font-size:19px; font-weight:700; margin:18px 0 4px }
 .dayhead span{ color:var(--muted); font-weight:500 }
-.dayev{ display:flex; gap:12px; align-items:center; background:var(--card); border-radius:16px; padding:12px; margin-top:10px; width:100%; text-align:left }
+.dayev{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; background:var(--card); border-radius:16px; padding:12px; margin-top:10px; width:100%; text-align:left }
 .dayev .x{ flex:1; min-width:0 }
+.cancel-rsvp{ flex:0 0 100%; min-height:36px; border-top:1px solid var(--line); padding:10px 0 0; text-align:left; font:inherit; font-size:12.5px; font-weight:700; color:var(--red) }
+.cancel-rsvp:disabled{ opacity:.6; cursor:wait }
 /* "Also happening": one row of cards you swipe sideways, edge to edge */
 .alsorow{ display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; margin:0 -20px; padding:10px 20px 4px; scroll-padding:0 20px; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x pan-y; cursor:grab; -webkit-overflow-scrolling:touch }
 .alsorow::-webkit-scrollbar{ display:none }
@@ -1814,7 +1816,7 @@ function renderPlans(){
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
   const card=ev=>{ const inn=S.rsvp.includes(ev.id), done=S.checked.includes(ev.id);
-    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${ev.title}${vCheck(ev,14)}</div><div class="u">${[ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · ')}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}</div>`; };
+    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${ev.title}${vCheck(ev,14)}</div><div class="u">${[ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · ')}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!done?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">${needsRsvp(ev)?'Cancel RSVP':'Remove from Plans'}</button>`:''}</div>`; };
   const mineL=dayEvs.filter(ev=>S.rsvp.includes(ev.id)), also=dayEvs.filter(ev=>!S.rsvp.includes(ev.id)).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
     : `<div class="empty"><span class="hand">free ${isT?'tonight':'that day'}?</span>Nothing saved for this day yet. Tap "Interested" on an event and it lands here.</div>`;
@@ -1824,8 +1826,25 @@ function renderPlans(){
   // real invites will come from friends on Comuna; nothing to show until then
   document.getElementById('inviteList').innerHTML=`<div class="empty">No invites yet. When a friend invites you to something, it shows up here.</div>`;
 }
-document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open); const s=e.target.closest('[data-share]'); if(s) shareEv(events.find(x=>x.id===+s.dataset.share)); });
+document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open); const s=e.target.closest('[data-share]'); if(s) shareEv(events.find(x=>x.id===+s.dataset.share)); });
 
+// Cancels only the Comuna plan; external tickets/registrations stay with the host.
+async function cancelPlan(id,button){
+  const ev=events.find(e=>e.id===id);
+  if(!ev || !S.rsvp.includes(id) || S.checked.includes(id) || button.disabled) return;
+  const label=button.textContent; button.disabled=true; button.textContent='Removing…';
+  try{
+    if(S.signedUp){
+      const u=await dbUser(); if(!u || !sb) throw new Error('Sign in or reconnect to cancel your RSVP.');
+      const {error}=await sb.from('rsvps').delete().eq('user_id',u.id).eq('event_id',eidOf(ev)).select('event_id');
+      if(error) throw error;
+    }
+    S.rsvp=S.rsvp.filter(saved=>saved!==id); save();
+    renderPlans(); renderHome(); if(S.signedUp) loadGoing();
+    toast(needsRsvp(ev)?'RSVP removed from Comuna Plans. Cancel any host registration or tickets separately.':'Removed from your Plans.');
+  }catch(error){ console.warn('RSVP cancellation failed',error); toast('Could not remove this plan. Check your connection and sign-in, then try again.'); }
+  finally{ button.disabled=false; button.textContent=label; }
+}
 document.getElementById('calPrev').onclick=()=>{ calView=new Date(calView.getFullYear(),calView.getMonth()-1,1); renderPlans(); };
 document.getElementById('calNext').onclick=()=>{ calView=new Date(calView.getFullYear(),calView.getMonth()+1,1); renderPlans(); };
 document.getElementById('calToday').onclick=()=>{ calSel=today0(); calView=new Date(calSel.getFullYear(),calSel.getMonth(),1); renderPlans(); };
