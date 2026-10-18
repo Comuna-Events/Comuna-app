@@ -1614,13 +1614,14 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
   const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
   const link=(()=>{ const u=(ev.ticket&&!isRoundup(ev.ticket))?ev.ticket:(ev.source&&!isRoundup(ev.source))?ev.source:(ev.ticket||ev.source);
     if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the RSVP button already opens it
-    return `<a class="evlink" href="${u}" target="_blank" rel="noopener noreferrer">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
+    return `<a class="evlink" href="${u}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
   const showHost=ev.host && ev.host!==ev.venue;
   const meta=[showHost?`Hosted by ${ev.host}`:'', ev.going?`${ev.going} interested on Comuna`:'', link].filter(Boolean).join(' · ');
   const icon=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
-    : `<button class="btn primary" id="rsvpBtn">${needsRsvp(ev)?'RSVP':'Interested'}</button>`;
+    : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${okRsvpLink(ev)}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
+    : `<button class="btn primary" id="rsvpBtn">Interested</button>`;
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${backLabel==='Top 4'?'your Top 4':backLabel}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>${backLabel}</button>`:''}<div class="grab"></div>
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${ev.area||ev.hood}</div>
     <h2>${ev.verified? ev.title.replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : ev.title}</h2>
@@ -1644,7 +1645,7 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
-  const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); if(needsRsvp(ev)) window.open(okRsvpLink(ev),'_blank','noopener'); S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
+  const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
     const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; toast(v.msg); return; } checkIn(ev,v.dist); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
