@@ -186,10 +186,12 @@ img{ max-width:100% }
 .pick .when{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--red); text-transform:uppercase }
 .pick .t{ font-weight:700; font-size:15px; margin:2px 0 1px; line-height:1.2 }
 .pick .m{ font-size:12.5px; color:var(--muted) }
-/* long sheet text (recurrence notes, venue names) stays on fixed lines so cards keep one height */
+/* Compact previews stay bounded; list cards expand for readable titles and venues. */
 .pick > div{ min-width:0 }
 .pick .when, .pick .m{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .pick .t{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.home-list .pick .t{ display:block; -webkit-line-clamp:unset; overflow:visible; overflow-wrap:anywhere }
+.home-list .pick .m{ white-space:normal; overflow:visible; overflow-wrap:anywhere }
 .pick .dist{ font-family:var(--display); font-weight:800; font-size:20px; color:var(--green); text-align:right; line-height:1 }
 .pick .dist small{ display:block; font-family:var(--sans); font-weight:500; font-size:10.5px; color:var(--muted) }
 .endnote{ text-align:center; margin:20px 0 4px; font-family:var(--hand); font-size:21px; color:var(--muted) }
@@ -200,28 +202,28 @@ img{ max-width:100% }
 #homeScreen:not(.home-list) .chips{ padding-top:12px }
 #homeScreen:not(.home-list) .mapwrap{ position:absolute; inset:0; height:auto; min-height:0; margin:0; border-radius:0 }
 .maphelp{ position:absolute; left:10px; top:10px; z-index:5; width:34px; height:34px; border-radius:50%; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.12); font-family:var(--display); font-weight:900; font-size:19px; color:var(--green) }
-#homeScreen:not(.home-list) .maphelp{ top:auto; bottom:calc(var(--navh) + 72px) }
+#homeScreen:not(.home-list) .maphelp{ top:auto; bottom:calc(var(--navh) + 96px) }
 .home-list .maphelp{ display:none }
-.maplocate{ position:absolute; left:54px; bottom:calc(var(--navh) + 72px); z-index:5; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
+.maplocate{ position:absolute; left:54px; bottom:calc(var(--navh) + 96px); z-index:5; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
 .maplocate:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
 .maplocate:disabled{ cursor:wait; opacity:.65 }
 .maplocate[aria-busy="true"] svg{ animation:locating 1.2s linear infinite }
 .home-list .maplocate{ display:none }
 @keyframes locating{ to{ transform:rotate(360deg) } }
 @media (prefers-reduced-motion:reduce){ .maplocate[aria-busy="true"] svg{ animation:none } }
-#homeScreen:not(.home-list) .mapwrap .toggle{ top:auto; bottom:calc(var(--navh) + 72px) }
-#homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 134px) }
+#homeScreen:not(.home-list) .mapwrap .toggle{ top:auto; bottom:calc(var(--navh) + 96px) }
+#homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 158px) }
 /* first view: today's Top 4 as pins, other events as quiet dots, one pill to show everything */
 .edot{ position:absolute; width:11px; height:11px; border-radius:50%; border:1.5px solid var(--paper); transform:translate(-50%,-50%); opacity:.85; cursor:pointer; padding:0 }
 #homeScreen:not(.home-list) .picks{ position:absolute; left:0; right:0; bottom:calc(var(--navh) - 18px); z-index:6; flex:none; display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:10px 14px 28px;  /* room for the cards' shadow, which a scrolling row would otherwise clip */ scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x; cursor:grab; -webkit-overflow-scrolling:touch }
 #homeScreen:not(.home-list) .picks.dragging{ scroll-snap-type:none; cursor:grabbing }
 #homeScreen:not(.home-list) .picks::-webkit-scrollbar{ display:none }
-/* map view: slim one-line cards so more of the map shows */
+/* Map previews allow two title lines; full official titles stay on the event sheet. */
 .pick .m2{ display:none }
 #homeScreen:not(.home-list) .pick{ grid-template-columns:30px 1fr; gap:10px; padding:9px 14px; border-radius:14px }
 #homeScreen:not(.home-list) .pick .n{ width:30px; height:30px }
 #homeScreen:not(.home-list) .pick .dist, #homeScreen:not(.home-list) .pick .when, #homeScreen:not(.home-list) .pick .m{ display:none }
-#homeScreen:not(.home-list) .pick .t{ -webkit-line-clamp:1; font-size:15.5px; margin:0 }
+#homeScreen:not(.home-list) .pick .t{ -webkit-line-clamp:2; font-size:15.5px; margin:0 }
 #homeScreen:not(.home-list) .pick .m2{ display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px }
 #homeScreen:not(.home-list) .pick.hot{ outline:2.5px solid var(--green); outline-offset:-2.5px }
 #homeScreen:not(.home-list) .pick .m2 b{ color:var(--red); font-weight:700 }
@@ -1073,10 +1075,20 @@ function picks(){
   let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev)).sort((a,b)=>a.mi-b.mi);
   return list;                                    // all of LA, closest first
 }
+// Only shorten long display titles when the exact venue suffix is repeated below.
+// Preserve the official title on event details, sharing and calendar exports.
+function cardTitle(ev){
+  const title=ev.title||''; if(title.length<=80 || !ev.venue) return title;
+  for(const separator of [' at ',' — ',' – ',' | ']){
+    const suffix=separator+ev.venue;
+    if(title.endsWith(suffix) && title.length-suffix.length>=12) return title.slice(0,-suffix.length);
+  }
+  return title;
+}
 function cardHtml(ev){
     const done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
     return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?'<span class="chk">&check;</span>':''}</div>
-      <div><div class="when">${ev.live?'\u{1F534} ':''}${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</b> · ${ev.venue}${inn&&!done?' · Saved':''}</div></div>
+      <div><div class="when">${ev.live?'\u{1F534} ':''}${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</div><div class="t">${cardTitle(ev)}${vCheck(ev,14)}</div><div class="m">${ev.venue}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</b> · ${ev.venue}${inn&&!done?' · Saved':''}</div></div>
       <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
 // after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
 let userMoved=false;
@@ -1120,7 +1132,7 @@ function inView(ev){ return true; }
 const CLUSTER_ZOOM=12, PIN_ZOOM=13.5, OPEN_ZOOM=14;
 // the header floats over the top of the map and the cards over the bottom: frame events in the space between
 function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
-  return { t:head?head.offsetHeight:150, b:(nav.height? app.bottom-nav.top : 70)+80 }; }
+  return { t:head?head.offsetHeight:150, b:(nav.height? app.bottom-nav.top : 70)+104 }; }
 function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
