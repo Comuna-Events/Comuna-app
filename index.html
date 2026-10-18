@@ -339,6 +339,7 @@ img{ max-width:100% }
 .passcover{ background:var(--green); color:var(--paper); border-radius:22px; padding:18px 18px 16px; margin-top:6px; position:relative; overflow:hidden }
 .passcover .k{ font-size:12px; color:var(--sun); font-weight:700; letter-spacing:.08em; text-transform:uppercase }
 .passcover .big{ font-family:var(--display); font-weight:900; font-size:40px; line-height:.95; text-transform:uppercase; margin:4px 0 10px }
+#passCount{ white-space:pre-line; font-size:clamp(24px,8vw,40px) }
 .bar{ height:8px; border-radius:4px; background:rgba(243,231,209,.2) }
 .bar i{ display:block; height:100%; border-radius:4px; background:var(--sun) }
 .passstats{ display:flex; gap:18px; margin-top:12px; font-size:12.5px; color:#DDD1B8 }
@@ -541,7 +542,9 @@ img{ max-width:100% }
       <div class="scroll">
         <div class="passcover">
           <div class="k" id="passName">Los Angeles</div>
-          <div class="big" id="passCount">0 places, 0 neighborhoods, 0 cities</div>
+          <div class="big" id="passCount">0 places,
+0 neighborhoods,
+0 cities</div>
           <div class="bar"><i id="passBar" style="width:37%"></i></div>
           <div class="passstats"><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
           <div id="passSeal" style="position:absolute;right:-18px;top:-18px;opacity:.25"></div>
@@ -1894,7 +1897,7 @@ let passTab='places';
 function renderPassport(){
   const places=S.places, H=visitedNbhds(), Cy=visitedCities();
   const nP=Object.keys(places).length, nH=Object.keys(H).length, nC=Object.keys(Cy).length;
-  document.getElementById('passCount').textContent=`${nP} place${nP===1?'':'s'}, ${nH} neighborhood${nH===1?'':'s'}, ${nC} cit${nC===1?'y':'ies'}`;
+  document.getElementById('passCount').textContent=`${nP} place${nP===1?'':'s'},\n${nH} neighborhood${nH===1?'':'s'},\n${nC} cit${nC===1?'y':'ies'}`;
   document.getElementById('passBar').style.width=Math.min(100,(nH+nC)/(NBHDS.length+CITIES.length)*100)+'%';
   document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
   document.getElementById('passSeal').innerHTML=omark(130,'#F3E7D1','#F3E7D1');
