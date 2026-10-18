@@ -202,6 +202,13 @@ img{ max-width:100% }
 .maphelp{ position:absolute; left:10px; top:10px; z-index:5; width:34px; height:34px; border-radius:50%; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.12); font-family:var(--display); font-weight:900; font-size:19px; color:var(--green) }
 #homeScreen:not(.home-list) .maphelp{ top:auto; bottom:calc(var(--navh) + 72px) }
 .home-list .maphelp{ display:none }
+.maplocate{ position:absolute; left:54px; bottom:calc(var(--navh) + 67px); z-index:5; width:44px; height:44px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
+.maplocate:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
+.maplocate:disabled{ cursor:wait; opacity:.65 }
+.maplocate[aria-busy="true"] svg{ animation:locating 1.2s linear infinite }
+.home-list .maplocate{ display:none }
+@keyframes locating{ to{ transform:rotate(360deg) } }
+@media (prefers-reduced-motion:reduce){ .maplocate[aria-busy="true"] svg{ animation:none } }
 #homeScreen:not(.home-list) .mapwrap .toggle{ top:auto; bottom:calc(var(--navh) + 72px) }
 #homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 134px) }
 /* first view: today's Top 4 as pins, other events as quiet dots, one pill to show everything */
@@ -502,6 +509,7 @@ img{ max-width:100% }
         <div id="map"></div>
         <div class="toggle"><button class="on" id="tMap">Map</button><button id="tList">List</button></div>
         <button class="maphelp" id="mapHelp" aria-label="How to read the map">?</button>
+        <button class="maplocate" id="mapLocate" type="button" aria-label="Center map on my location" title="Center on my location" aria-busy="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>
         <div class="maplabel" id="mapNote"></div>
       </div>
       <div class="picks" id="picks"></div>
@@ -1178,6 +1186,26 @@ function openPicker(kind){
     overlay.classList.remove('on'); renderHome(); };
 }
 document.getElementById('mapHelp').onclick=openLegend;
+document.getElementById('mapLocate').onclick=centerOnLocation;
+function centerOnLocation(){
+  const button=document.getElementById('mapLocate');
+  if(button.disabled) return;
+  if(!navigator.geolocation){ toast('Location is unavailable in this browser.'); return; }
+  const busy=value=>{ button.disabled=value; button.setAttribute('aria-busy',String(value)); button.setAttribute('aria-label',value?'Finding your location':'Center map on my location'); };
+  const failed=error=>{
+    busy(false);
+    toast(error?.code===1?'Allow location access in your browser settings to center the map.':error?.code===3?'Finding your location timed out. Please try again.':'Could not find your location. Please try again.');
+  };
+  busy(true);
+  try{ navigator.geolocation.getCurrentPosition(position=>{
+    busy(false);
+    S.loc={lat:position.coords.latitude,lng:position.coords.longitude}; locAt=Date.now(); save();
+    if(markers.you) markers.you.setLngLat([S.loc.lng,S.loc.lat]);
+    userMoved=false; selId=null; fromCards=false; cardSwipe=false;
+    if(current==='home'){ renderHome(); openCamera(true); }
+    toast('Map centered on your location.');
+  },failed,{enableHighAccuracy:true,timeout:15000,maximumAge:0}); }catch(error){ failed(error); }
+}
 document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadEvents(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
 document.getElementById('tMap').onclick=()=>{ document.getElementById('homeScreen').classList.remove('home-list'); tMap.classList.add('on'); tList.classList.remove('on'); setTimeout(()=>{ map?map.resize():drawPaper(); },20); };
 document.getElementById('tList').onclick=()=>{ document.getElementById('homeScreen').classList.add('home-list'); tList.classList.add('on'); tMap.classList.remove('on'); };
