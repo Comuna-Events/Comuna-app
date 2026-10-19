@@ -1,5 +1,9 @@
 # Nightly event ingest
 
+**Turned off (Oct 2026).** The Claude calls cost too much, so the nightly schedule was removed and the
+`ANTHROPIC_API_KEY` secret taken out; events are audited by hand instead. The code below is kept so it can be
+turned back on: store the key again and uncomment the `cron.schedule` line in `supabase/ingest_schedule.sql`.
+
 Each night one function per platform reads the accounts in `ingest.event_sources`, has Claude pull the
 events out of each new post, and saves them to `ingest.event_candidates`. At 12:10 UTC `ingest.auto_promote()`
 moves the clear-cut ones into the app: upcoming, in person, AI confidence 0.8+, a street address, and not the

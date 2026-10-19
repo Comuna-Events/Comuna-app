@@ -46,4 +46,6 @@ revoke execute on function ingest.run_nightly() from public, anon, authenticated
 -- Every 5 minutes from 10:00 to 11:55 UTC (3-5am in Los Angeles in summer, 2-4am in winter). One call only
 -- gets through ~12 web sources before its 2-minute limit, and each call starts with the sources checked
 -- longest ago, so 24 calls cover a couple of hundred. Raise the hours if ingest_runs shows sources left over.
-select cron.schedule('nightly-event-ingest', '*/5 10-11 * * *', 'select ingest.run_nightly()');
+-- Turned off Oct 2026: the Claude calls cost too much, so events are now audited by hand outside Supabase and
+-- the ANTHROPIC_API_KEY secret was removed. To turn it back on, store the key again and uncomment this line.
+-- select cron.schedule('nightly-event-ingest', '*/5 10-11 * * *', 'select ingest.run_nightly()');
