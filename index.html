@@ -757,6 +757,11 @@ const CITIES = [LA_CITY, ...HOODS.filter(h=>h.city)];
 const NBHDS = HOODS.filter(h=>!h.city);
 function hoodByName(n){ n=HOOD_RENAMED[n]||n; return HOODS.find(h=>h.name===n) || HOODS[0]; }
 
+// Escape at HTML/SVG output boundaries; keep event data raw for sharing, calendars and storage.
+const escH=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const okLink=u=>{ try{ const x=new URL(u); return /^https?:$/.test(x.protocol)? x.href : ''; }catch(e){ return ''; } };
+const escLines=t=>escH(t).replace(/\r\n?|\n/g,'<br>');
+
 /* ---------- brand SVG ---------- */
 function glyph(kind,c){
   let g='';
@@ -791,41 +796,41 @@ function stampSVG(top,bottom,kind,c,size,rot,fill){
   <circle r="${r-3}" fill="${fill||'none'}" stroke="${c}" stroke-width="${3.2*Math.max(s,.7)}"/>
   <circle r="${r-31*s}" fill="none" stroke="${c}" stroke-width="${1.6*Math.max(s,.7)}"/>
   <path id="${a}" d="M${-Rt} 0 A${Rt} ${Rt} 0 0 1 ${Rt} 0" fill="none"/><path id="${b}" d="M${-Rb} 0 A${Rb} ${Rb} 0 0 0 ${Rb} 0" fill="none"/>
-  <text font-family="Big Shoulders Display" font-weight="800" font-size="${(size*.11).toFixed(1)}" letter-spacing="1.2" fill="${c}"><textPath href="#${a}" startOffset="50%" text-anchor="middle">${top}</textPath></text>
-  <text font-family="Big Shoulders Display" font-weight="700" font-size="${(size*.08).toFixed(1)}" letter-spacing="1.5" fill="${c}"><textPath href="#${b}" startOffset="50%" text-anchor="middle">${bottom}</textPath></text>
+  <text font-family="Big Shoulders Display" font-weight="800" font-size="${(size*.11).toFixed(1)}" letter-spacing="1.2" fill="${c}"><textPath href="#${a}" startOffset="50%" text-anchor="middle">${escH(top)}</textPath></text>
+  <text font-family="Big Shoulders Display" font-weight="700" font-size="${(size*.08).toFixed(1)}" letter-spacing="1.5" fill="${c}"><textPath href="#${b}" startOffset="50%" text-anchor="middle">${escH(bottom)}</textPath></text>
   <circle cx="${-(r-21*s)}" r="${2.4*s}" fill="${c}"/><circle cx="${r-21*s}" r="${2.4*s}" fill="${c}"/>
   <g transform="scale(${s})">${glyph(kind,c)}</g></svg>`;
 }
 // "RSVP'D" ticket stamp shown when you RSVP: same look as the check-in stamp, Sun ink
 function rsvpStamp(ev,w=240,h=160){
   const c=C.sun, t=ev.title.length>26? ev.title.slice(0,25).trim()+'…' : ev.title, when=(ev.time||'').toUpperCase(), whenFit=when.length>28? when.slice(0,27).trim()+'…' : when;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="RSVP stamp for ${ev.title}">
+  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="RSVP stamp for ${escH(ev.title)}">
   <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
   <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
   <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="32" letter-spacing="2" fill="${c}">RSVP'D</text>
-  <text x="75" y="66" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="10.5" letter-spacing=".6" fill="${c}">${t.toUpperCase().replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text>
-  <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${whenFit.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text>
+  <text x="75" y="66" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="10.5" letter-spacing=".6" fill="${c}">${escH(t.toUpperCase())}</text>
+  <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
   <circle cx="75" cy="18" r="3.2" fill="${C.red}"/></svg>`;
 }
 function placeStamp(name,hood,cat,n,rot,w=150,h=100,ink){
   const bg=CATS[catKey(cat)].bg, c=ink||bg, reg=n>=5, k=w/150;
   const nm=name.toUpperCase(), fit=nm.length*9.2*k>w-26*k;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${name} stamp">
+  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${escH(name)} stamp">
   <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
   <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
   <circle cx="75" cy="30" r="7" fill="${bg}" stroke="${ink?c:'none'}" stroke-width="2"/>
-  <text x="75" y="64" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="17" letter-spacing="1" fill="${c}" ${nm.length*9.2>124?'textLength="124" lengthAdjust="spacingAndGlyphs"':''}>${nm}</text>
-  <text x="75" y="79" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="8" letter-spacing="1.4" fill="${c}">${hood.toUpperCase()} · ${n} VISIT${n>1?'S':''}</text>
+  <text x="75" y="64" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="17" letter-spacing="1" fill="${c}" ${nm.length*9.2>124?'textLength="124" lengthAdjust="spacingAndGlyphs"':''}>${escH(nm)}</text>
+  <text x="75" y="79" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="8" letter-spacing="1.4" fill="${c}">${escH(hood.toUpperCase())} · ${n} VISIT${n>1?'S':''}</text>
   ${reg?`<g transform="translate(112 4) rotate(12)"><rect x="0" y="0" width="44" height="15" fill="${C.sun}"/><text x="22" y="11" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="10" letter-spacing="1" fill="${C.ink}">REGULAR</text></g>`:''}
   </svg>`;
 }
 function cityLabel(title,sub,bg,fg,w=160,h=106,rot=0){
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${title} stamp">
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${escH(title)} stamp">
   <ellipse cx="${w/2}" cy="${h/2}" rx="${w/2-3}" ry="${h/2-3}" fill="${bg}"/><ellipse cx="${w/2}" cy="${h/2}" rx="${w/2-10}" ry="${h/2-10}" fill="none" stroke="${fg}" stroke-width="1.6"/>
   <rect x="14" y="${h/2-15}" width="${w-28}" height="30" fill="${fg}"/>
-  <text x="${w/2}" y="${h/2+8.5}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="23" letter-spacing="1.5" fill="${bg}" ${title.length*12.5>w-36?`textLength="${w-36}" lengthAdjust="spacingAndGlyphs"`:''}>${title.toUpperCase()}</text>
+  <text x="${w/2}" y="${h/2+8.5}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="23" letter-spacing="1.5" fill="${bg}" ${title.length*12.5>w-36?`textLength="${w-36}" lengthAdjust="spacingAndGlyphs"`:''}>${escH(title.toUpperCase())}</text>
   <text x="${w/2}" y="${h/2-22}" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="8" letter-spacing="2.5" fill="${fg}">COMUNA</text>
-  <text x="${w/2}" y="${h/2+29}" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="8" letter-spacing="2" fill="${fg}">${sub}</text></svg>`;
+  <text x="${w/2}" y="${h/2+29}" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="8" letter-spacing="2" fill="${fg}">${escH(sub)}</text></svg>`;
 }
 
 // "you are here": the Comuna mark with a soft pulse behind it, always above event pins
@@ -1005,7 +1010,7 @@ function maybeDailyPicks(){
 }
 function showPicks(picks){
   const row=ev=>`<div class="pickhd">${KINDS[kindOf(ev)].label}</div><button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
-    <div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${ev.venue}${ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:''}</div></div>
+    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}</div></div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
   const first=(S.name||'').split(' ')[0];
   document.getElementById('recTitle').textContent=first?`${first}, your Top 4 today`:'Your Top 4 today';
@@ -1021,14 +1026,14 @@ const kitModal=document.getElementById('kitModal');
 function kitHtml(){
   enrich();
   const drive20=events.filter(ev=>mins(ev.mi)<=20).length, all=events.length, first=(S.name||'').split(' ')[0], hood=S.nb||'your neighborhood';
-  return `<div class="k">Neighborhood starter kit</div><div class="h1" id="kitTitle">Welcome to ${hood}${first?`, ${first}`:''}.</div>
+  return `<div class="k">Neighborhood starter kit</div><div class="h1" id="kitTitle">Welcome to ${escH(hood)}${first?`, ${escH(first)}`:''}.</div>
      <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
      <ol class="kitsteps">
       <li><div><b>Explore the map</b><span>Tap any pin. Tap <b style="display:inline">?</b> anytime for what the colors mean.</span></div></li>
       <li><div><b>Tap "Interested"</b><span>It saves to your Plans.</span></div></li>
       <li><div><b>Check in when you're there</b><span>Collect the stamp and earn points.</span></div></li>
      </ol>
-     <p class="hand" style="font-size:22px;color:var(--red);margin-top:10px;line-height:1.15;transform:rotate(-1.5deg);transform-origin:left">Top 5 in ${hood} each month win gift cards!</p>`;
+     <p class="hand" style="font-size:22px;color:var(--red);margin-top:10px;line-height:1.15;transform:rotate(-1.5deg);transform-origin:left">Top 5 in ${escH(hood)} each month win gift cards!</p>`;
 }
 // map key: every pin is a circle in its group's color with its icon; Headliners get a gold ring.
 // In onboarding only your picked interests show (and no cluster row); the map's "?" shows everything.
@@ -1092,7 +1097,7 @@ function cardTitle(ev){
 function cardHtml(ev){
     const done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
     return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?'<span class="chk">&check;</span>':''}</div>
-      <div><div class="when">${ev.live?'\u{1F534} ':''}${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</div><div class="t">${cardTitle(ev)}${vCheck(ev,14)}</div><div class="m">${ev.venue}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${ev.startsIn||(ev.start?nextWhen(ev):ev.time)}</b> · ${ev.venue}${inn&&!done?' · Saved':''}</div></div>
+      <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</b> · ${escH(ev.venue)}${inn&&!done?' · Saved':''}</div></div>
       <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
 // after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
 let userMoved=false;
@@ -1318,13 +1323,13 @@ function openVenue(list){
     const diff=Math.round((d-today)/864e5); return diff===0?'Today':diff===1?'Tomorrow':d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); };
   let rows='', last=null;
   evs.forEach(ev=>{ const day=dayOf(ev), done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
-    if(day!==last){ rows+=`<div class="vday">${day}</div>`; last=day; }
-    rows+=`<button class="vrow" data-vev="${ev.id}">${catDot(ev.category,24)}<div><div class="t">${ev.title}${vCheck(ev,14)}</div><div class="m">${[ev.t0?fmtTime(ev.t0):'',mixed?ev.venue:'',(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label,done?'Stamped':inn?'Saved':''].filter(Boolean).join(' · ')}</div></div></button>`; });
+    if(day!==last){ rows+=`<div class="vday">${escH(day)}</div>`; last=day; }
+    rows+=`<button class="vrow" data-vev="${ev.id}">${catDot(ev.category,24)}<div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH([ev.t0?fmtTime(ev.t0):'',mixed?ev.venue:'',(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label,done?'Stamped':inn?'Saved':''].filter(Boolean).join(' · '))}</div></div></button>`; });
   const ev=evs[0];
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
     <div class="cat">${evs.length} events here</div>
-    <h2>${name}</h2>
-    <a class="evwhere" href="${directionsUrl(ev)}" target="_blank" rel="noopener">${streetOf(ev)||ev.area||ev.hood||''} <span>· ${mins(ev.mi)} min away</span></a>
+    <h2>${escH(name)}</h2>
+    <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(streetOf(ev)||ev.area||ev.hood||'')} <span>· ${mins(ev.mi)} min away</span></a>
     ${rows}`;
   overlay.classList.add('on'); sheet.scrollTop=0;
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
@@ -1487,8 +1492,6 @@ window.addEventListener('resize',()=>{ if(current==='home') drawPaper(); if(curr
 // Signed-up users submit events with a link (Instagram / Partiful / website) for photos and details.
 // Saved to Supabase "event_submissions" as pending; you approve them in the Supabase dashboard,
 // then they appear on the map as "Community pick". Submitters get +25 points per approved event.
-const escH=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const okLink=u=>{ try{ const x=new URL(u); return /^https?:$/.test(x.protocol)? x.href : ''; }catch(e){ return ''; } };
 let subPlace=null, subTimer=null;
 function openSubmit(){
   if(!S.signedUp){ toast('Finish signing up first, then you can add events.'); return; }
@@ -1562,10 +1565,10 @@ async function loadSubmissions(){
   if(!sb) return;
   try{
     const { data, error } = await sb.from('event_submissions').select('*').eq('status','approved'); if(error) throw error;
-    // user-submitted text is escaped before it reaches the page, and only http(s) links are kept
-    communityEvents=(data||[]).filter(r=>r.lat!=null && okLink(r.link)).map(r=>({ id:200000+r.id, eid:'SUB-'+r.id, community:true, title:escH(r.title), venue:escH(r.venue), address:escH(r.address),
-      lat:r.lat, lng:r.lng, sub:SUBCATS[r.category]? r.category : '', category:catKey(r.category), kind:/one/i.test(r.recurrence||'')? 'popup' : 'regular', area:'', host:r.is_host? escH(r.venue) : 'Shared by a neighbor',
-      desc:escH(r.description||''), source:okLink(r.link), price:r.price||'', rec:r.recurrence==='One-time'?'One-off':(r.recurrence||''), start:parseDay(r.event_date), t0:r.start_time? String(r.start_time).slice(0,5) : '', t1:r.end_time? String(r.end_time).slice(0,5) : '',
+    // Keep raw text for sharing/storage; HTML renderers escape it once. Only http(s) links are kept.
+    communityEvents=(data||[]).filter(r=>r.lat!=null && okLink(r.link)).map(r=>({ id:200000+r.id, eid:'SUB-'+r.id, community:true, title:String(r.title||''), venue:String(r.venue||''), address:String(r.address||''),
+      lat:r.lat, lng:r.lng, sub:SUBCATS[r.category]? r.category : '', category:catKey(r.category), kind:/one/i.test(r.recurrence||'')? 'popup' : 'regular', area:'', host:r.is_host? String(r.venue||'') : 'Shared by a neighbor',
+      desc:String(r.description||''), source:okLink(r.link), price:r.price||'', rec:r.recurrence==='One-time'?'One-off':(r.recurrence||''), start:parseDay(r.event_date), t0:r.start_time? String(r.start_time).slice(0,5) : '', t1:r.end_time? String(r.end_time).slice(0,5) : '',
       time:'', going:0, fromGroup:0, live:false, startsIn:'' }));
     events=events.filter(x=>!x.community).concat(communityEvents);
     const u=(await sb.auth.getSession()).data.session?.user;
@@ -1657,28 +1660,28 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
   const ev=events.find(e=>e.id===id); if(!ev) return; enrich();
   const inn=S.rsvp.includes(id), done=S.checked.includes(id);
   const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
-  const link=(()=>{ const u=(ev.ticket&&!isRoundup(ev.ticket))?ev.ticket:(ev.source&&!isRoundup(ev.source))?ev.source:(ev.ticket||ev.source);
+  const link=(()=>{ const ticket=okLink(ev.ticket), source=okLink(ev.source); const u=(ticket&&!isRoundup(ticket))?ticket:(source&&!isRoundup(source))?source:(ticket||source);
     if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the RSVP button already opens it
-    return `<a class="evlink" href="${u}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
+    return `<a class="evlink" href="${escH(u)}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
   const showHost=ev.host && ev.host!==ev.venue;
-  const meta=[showHost?`Hosted by ${ev.host}`:'', ev.going?`${ev.going} interested on Comuna`:'', link].filter(Boolean).join(' · ');
+  const meta=[showHost?`Hosted by ${escH(ev.host)}`:'', ev.going?`${ev.going} interested on Comuna`:'', link].filter(Boolean).join(' · ');
   const icon=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
-    : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${okRsvpLink(ev)}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
+    : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${escH(okRsvpLink(ev))}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
     : `<button class="btn primary" id="rsvpBtn">Interested</button>`;
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${backLabel==='Top 4'?'your Top 4':backLabel}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>${backLabel}</button>`:''}<div class="grab"></div>
-    <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${ev.area||ev.hood}</div>
-    <h2>${ev.verified? ev.title.replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : ev.title}</h2>
-    <div class="evwhen">${ev.start?nextWhen(ev):(ev.time||'Soon')}</div>
-    <a class="evwhere" href="${directionsUrl(ev)}" target="_blank" rel="noopener">${ev.venue} <span>· ${mins(ev.mi)} min away</span></a>
-    ${recurs&&ev.recDetail?`<div class="evrec">${ev.recDetail}</div>`:''}
-    <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${SUBCATS[ev.sub]?`<span>${SUBCATS[ev.sub].short}</span>`:''}${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${x}</span>`).join('')}</div>
-    ${ev.desc?`<p class="desc">${ev.desc}</p>`:''}
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel==='Top 4'?'your Top 4':backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>${escH(backLabel)}</button>`:''}<div class="grab"></div>
+    <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
+    <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
+    <div class="evwhen">${escH(ev.start?nextWhen(ev):(ev.time||'Soon'))}</div>
+    <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span>· ${mins(ev.mi)} min away</span></a>
+    ${recurs&&ev.recDetail?`<div class="evrec">${escLines(ev.recDetail)}</div>`:''}
+    <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${SUBCATS[ev.sub]?`<span>${SUBCATS[ev.sub].short}</span>`:''}${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${escH(x)}</span>`).join('')}</div>
+    ${ev.desc?`<p class="desc">${escLines(ev.desc)}</p>`:''}
     ${meta?`<div class="evmeta">${meta}</div>`:''}
-    ${(ev.parking||ev.alcohol!==undefined)?`<div class="practical">${ev.parking?`Parking: ${ev.parking}<br>`:''}${ev.alcohol===true?'Drinks available, 21+ to drink':ev.alcohol===false?'Alcohol-free':''}</div>`:''}
+    ${(ev.parking||ev.alcohol!==undefined)?`<div class="practical">${ev.parking?`Parking: ${escLines(ev.parking)}<br>`:''}${ev.alcohol===true?'Drinks available, 21+ to drink':ev.alcohol===false?'Alcohol-free':''}</div>`:''}
     <div class="sheetfoot">
-      <a class="ib" id="dirBtn" href="${directionsUrl(ev)}" target="_blank" rel="noopener" aria-label="Directions">${icon('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>')}Directions</a>
+      <a class="ib" id="dirBtn" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener" aria-label="Directions">${icon('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>')}Directions</a>
       <button class="ib" id="calBtn" aria-label="Add to calendar">${icon('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>')}Calendar</button>
       <button class="ib" id="shareBtn" aria-label="Invite friends">${icon('<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>')}Invite</button>
       ${cta}
@@ -1715,7 +1718,7 @@ swipeToClose(sheet,()=>overlay.classList.remove('on'));
 swipeToClose(document.querySelector('#recModal .box'),()=>recModal.classList.remove('on'));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ overlay.classList.remove('on'); document.getElementById('stampModal').classList.remove('on'); } });
 function shareEv(ev){
-  const link=okRsvpLink(ev)||(ev.source&&!isRoundup(ev.source)?ev.source:'')||location.origin+location.pathname;
+  const source=okLink(ev.source); const link=okRsvpLink(ev)||(source&&!isRoundup(source)?source:'')||location.origin+location.pathname;
   const when=ev.start?nextWhen(ev):(ev.time||''), text=`${ev.title}${ev.venue?` at ${ev.venue}`:''}${when?`, ${when}`:''}. Come with?`;
   if(navigator.share){ navigator.share({title:ev.title,text,url:link}).catch(()=>{}); return; }
   if(navigator.clipboard) navigator.clipboard.writeText(`${text} ${link}`).then(()=>toast('Invite copied'),()=>toast('Couldn\'t copy the invite'));
@@ -1764,8 +1767,8 @@ function checkIn(ev,dist){
   const un=[]; if(!hadHood) un.push(`New neighborhood: ${hood.name}`); if(!hadCity) un.push(`New city: ${city}`); if(!hadCat) un.push(`First ${CATS[catKey(ev.category)].short.toLowerCase()} stamp`); if(pl.n===5) un.push(`You're a regular here`);
   const m=document.getElementById('stampModal');
   m.innerHTML=`<div class="stampbox">${placeStamp(ev.venue,hood.name,ev.category,pl.n,0,240,160,'#F3E7D1')}</div>
-    <h3>${firstPlace?`Stamped: ${ev.venue}`:`Back at ${ev.venue}`}</h3>
-    <p>${ev.title}. <b>+${total} points</b> (${earned.map(x=>`+${x[0]} ${x[1]}`).join(', ')}), and ${ev.venue} knows you came.</p>
+    <h3>${firstPlace?`Stamped: ${escH(ev.venue)}`:`Back at ${escH(ev.venue)}`}</h3>
+    <p>${escH(ev.title)}. <b>+${total} points</b> (${earned.map(x=>`+${x[0]} ${x[1]}`).join(', ')}), and ${escH(ev.venue)} knows you came.</p>
     ${un.length?`<div class="unlocks">${un.map(u=>`<span>${u}</span>`).join('')}</div>`:''}
     <button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>`;
   m.classList.add('on');
@@ -1776,14 +1779,14 @@ function checkIn(ev,dist){
 // links to roundup articles, listicles and search pages: shown as "Read about it", never as the event page or RSVP
 const ROUNDUP=/welikela|timeout\.com|smdp\.com|hoodline|yelp\.com|wikipedia|eventbrite\.\w+\/d\/|laist\.com|secretlosangeles|atly\.com|nightlifehiker|localemagazine|fodors|opentable|westsidelosangeles|trivianearme|dolosangeles\.com\/(p|venues)\/|allevents|outxout\.com\/guides|tiktok|mommypoppins|venicepaparazzi|lamag\.com|lonelyplanet|211la|discoverlosangeles|eventsincalifornia|eventticketscenter|foodjournalmagazine|pubtrivianight|free2funla|westsidetoday|beverlypress|pasadenanow|sfvlocal|ianirarousso|clmp\.org|songkick|bandsintown|foxla\.com|pickleheads|nohoartsdistrict\.com\/noho-news|theinfatuation|patch\.com|ma\.to\//i;
 const isRoundup=u=>ROUNDUP.test(u||'');
-const okRsvpLink=ev=>{ const u=ev.ticket||(ev.rsvpReq?ev.source:''); return /^https?:/i.test(u||'') && !isRoundup(u)? u : ''; };
+const okRsvpLink=ev=>{ const u=okLink(ev.ticket)||(ev.rsvpReq?okLink(ev.source):''); return u && !isRoundup(u)? u : ''; };
 function needsRsvp(ev){ return !!okRsvpLink(ev) && (ev.rsvpReq || !!ev.ticket); }
 function showRsvp(ev,pts=0){
   if(!ev) return;
   const m=document.getElementById('stampModal');
   m.innerHTML=`<div class="stampbox">${rsvpStamp(ev)}</div>
     <h3>${needsRsvp(ev)?'Saved. Finish your RSVP':'Saved to your plans'}</h3>
-    <p>${ev.title}${ev.venue&&ev.venue!==ev.title?` at ${ev.venue}`:''}. ${needsRsvp(ev)?'Complete the RSVP on the host\'s page so they hold your spot. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin+PTS.savedFirst} more.</p>
+    <p>${escH(ev.title)}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${needsRsvp(ev)?'Complete the RSVP on the host\'s page so they hold your spot. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin+PTS.savedFirst} more.</p>
     <div class="unlocks"><button class="btn ghost" id="rsvpCal" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Remind me (+ Calendar)</button><button class="btn ghost" id="rsvpInvite" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Invite friends</button></div>
     <button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>`;
   m.classList.add('on');
@@ -1859,7 +1862,7 @@ function renderPlans(){
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
   const card=ev=>{ const inn=S.rsvp.includes(ev.id), done=S.checked.includes(ev.id);
-    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${ev.title}${vCheck(ev,14)}</div><div class="u">${[ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · ')}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!done?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">${needsRsvp(ev)?'Cancel RSVP':'Remove from Plans'}</button>`:''}</div>`; };
+    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!done?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">${needsRsvp(ev)?'Cancel RSVP':'Remove from Plans'}</button>`:''}</div>`; };
   const mineL=dayEvs.filter(ev=>S.rsvp.includes(ev.id)), also=dayEvs.filter(ev=>!S.rsvp.includes(ev.id) && (!isT || (nextDate(ev) && nextDate(ev)<=t))).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
     : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "Interested" on an event and it lands here.</div>`;
@@ -1950,7 +1953,7 @@ const unseen=()=>ALERTS.filter(a=>!(S.alertsSeen||[]).includes(a.key));
 function renderAlerts(){
   buildAlerts(); const seen=S.alertsSeen||[];
   const icon=k=>({cal:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.red}" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,music:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.red}" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,invite:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.blue}" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`,stamp:`<svg width="22" height="22" viewBox="-28 -28 56 56">${glyph('star',C.sun)}</svg>`,coffee:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.green}" stroke-width="2"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h2a2 2 0 0 1 0 4h-2"/></svg>`}[k]);
-  document.getElementById('alertList').innerHTML=ALERTS.length? ALERTS.map((a,i)=>`<button class="alert ${seen.includes(a.key)?'':'unread'}" ${a.ev?`data-alert-ev="${a.ev}"`:''}><div class="ic">${icon(a.ic)}</div><div><div class="t">${a.t}</div><div class="s">${a.s}</div><div class="w">${a.w}</div></div></button>`).join('') : `<div class="empty"><span class="hand">all quiet</span>No alerts yet. Tap "Interested" on an event and we'll remind you here when it's coming up.</div>`;
+  document.getElementById('alertList').innerHTML=ALERTS.length? ALERTS.map((a,i)=>`<button class="alert ${seen.includes(a.key)?'':'unread'}" ${a.ev?`data-alert-ev="${a.ev}"`:''}><div class="ic">${icon(a.ic)}</div><div><div class="t">${escH(a.t)}</div><div class="s">${escH(a.s)}</div><div class="w">${escH(a.w)}</div></div></button>`).join('') : `<div class="empty"><span class="hand">all quiet</span>No alerts yet. Tap "Interested" on an event and we'll remind you here when it's coming up.</div>`;
 }
 document.getElementById('alertList').addEventListener('click',e=>{ const a=e.target.closest('[data-alert-ev]'); if(a) openSheet(+a.dataset.alertEv); });
 function updateDot(){ buildAlerts(); const n=unseen().length, d=document.getElementById('alertDot'); d.textContent=n; d.style.display=n?'grid':'none'; }
@@ -2081,7 +2084,7 @@ document.getElementById('betaBtn').onclick=openFeedback;
 function askHowWasIt(ev){
   let vote=''; const tags=new Set();
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Quick question</div>
-    <h2 style="font-size:30px">How was ${ev.title.length>34? 'it' : ev.title}?</h2>
+    <h2 style="font-size:30px">How was ${escH(ev.title.length>34? 'it' : ev.title)}?</h2>
     <div class="moods" id="fbVote"><button data-v="up" aria-label="Loved it">👍</button><button data-v="down" aria-label="Not great">👎</button></div>
     <div class="tagpick" id="fbTags">${['Great vibe','Would go again','Good for groups','Kid-friendly','Hard to find','Not as described'].map(t=>`<button data-t="${t}">${t}</button>`).join('')}</div>
     <textarea class="fbtext" id="fbText" placeholder="Anything else? (optional)" style="min-height:64px"></textarea>
@@ -2161,7 +2164,7 @@ async function loadEvents(){
       t=tags.map(x=>Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===String(x).toLowerCase())).find(Boolean)||catMap(tags.join(' ')); return { category:g, sub: SUB_GROUP[t]===g && !CATS[t]? t : '' }; };
     events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
       address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), price:r.price_type||'', age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
-      ticket:r.ticket_url||'', source:r.source_url||'', rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
+      ticket:okLink(r.ticket_url), source:okLink(r.source_url), rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
     eventsState='live'; if(current==='home') renderHome(); loadGoing(); loadSubmissions();
   }catch(e){ console.warn('Events failed to load', e); if(eventsState!=='live'){ eventsState='error'; if(current==='home') renderHome(); } }
 }
