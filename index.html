@@ -747,8 +747,9 @@ function hoodOf(p){ if(p.lat==null||p.lng==null) return HOODS[0];
   hoodOf.memo.set(k,best); return best; }
 hoodOf.memo=new Map();
 function cityOf(h){ return h.city || 'Los Angeles'; }
-function visitedHoods(){ const o={}; Object.values(S.places).forEach(p=>{ const h=hoodOf(p).name; o[h]=(o[h]||0)+p.n; }); return o; }
-function visitedCities(){ const o={}; Object.values(S.places).forEach(p=>{ const c=cityOf(hoodOf(p)); o[c]=(o[c]||0)+p.n; }); return o; }
+function placeHood(p){ return p.lat!=null && p.lng!=null ? hoodOf(p) : HOODS.find(h=>h.name===(HOOD_RENAMED[p.hood]||p.hood))||null; }
+function visitedHoods(){ const o={}; Object.values(S.places).forEach(p=>{ const h=placeHood(p); if(h) o[h.name]=(o[h.name]||0)+p.n; }); return o; }
+function visitedCities(){ const o={}; Object.values(S.places).forEach(p=>{ const h=placeHood(p); if(h){ const c=cityOf(h); o[c]=(o[c]||0)+p.n; } }); return o; }
 // the passport splits them: neighborhoods are the City of LA's, cities are all 88 in the county (a city place is its own city)
 function visitedNbhds(){ const H=visitedHoods(); return Object.fromEntries(Object.entries(H).filter(([n])=>!hoodByName(n).city)); }
 const LA_CITY = { name:'Los Angeles', lat:34.0537, lng:-118.2427, glyph:'sun', color:C.red, city:'Los Angeles' };
@@ -951,18 +952,86 @@ codeNext.onclick=async()=>{
     return toast('That code didn\'t work. Check it, or tap "Resend code" for a new one.'); }
   authed=data.user; S.email=codeEmail; save(); finishAuth();
 };
-const freshPassport=()=>Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[], redeemed:[], alertsRead:false });
+let passportRestoreId=0, passportRevision=0;
+const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; return Object.assign(S,{ accountId:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
+function applyAccountProfile(user,p){
+  if(S.accountId!==user.id) freshPassport();
+  S.accountId=user.id; S.email=user.email||''; S.name=p.name; S.points=p.points||0;
+  if(p.neighborhood) S.nb=hoodByName(p.neighborhood).name;
+  S.loc=(p.lat!=null && p.lng!=null)? {lat:p.lat,lng:p.lng} : null;
+  S.interests=fixInterests(p.interests);
+  S.onboardingComplete=true; S.signedUp=true; S.kitSeen=true;
+  S.joined=p.created_at ? p.created_at.slice(0,10) : (S.joined||new Date().toISOString().slice(0,10));
+  save();
+}
+// Same IDs as catalogue/community loading, including events no longer in discovery.
+function historyEventId(eid){
+  const text=String(eid||''), match=/^(EVT|SUB)-(\d+)$/.exec(text);
+  const id=match ? (match[1]==='EVT'?100000:200000)+Number(match[2]) : /^\d+$/.test(text)?Number(text):null;
+  return Number.isSafeInteger(id)?id:null;
+}
+async function readAccountRows(table,columns,userId,tieBreaker){
+  const rows=[],size=500;
+  for(let start=0;;start+=size){
+    const {data,error}=await sb.from(table).select(columns).eq('user_id',userId).order('created_at').order(tieBreaker).range(start,start+size-1);
+    if(error) throw error;
+    rows.push(...(data||[])); if((data||[]).length<size) return rows;
+  }
+}
+async function restorePassport(user){
+  if(!sb || !user || S.accountId!==user.id) return false;
+  const request=++passportRestoreId,revision=passportRevision;
+  try{
+    const [checkins,plans]=await Promise.all([
+      readAccountRows('checkins','id,event_id,venue,neighborhood,category,created_at',user.id,'id'),
+      readAccountRows('rsvps','event_id,created_at',user.id,'event_id')
+    ]);
+    const details=new Map(), ids=[...new Set(checkins.map(r=>String(r.event_id)))];
+    // Read historical records directly, not the filtered current discovery list.
+    for(const [table,column,keys,columns] of [
+      ['events','event_id',ids.filter(id=>/^EVT-\d+$/.test(id)),'event_id,name,venue,lat,lng,category,tier'],
+      ['event_submissions','id',ids.filter(id=>/^SUB-\d+$/.test(id)).map(id=>Number(id.slice(4))),'id,venue,lat,lng,category,recurrence']
+    ]){
+      for(let i=0;i<keys.length;i+=100){
+        const {data,error}=await sb.from(table).select(columns).in(column,keys.slice(i,i+100));
+        if(error){ console.warn('Historical venue details unavailable',error); continue; }
+        (data||[]).forEach(r=>details.set(table==='events'?r.event_id:'SUB-'+r.id,r));
+      }
+    }
+    // A late response must not replace a new account, a newer restore or a fresh local action.
+    if(request!==passportRestoreId || revision!==passportRevision || S.accountId!==user.id || authed?.id!==user.id) return false;
+    const places=Object.create(null),checked=[];
+    for(const row of checkins){
+      const detail=details.get(String(row.event_id))||{}, id=historyEventId(row.event_id);
+      if(id!=null) checked.push(id);
+      const name=row.venue||detail.venue||detail.name||'Event '+row.event_id;
+      const category=catKey(row.category||detail.category||'community');
+      const place=places[name]||(places[name]={n:0,cat:category,sub:'',kind:tierKey(detail.tier),lat:null,lng:null,hood:row.neighborhood||''});
+      place.n++;
+      if(detail.lat!=null && detail.lng!=null && Number.isFinite(+detail.lat) && Number.isFinite(+detail.lng)){ place.lat=+detail.lat; place.lng=+detail.lng; }
+    }
+    S.places=places; S.checked=[...new Set(checked)]; S.visits=checkins.length;
+    S.rsvp=[...new Set(plans.map(r=>historyEventId(r.event_id)).filter(id=>id!=null))];
+    save(); rebuildMap(); renderNames(); updateDot();
+    if(current==='passport') renderPassport(); else if(current==='profile') renderProfile(); else if(current==='plans') renderPlans(); else if(current==='home') renderHome();
+    return true;
+  }catch(error){
+    console.warn('Passport history restore failed; keeping cached history',error);
+    if(request===passportRestoreId && S.accountId===user.id) toast('Could not reload your Passport. Reconnect and reopen Comuna to try again.');
+    return false;
+  }
+}
 async function finishAuth(){
+  const user=authed; if(!user) return;
   // an email that already has an account (a new phone, or signing up again by mistake): bring back their passport
-  const { data:p, error } = await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points').eq('id',authed.id).maybeSingle();
-  if(error) console.warn('Supabase profile load failed', error);
+  const { data:p, error } = await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points,created_at').eq('id',user.id).maybeSingle();
+  if(authed?.id!==user.id) return;
+  if(error){ console.warn('Supabase profile load failed',error); toast('Could not load your account. Please reconnect and sign in again.'); return; }
   if(p && p.name){
     const again=authMode==='signup';
-    freshPassport();
-    S.name=p.name; S.points=p.points||0; if(p.neighborhood) S.nb=hoodByName(p.neighborhood).name;
-    S.loc=(p.lat!=null && p.lng!=null)? {lat:p.lat,lng:p.lng} : null;
-    S.interests=fixInterests(p.interests);
-    S.onboardingComplete=true; S.signedUp=true; S.kitSeen=true; S.joined=S.joined||new Date().toISOString().slice(0,10); save();
+    applyAccountProfile(user,p);
+    await restorePassport(user);
+    if(authed?.id!==user.id || S.accountId!==user.id) return;
     rebuildMap(); renderNames(); flushFeedback();
     history=[]; filter=myCats().length?'mine':'All'; go('home');
     toast(again? 'You already have an account, so we signed you in. Welcome back!' : 'Welcome back, '+shortName());
@@ -971,7 +1040,7 @@ async function finishAuth(){
   if(authMode==='signin'){ authMode='signup'; toast('Let\'s set up your passport'); history=[]; go('onb2'); return; }
   // real users start with an empty passport (the demo profile is only for showing the app before sign-up)
   freshPassport();
-  S.onboardingComplete=true; S.signedUp=true; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=new Date().toISOString().slice(0,10); save(); renderNames(); dbProfile(); flushFeedback();
+  S.accountId=user.id; S.onboardingComplete=true; S.signedUp=true; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=new Date().toISOString().slice(0,10); save(); renderNames(); dbProfile(); flushFeedback();
   history=[]; S.kitSeen=false; save(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
 }
 // back to a signed-out, empty passport (sign out, demo reset, or an account from before email sign-in)
@@ -1691,7 +1760,7 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
-  const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
+  const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); passportRevision++; S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
     const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; toast(v.msg); return; } checkIn(ev,v.dist); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
@@ -1754,6 +1823,7 @@ const PTS={ save:10, checkin:100, firstPlace:50, savedFirst:25, rate:10, submit:
 function savePts(ev){ const d=new Date().toDateString(); if(!S.saveDay||S.saveDay.d!==d) S.saveDay={d,n:0};
   S.saveDay.n++; return S.saveDay.n<=SAVES_PER_DAY? PTS.save : 0; }
 function checkIn(ev,dist){
+  passportRevision++;
   const hood=hoodByName(ev.hood), city=cityOf(hood);
   const hadHood=!!hood.city||!!visitedHoods()[hood.name], hadCity=!!visitedCities()[city], hadCat=Object.values(S.places).some(p=>catKey(p.cat)===ev.category);
   const pl=S.places[ev.venue] || (S.places[ev.venue]={n:0,cat:ev.category,sub:ev.sub||'',kind:kindOf(ev),lat:ev.lat,lng:ev.lng});
@@ -1883,7 +1953,7 @@ async function cancelPlan(id,button){
       const {error}=await sb.from('rsvps').delete().eq('user_id',u.id).eq('event_id',eidOf(ev)).select('event_id');
       if(error) throw error;
     }
-    S.rsvp=S.rsvp.filter(saved=>saved!==id); save();
+    passportRevision++; S.rsvp=S.rsvp.filter(saved=>saved!==id); save();
     renderPlans(); renderHome(); if(S.signedUp) loadGoing();
     toast(needsRsvp(ev)?'RSVP removed from Comuna Plans. Cancel any host registration or tickets separately.':'Removed from your Plans.');
   }catch(error){ console.warn('RSVP cancellation failed',error); toast('Could not remove this plan. Check your connection and sign-in, then try again.'); }
@@ -1915,7 +1985,7 @@ function renderPassport(){
     html=`<div class="ph"><b>Places</b><span>a stamp for every spot you check in</span></div>
       <div class="kinds">${Object.keys(CATS).map(k=>`<span class="${tried.has(k)?'on':''}" title="${CATS[k].label}">${catDot(k,30)}<small>${CATS[k].short}</small></span>`).join('')}<b>${tried.size} of ${Object.keys(CATS).length}</b></div>
       <div class="pagegrid">`+
-      list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,hoodOf(p).name,p.cat,p.n,rots[i%rots.length])}</div>`).join('')+
+      list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,placeHood(p)?.name||'Location unavailable',p.cat,p.n,rots[i%rots.length])}</div>`).join('')+
       (untried.length? untried : ['next']).slice(0,list.length%2?1:2).map(k=>`<div class="slot"><div class="ghost-rect">${FIRST[k]||'your next spot?'}</div></div>`).join('')+
       `</div><div class="pagenote">${list.length} place${list.length===1?'':'s'} stamped</div>`;
   } else {
@@ -1990,17 +2060,31 @@ async function dbUser(){
   if(!sb){ dbStatus('library failed to load (check connection)',true); return null; }
   try{
     const { data:{ session } } = await sb.auth.getSession(); const u=session?.user;
-    return u && !u.is_anonymous ? u : null;
+    return u && !u.is_anonymous && S.accountId===u.id ? u : null;
   }catch(e){ console.warn('Supabase session check failed', e); return null; }
 }
 // on launch: accounts from before email sign-in (anonymous) or removed on the server start over with an email sign-up
 async function checkAccount(){
-  if(!sb || !S.signedUp) return;
+  if(!sb) return;
+  const request=passportRestoreId;
   try{
     const { data:{ session }, error } = await sb.auth.getSession(); if(error) return;   // offline: keep the saved UI, retry next launch
     let ok=!!session && !session.user.is_anonymous;
     if(ok){ const r=await sb.auth.getUser(); if(r.error && [400,401,403,404].includes(r.error.status)) ok=false; }
-    if(ok){ authed=session.user; if(!S.email){ S.email=session.user.email||''; save(); renderNames(); } dbProfile(); return; }
+    if(request!==passportRestoreId) return;
+    if(ok){
+      const user=session.user; authed=user;
+      const {data:p,error:profileError}=await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points,created_at').eq('id',user.id).maybeSingle();
+      if(profileError || authed?.id!==user.id) return;
+      if(p && p.name){
+        const returnHome=!S.signedUp || S.accountId!==user.id;
+        applyAccountProfile(user,p); await restorePassport(user);
+        if(authed?.id!==user.id || S.accountId!==user.id) return;
+        renderNames(); if(returnHome){ history=[]; filter=myCats().length?'mine':'All'; go('home',false); }
+      }
+      return;
+    }
+    if(!S.signedUp) return;
     await signOutLocal(); renderNames(); history=[]; openAuth('signin'); history=[];
     toast('Please sign in again to reconnect your account.');
   }catch(error){ console.warn('Session restore unavailable; keeping saved app state',error); }
