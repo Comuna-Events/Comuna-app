@@ -1558,7 +1558,7 @@ window.addEventListener('resize',()=>{ if(current==='home') drawPaper(); if(curr
 /* ---------- add an event (community submissions) ---------- */
 // Signed-up users submit events with a link (Instagram / Partiful / website) for photos and details.
 // Saved to Supabase "event_submissions" as pending; you approve them in the Supabase dashboard,
-// then they appear on the map as "Community pick". Submitters get +25 points per approved event.
+// then they appear on the map as "Community pick". Submitters get +100 points per approved event (first 3 each week).
 let subPlace=null, subTimer=null;
 function openSubmit(){
   if(!S.signedUp){ toast('Finish signing up first, then you can add events.'); return; }
@@ -1566,7 +1566,7 @@ function openSubmit(){
   const cats=Object.keys(CATS).map(k=>`<option value="${k}">${CATS[k].label}</option>`).join('');
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
     <div class="cat">Add an event</div><h2 style="font-size:30px">Know something good?</h2>
-    <p class="sub">We review every event first. Once it's approved you get +25, plus +25 for each person who goes.</p>
+    <p class="sub">We review every event first. Earn +${PTS.submit} for each of your first 3 approved events each week, plus +${PTS.turnout} for each other person who checks in (up to 500 per event).</p>
     <form id="subForm" class="subform" novalidate>
       <label>Link to the event *<small>Instagram post, Partiful, Eventbrite or website: where people can see photos and details</small>
         <input class="field" name="link" type="url" inputmode="url" placeholder="https://" required></label>
@@ -1626,7 +1626,7 @@ function showPinMap(){
   } else { subMap.jumpTo({ center:ll, zoom:16 }); subMarker.setLngLat(ll); subMap.resize(); }
 }
 document.getElementById('addSoon').onclick=()=>{ if(subMap){ try{ subMap.remove(); }catch(e){} subMap=null; } openSubmit(); };
-// approved community events join the map; your own approvals earn +25 points once each
+// approved community events join the map; your own approvals earn +100 points once each
 let communityEvents=[];
 async function loadSubmissions(){
   if(!sb) return;
@@ -1647,7 +1647,7 @@ async function loadSubmissions(){
       const newly=mine.filter(id=>!S.subCredited.includes(id)); S.subCredited.push(...newly);
       const fresh=newly.filter(id=>earns.has(id));
       if(newly.length && !fresh.length){ save(); toast('Your event was approved and is on the map. Thanks! (Points max out at 3 events a week.)'); }
-      if(fresh.length){ S.points+=25*fresh.length; save(); dbProfile(); toast(fresh.length>1? `${fresh.length} of your events were approved: +${25*fresh.length} points!` : 'Your event was approved and is on the map: +25 points!'); } }
+      if(fresh.length){ S.points+=PTS.submit*fresh.length; save(); dbProfile(); toast(fresh.length>1? `${fresh.length} of your events were approved: +${PTS.submit*fresh.length} points!` : `Your event was approved and is on the map: +${PTS.submit} points!`); } }
     if(current==='home') renderHome();
   }catch(e){ console.warn('Supabase submissions failed', e); }
 }
@@ -1817,9 +1817,9 @@ function verifyHere(ev){
     {enableHighAccuracy:true,timeout:15000,maximumAge:60000});
   });
 }
-/* points. Save +10 (5 a day). Go +100, plus +50 first time at a place, +25 if you saved it first, +10 for rating it.
-   Share an event +25 (3 a week), plus +25 for each person who goes (max 500 per event). The leaderboard in Supabase uses the same rules. */
-const PTS={ save:10, checkin:100, firstPlace:50, savedFirst:25, rate:10, submit:25, turnout:25 }, SAVES_PER_DAY=5;
+/* points. Save +10 (5 a day). Every verified visit +100; event review +100 once per event.
+   Share an approved event +100 (3 a week), plus +25 for each person who goes (max 500 per event). The leaderboard in Supabase uses the same rules. */
+const PTS={ save:10, checkin:100, rate:100, submit:100, turnout:25 }, SAVES_PER_DAY=5;
 function savePts(ev){ const d=new Date().toDateString(); if(!S.saveDay||S.saveDay.d!==d) S.saveDay={d,n:0};
   S.saveDay.n++; return S.saveDay.n<=SAVES_PER_DAY? PTS.save : 0; }
 function checkIn(ev,dist){
@@ -1828,7 +1828,7 @@ function checkIn(ev,dist){
   const hadHood=!!hood.city||!!visitedHoods()[hood.name], hadCity=!!visitedCities()[city], hadCat=Object.values(S.places).some(p=>catKey(p.cat)===ev.category);
   const pl=S.places[ev.venue] || (S.places[ev.venue]={n:0,cat:ev.category,sub:ev.sub||'',kind:kindOf(ev),lat:ev.lat,lng:ev.lng});
   const firstPlace=pl.n===0; pl.n++;
-  const earned=[[PTS.checkin,'checked in']]; if(firstPlace) earned.push([PTS.firstPlace,'first time here']); if(S.rsvp.includes(ev.id)) earned.push([PTS.savedFirst,'you said you\'d go']);
+  const earned=[[PTS.checkin,'checked in']];
   const total=earned.reduce((a,x)=>a+x[0],0);
   track(ev,'checkin'); S.checked.push(ev.id); S.visits++; S.points+=total; save(); dbCheckin(ev,dist);
   overlay.classList.remove('on');
@@ -1854,7 +1854,7 @@ function showRsvp(ev,pts=0){
   const m=document.getElementById('stampModal');
   m.innerHTML=`<div class="stampbox">${rsvpStamp(ev)}</div>
     <h3>${needsRsvp(ev)?'Saved. Finish your RSVP':'Saved to your plans'}</h3>
-    <p>${escH(ev.title)}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${needsRsvp(ev)?'Complete the RSVP on the host\'s page so they hold your spot. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin+PTS.savedFirst} more.</p>
+    <p>${escH(ev.title)}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${needsRsvp(ev)?'Complete the RSVP on the host\'s page so they hold your spot. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin} more.</p>
     <div class="unlocks"><button class="btn ghost" id="rsvpCal" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Remind me (+ Calendar)</button><button class="btn ghost" id="rsvpInvite" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Invite friends</button></div>
     <button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>`;
   m.classList.add('on');
@@ -2165,7 +2165,7 @@ document.getElementById('betaBtn').onclick=openFeedback;
 // right after a check-in: quick "How was it?" about the event itself
 function askHowWasIt(ev){
   let vote=''; const tags=new Set();
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Quick question</div>
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Share your review · +${PTS.rate} points</div>
     <h2 style="font-size:30px">How was ${escH(ev.title.length>34? 'it' : ev.title)}?</h2>
     <div class="moods" id="fbVote"><button data-v="up" aria-label="Loved it">👍</button><button data-v="down" aria-label="Not great">👎</button></div>
     <div class="tagpick" id="fbTags">${['Great vibe','Would go again','Good for groups','Kid-friendly','Hard to find','Not as described'].map(t=>`<button data-t="${t}">${t}</button>`).join('')}</div>
