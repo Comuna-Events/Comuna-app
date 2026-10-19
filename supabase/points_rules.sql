@@ -1,10 +1,8 @@
 -- Comuna: points rules (run once in Supabase > SQL Editor; safe to re-run).
 --  Save it:  Interested or RSVP +10. Only your first 5 saves each day earn points.
 --  Go:       verified check-in +100 (the app confirmed you were within 600 m)
---              +50 the first time you check in at that place
---              +25 if you saved the event before you went
---              +10 for rating it afterward
---  Share it: approved event you added +25 (first 3 each week),
+--              +100 for reviewing it afterward (once per attended event)
+--  Share it: approved event you added +100 (first 3 each week),
 --              plus +25 for each other person who checks in to it (max 500 per event).
 --  Duplicates: set status = 'duplicate' (or 'rejected') instead of 'approved'; they earn nothing.
 --  Gift cards: 3+ verified check-ins this month (gift_card_eligible column), counted across all boards.
@@ -46,16 +44,13 @@ saves as (
          row_number() over (partition by user_id, (created_at at time zone 'America/Los_Angeles')::date order by created_at) as n
   from rsvps, m where created_at >= m.start
 ),
-verified as (   -- all-time verified check-ins, numbered per place so we know your first visit
-  select c.*, row_number() over (partition by c.user_id, coalesce(c.venue, c.event_id) order by c.created_at) as visit_n
+verified as (   -- all-time verified check-ins establish attendance for reviews and turnout
+  select c.*
   from checkins c where c.distance_m <= 600
 ),
 goes as (
   select v.user_id, v.event_id, v.board,
-         100
-         + case when v.visit_n = 1 then 50 else 0 end
-         + case when exists (select 1 from rsvps r where r.user_id = v.user_id and r.event_id = v.event_id and r.created_at < v.created_at) then 25 else 0 end
-           as p
+         100 as p
   from verified v, m where v.created_at >= m.start
 ),
 rated as (      -- one rating per event you actually went to
@@ -81,9 +76,9 @@ pts as (
   union all
   select user_id, board, p, 1 from goes
   union all
-  select user_id, board, 10, 0 from rated
+  select user_id, board, 100, 0 from rated
   union all
-  select user_id, board, 25, 0 from subs where n <= 3
+  select user_id, board, 100, 0 from subs where n <= 3
   union all
   select user_id, board, p, 0 from turnout where p > 0
 ),
