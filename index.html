@@ -552,7 +552,6 @@ img{ max-width:100% }
         <div class="tabs" id="passTabs" role="tablist"></div>
         <div class="page" id="passPage"></div>
         <div class="h2" id="lbTitle">Top 5 explorers</div>
-        <div class="hand" style="font-size:21px;color:var(--red);margin:-2px 0 8px;line-height:1.15">Top 5 at the end of the month win gift cards to their favorite spots!</div>
         <div class="lb" id="lbList"></div>
       </div>
     </section>
@@ -1020,7 +1019,7 @@ function showPicks(picks){
 // shrink a heading until it fits on one line (names make "…, your Top 4 today" longer)
 function fitLine(el,min=18){ el.style.fontSize=''; let fs=parseFloat(getComputedStyle(el).fontSize); while(el.scrollWidth>el.clientWidth && fs>min){ fs--; el.style.fontSize=fs+'px'; } }
 /* ---------- neighborhood starter kit: one card, right after sign-up ---------- */
-// Points, the map key and gift cards are explained where they happen (the check-in stamp, the map's "?", the Passport),
+// Points and the map key are explained where they happen (the check-in stamp, the map's "?", the Passport),
 // so the welcome only covers the basics and hands off to today's Top 4.
 const kitModal=document.getElementById('kitModal');
 function kitHtml(){
@@ -1032,8 +1031,7 @@ function kitHtml(){
       <li><div><b>Explore the map</b><span>Tap any pin. Tap <b style="display:inline">?</b> anytime for what the colors mean.</span></div></li>
       <li><div><b>Tap "Interested"</b><span>It saves to your Plans.</span></div></li>
       <li><div><b>Check in when you're there</b><span>Collect the stamp and earn points.</span></div></li>
-     </ol>
-     <p class="hand" style="font-size:22px;color:var(--red);margin-top:10px;line-height:1.15;transform:rotate(-1.5deg);transform-origin:left">Top 5 in ${escH(hood)} each month win gift cards!</p>`;
+     </ol>`;
 }
 // map key: every pin is a circle in its group's color with its icon; Headliners get a gold ring.
 // In onboarding only your picked interests show (and no cluster row); the map's "?" shows everything.
@@ -1809,7 +1807,7 @@ async function loadMyPoints(){
 /* ---------- neighborhood leaderboard (real points this month, from Supabase) ---------- */
 async function loadLeaderboard(){
   const el=document.getElementById('lbList'), me=shortName();
-  const empty=`<div class="empty">No points in ${escH(S.nb||'your neighborhood')} yet this month. Save, check in or add an event to get on the board. You need 3 check-ins this month to qualify.</div>`;
+  const empty=`<div class="empty">No points in ${escH(S.nb||'your neighborhood')} yet this month. Save, check in or add an event to get on the board.</div>`;
   if(!sb){ el.innerHTML=empty; return; }
   try{
     const u=(await sb.auth.getSession()).data.session?.user;
