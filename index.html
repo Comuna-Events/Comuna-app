@@ -167,6 +167,29 @@ img{ max-width:100% }
 .fbtn{ flex:1; display:flex; align-items:baseline; gap:6px; min-width:0; border:1px solid #DCCDAE; border-radius:20px; padding:7px 12px; font-size:13px; font-weight:600; color:var(--ink); background:var(--card); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .fbtn small{ font-size:10px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.05em } .fbtn i{ margin-left:auto; font-style:normal; font-size:11px; color:var(--muted) }
 .fbtn.set::before{ content:''; flex:none; align-self:center; width:6px; height:6px; border-radius:50%; background:var(--green) }
+/* search: sits between the wordmark row and the When / Type filters; a search sets those same filters, plus one keyword chip */
+.srch{ position:relative; display:flex; align-items:center; gap:10px; margin:4px 20px 0 }
+.srch [hidden]{ display:none }
+.srchbox{ flex:1; min-width:0; display:flex; align-items:center; gap:10px; height:46px; padding:0 12px 0 14px; background:var(--card); border:1.5px solid #DCCDAE; border-radius:23px; box-shadow:0 4px 14px rgba(38,37,31,.10) }
+.srchbox:focus-within{ border-color:var(--green) }
+.srchbox input{ flex:1; min-width:0; border:0; background:none; font:inherit; font-size:16px; color:var(--ink); outline:none; -webkit-appearance:none; appearance:none; text-overflow:ellipsis }  /* 16px keeps iOS from zooming in on focus */
+.srchbox input::-webkit-search-cancel-button{ display:none }
+.srchbox input::placeholder{ color:var(--muted) }
+.srchico{ flex:none; width:26px; height:26px; margin-left:-3px; display:grid; place-items:center; color:var(--green); border-radius:50% }
+.srchx{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--line); display:grid; place-items:center }
+.srchcancel{ flex:none; font-size:14px; font-weight:700; color:var(--green); padding:10px 2px }
+.srchsugg{ position:absolute; left:0; right:0; top:54px; z-index:2; background:var(--paper); border-radius:18px; box-shadow:0 12px 30px rgba(38,37,31,.22); max-height:min(60vh,520px); overflow-y:auto; padding:4px 14px 12px }
+.srchsugg .psub{ margin-top:14px }
+.sopt{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:11px 2px; border-bottom:1px dashed #DCCDAE; font-size:15px }
+.sopt > span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis } .sopt small{ display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.sopt > b{ font-size:13px; color:var(--muted); font-weight:500 }
+.sopt.go{ margin-top:10px; padding:12px 14px; border:0; border-radius:14px; background:var(--green); color:var(--paper) } .sopt.go small{ color:#CFC3AB } .sopt.go > b{ color:var(--paper) }
+.sopt .pl{ flex:none; width:30px; height:30px; border-radius:8px; background:var(--line); display:grid; place-items:center }
+.fbtn.kw{ flex:none; background:var(--ink); border-color:var(--ink); color:var(--paper); align-items:center } .fbtn.kw i{ color:var(--paper) }
+#homeScreen.searching .topbar{ display:none }
+#homeScreen.searching .srch{ margin-top:18px }
+#homeScreen.searching .fbtn{ flex:none }
+#homeScreen .homehead.sugg-on{ z-index:35 }
 .picklist{ display:flex; flex-direction:column; margin-top:8px } .popt{ display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px dashed #DCCDAE; font-size:15px; text-align:left }
 .betapill{ font-size:12px; font-weight:600; color:var(--muted); padding:5px 4px; background:none; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
 .moods{ display:flex; gap:8px; margin:12px 0 4px } .moods button{ flex:1; font-size:26px; padding:10px 0; border-radius:14px; background:var(--card); border:2px solid transparent } .moods button.on{ border-color:var(--green); background:#E4ECDF }
@@ -507,6 +530,16 @@ img{ max-width:100% }
           <button class="betapill" id="betaBtn" aria-label="Beta: send feedback">Beta · Feedback</button>
           <button class="iconbtn" data-go="alerts" aria-label="Alerts"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4z"/><path d="M10 21h4"/></svg><span class="dot" id="alertDot" style="display:none"></span></button>
         </div>
+      </div>
+      <div class="srch" id="srch">
+        <form class="srchbox" id="srchForm" role="search" action="#">
+          <button type="button" class="srchico" id="srchBack" aria-label="Clear search" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <span class="srchico" id="srchIcon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+          <input id="srchQ" type="search" placeholder="Ask Comuna" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Search events, places and vibes" aria-controls="srchSugg" aria-expanded="false">
+          <button type="button" class="srchx" id="srchX" aria-label="Clear search" hidden><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </form>
+        <button type="button" class="srchcancel" id="srchCancel" hidden>Cancel</button>
+        <div class="srchsugg" id="srchSugg" hidden></div>
       </div>
       <div class="chips" id="chips"></div>
       </div>
@@ -1128,7 +1161,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && kitModal.classLi
 
 const recModal=document.getElementById('recModal');
 document.getElementById('recClose').onclick=()=>recModal.classList.remove('on');
-recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; } const r=e.target.closest('[data-rec]'); if(r){ recModal.classList.remove('on'); openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
+recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; } const r=e.target.closest('[data-rec]'); if(r){ recModal.classList.remove('on'); sheetFrom='picks'; openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList.remove('on'); });
 
 /* ---------- home ---------- */
@@ -1146,10 +1179,54 @@ function inWindow(ev){
   return days>=0 && days < ({tonight:1,week:7,month:30})[when];
 }
 function enrich(){ const o=origin(); events.forEach(ev=>{ ev.mi=miles(o,ev); ev.hood=hoodOf(ev).name; }); }
+/* search: the words someone types narrow the same list the When / Type filters do. Every word has to match
+   somewhere (title, tags, category, venue, host, neighborhood, description); if no event has them all, events
+   matching any of them show instead. Time words ("tonight", "this weekend") set the When filter rather than
+   matching text. */
+let searchQ='', searchPrev=null, searchHits=null;   // searchHits: event id -> score for searchQ, rebuilt when events reload
+const STOPWORDS=new Set(('a an and the to of in on at for from near me my i im is are am be any some all thing things stuff '
+  +'do does what whats where wheres something anything cool fun good great best nice happening going around there here '
+  +'this that these those with by or it its can could should would want looking find show give us we you your').split(' '));
+const TIME_WORDS={ today:'tonight', tonight:'tonight', tonite:'tonight', week:'week', weekend:'week', month:'month' };
+const normText=t=>' '+String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim()+' ';
+function parseSearch(q){
+  const words=normText(q).trim().split(' ').filter(Boolean);
+  const w=words.map(x=>TIME_WORDS[x]).find(Boolean)||null;
+  return { when:w, terms:words.filter(x=>x.length>1 && !STOPWORDS.has(x) && !TIME_WORDS[x]) };
+}
+// [weight, text] per field; a title hit counts most
+function searchFields(ev){
+  if(ev._hay) return ev._hay;
+  const c=CATS[catKey(ev.category)], s=SUBCATS[ev.sub], k=KINDS[kindOf(ev)];
+  return ev._hay=[[3,normText(ev.title)],[2,normText([...(ev.tags||[]),c.label,c.short,s?s.label:'',k?k.label:''].join(' '))],
+    [2,normText([ev.venue,ev.host,ev.area,ev.hood].join(' '))],[1,normText(ev.desc)]];
+}
+// a word matches the start of a word in the text ("jazz" finds "jazzy"; "art" does not find "party"); plural or not
+function termScore(ev,t){
+  const alts=[t]; if(t.length>3 && t.endsWith('s')) alts.push(t.slice(0,-1));
+  let best=0; for(const [w,txt] of searchFields(ev)) if(w>best && alts.some(a=>txt.includes(' '+a))) best=w;
+  return best;
+}
+function searchIndex(q){
+  const {terms}=parseSearch(q), all=new Map(), some=new Map();
+  const pool=events.filter(ev=>ev.start? !!nextDate(ev) : true);   // finished events never show, so they never count
+  if(!terms.length){ pool.forEach(ev=>all.set(ev.id,0)); return {hits:all,exact:true}; }
+  pool.forEach(ev=>{ const sc=terms.map(t=>termScore(ev,t)), total=sc.reduce((a,b)=>a+b,0);
+    if(sc.every(Boolean)) all.set(ev.id,total); else if(total) some.set(ev.id,total); });
+  return all.size? {hits:all,exact:true} : {hits:some,exact:false};
+}
+function searchState(){
+  if(!searchQ) return null;
+  if(!searchHits || searchHits.events!==events) searchHits={...searchIndex(searchQ),events};
+  return searchHits;
+}
+const searchOK=ev=>{ const s=searchState(); return !s || s.hits.has(ev.id); };
 function picks(){
   enrich();
-  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev)).sort((a,b)=>a.mi-b.mi);
-  return list;                                    // all of LA, closest first
+  const s=searchState();
+  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev) && searchOK(ev))
+    .sort((a,b)=> (s? s.hits.get(b.id)-s.hits.get(a.id) : 0) || a.mi-b.mi);
+  return list;                                    // all of LA, closest first (best matches first while searching)
 }
 // Only shorten long display titles when the exact venue suffix is repeated below.
 // Preserve the official title on event details, sharing and calendar exports.
@@ -1213,19 +1290,23 @@ function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
   const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
-  document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when" aria-label="When: ${wl}">${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type" aria-label="Type: ${cl}">${cl}<i>▾</i></button>`;
+  document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when" aria-label="When: ${wl}">${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type" aria-label="Type: ${cl}">${cl}<i>▾</i></button>`
+    + (searchQ? `<button class="fbtn kw" data-clear-search aria-label="Clear search: ${escH(searchQ)}">“${escH(searchQ.length>24?searchQ.slice(0,23)+'…':searchQ)}”<i>✕</i></button>` : '');
+  document.getElementById('homeScreen').classList.toggle('searching',!!searchQ);
   const P=picks();
   document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
     + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
       : eventsState==='error'? `<button class="pick" id="retryEvents" style="grid-template-columns:1fr"><div><div class="t">Couldn't load events</div><div class="m2" style="display:block">Check your connection, then tap to try again</div></div></button>`
+      : searchQ? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches “${escH(searchQ)}”</div><div class="m2" style="display:block">Try fewer words, or Anytime / Everything</div></div></div>`
       : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches these filters</div><div class="m2" style="display:block">Try Anytime or Everything</div></div></div>`);
   if(selId!==null && !P.some(ev=>ev.id===selId)) selId=null;
-  const first=P[0]; document.getElementById('mapNote').textContent = first ? (first.live? `${first.title.split(' ').slice(0,2).join(' ')}: ${first.startsIn}` : '') : '';
+  const first=P[0]; document.getElementById('mapNote').textContent = searchQ && eventsState==='live' ? (!P.length? '' : searchState().exact? `${P.length} ${P.length===1?'match':'matches'}` : `no exact match, ${P.length} close ${P.length===1?'one':'ones'}`)
+    : first ? (first.live? `${first.title.split(' ').slice(0,2).join(' ')}: ${first.startsIn}` : '') : '';
   placePins(P);
 }
-document.getElementById('chips').addEventListener('click',e=>{ const b=e.target.closest('[data-pick]'); if(b) openPicker(b.dataset.pick); });
+document.getElementById('chips').addEventListener('click',e=>{ if(e.target.closest('[data-clear-search]')){ clearSearch(); return; } const b=e.target.closest('[data-pick]'); if(b) openPicker(b.dataset.pick); });
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
-function countWith(w,c,t=tier){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)).length; when=ow; return n; }
+function countWith(w,c,t=tier){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&searchOK(ev)).length; when=ow; return n; }
 // change the interests you picked at sign-up (also drives "Your interests" on the map and the daily Top 4)
 function editInterests(){
   const pick=new Set(S.interests||[]);
@@ -1303,6 +1384,93 @@ document.getElementById('picks').addEventListener('click',e=>{ if(e.target.close
 document.getElementById('tMap').onclick=()=>{ document.getElementById('homeScreen').classList.remove('home-list'); tMap.classList.add('on'); tList.classList.remove('on'); setTimeout(()=>{ map?map.resize():drawPaper(); },20); };
 document.getElementById('tList').onclick=()=>{ document.getElementById('homeScreen').classList.add('home-list'); tList.classList.add('on'); tMap.classList.remove('on'); };
 const tMap=document.getElementById('tMap'), tList=document.getElementById('tList');
+
+/* ---------- search bar ---------- */
+// Running a search remembers the filters you had and resets them to Anytime / Everything (or the When a time word asks for);
+// the filters then narrow the results as usual. Clearing the search puts your filters back.
+const srchQ=document.getElementById('srchQ'), srchSugg=document.getElementById('srchSugg');
+function applySearch(q){
+  q=String(q||'').trim().slice(0,120); if(!q){ clearSearch(); return; }
+  if(!searchPrev) searchPrev={when,filter,tier};
+  when=parseSearch(q).when||'any'; filter='All'; tier='any';
+  searchQ=q; searchHits=null; srchQ.value=q; closeSugg(); srchQ.blur();
+  userMoved=false; selId=null; fromCards=false; renderHome(); fitToResults(picks());
+  logSearch(q,picks().length);
+}
+function clearSearch(){
+  const had=!!searchQ; searchQ=''; searchHits=null; srchQ.value='';
+  if(searchPrev){ ({when,filter,tier}=searchPrev); searchPrev=null; }
+  closeSugg(); if(!had) return;
+  userMoved=false; selId=null; fromCards=false; renderHome(); openCamera(true);
+}
+// frame the closest results in the space between the header and the cards
+function fitToResults(P){
+  if(!map || !P.length || document.getElementById('homeScreen').classList.contains('home-list')) return;
+  const pts=P.slice(0,10).filter(ev=>ev.lat!=null&&ev.lng!=null); if(!pts.length) return;
+  const ins=mapInsets(), padding={top:ins.t+20,bottom:ins.b+20,left:40,right:40};
+  setTimeout(()=>{ try{
+    if(pts.length===1) map.flyTo({center:[pts[0].lng,pts[0].lat],zoom:15,padding,duration:700});
+    else map.fitBounds(pts.reduce((b,ev)=>b.extend([ev.lng,ev.lat]),new mapboxgl.LngLatBounds([pts[0].lng,pts[0].lat],[pts[0].lng,pts[0].lat])),{padding,maxZoom:15,duration:700});
+  }catch(e){ console.warn('Could not frame search results', e); } },60);
+}
+function syncSearchBar(){
+  const typing=document.activeElement===srchQ || !srchSugg.hidden;
+  document.getElementById('srchBack').hidden=!searchQ || typing; document.getElementById('srchIcon').hidden=!!searchQ && !typing;
+  document.getElementById('srchX').hidden=!srchQ.value; document.getElementById('srchCancel').hidden=!typing;
+}
+function closeSugg(){ srchSugg.hidden=true; srchSugg.innerHTML=''; srchQ.setAttribute('aria-expanded','false'); document.querySelector('#homeScreen .homehead').classList.remove('sugg-on'); syncSearchBar(); }
+// suggestions while typing: run the search, then categories, places and events that match what's typed so far
+function renderSugg(){
+  enrich();
+  const q=srchQ.value.trim(), {terms}=parseSearch(q), opt=(attrs,lead,main,sub,n)=>`<button type="button" class="sopt" ${attrs}>${lead}<span>${main}${sub?`<small>${sub}</small>`:''}</span>${n!=null?`<b>${n}</b>`:''}</button>`;
+  const head=t=>`<div class="psub">${t}</div>`;
+  let html='';
+  if(!q){
+    const cats=Object.keys(CATS).filter(k=>events.some(e=>e.category===k));
+    html=cats.length? head('Browse')+cats.map(k=>opt(`data-scat="${k}"`,catDot(k,30),escH(CATS[k].label),escH(CATS[k].ex),events.filter(e=>e.category===k).length)).join('')
+      : `<div class="psub">Search events, places and vibes</div>`;
+  } else {
+    const idx=searchIndex(q), n=idx.hits.size;
+    html=`<button type="button" class="sopt go" data-sq="${escH(q)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search “${escH(q)}”<small>${n? (idx.exact?'':'No exact match · ')+`${n} ${n===1?'event':'events'}` : 'No events match yet'}</small></span></button>`;
+    if(terms.length){
+      const pre=t=>terms.every(w=>normText(t).includes(' '+w));
+      const cats=Object.keys(CATS).filter(k=>events.some(e=>e.category===k) && pre(CATS[k].label+' '+CATS[k].short));
+      if(cats.length) html+=head('Categories')+cats.map(k=>opt(`data-scat="${k}"`,catDot(k,30),escH(CATS[k].label),'',events.filter(e=>e.category===k).length)).join('');
+      const places=new Map(); events.forEach(ev=>[[ev.area||ev.hood,'Neighborhood'],[ev.venue,'Venue']].forEach(([name,kind])=>{ if(!name||!pre(name)) return;
+        const key=name.toLowerCase(), p=places.get(key)||{name,kind,n:0}; p.n++; places.set(key,p); }));
+      const pl=[...places.values()].sort((a,b)=>b.n-a.n).slice(0,3), pin='<span class="pl" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.4-6-10a6 6 0 0 1 12 0c0 4.6-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg></span>';
+      if(pl.length) html+=head('Places')+pl.map(p=>opt(`data-sq="${escH(p.name)}"`,pin,escH(p.name),`${p.kind} · ${p.n} ${p.n===1?'event':'events'}`,null)).join('');
+      const evs=[...idx.hits.entries()].map(([id,sc])=>({ev:events.find(e=>e.id===id),sc})).filter(x=>x.ev)
+        .sort((a,b)=>b.sc-a.sc||a.ev.mi-b.ev.mi).slice(0,4).map(x=>x.ev);
+      if(evs.length) html+=head('Events')+evs.map(ev=>opt(`data-sev="${ev.id}"`,catDot(ev.category,30),escH(cardTitle(ev)),escH([ev.start?nextWhen(ev):ev.time,ev.area||ev.hood].filter(Boolean).join(' · ')),null)).join('');
+    }
+  }
+  srchSugg.innerHTML=html; srchSugg.hidden=false; srchQ.setAttribute('aria-expanded','true');
+  document.querySelector('#homeScreen .homehead').classList.add('sugg-on'); syncSearchBar();
+}
+srchQ.addEventListener('focus',renderSugg);
+srchQ.addEventListener('input',renderSugg);
+srchQ.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.stopPropagation(); srchQ.value=searchQ; closeSugg(); srchQ.blur(); } });
+document.getElementById('srchForm').addEventListener('submit',e=>{ e.preventDefault(); applySearch(srchQ.value); });
+document.getElementById('srchX').onclick=()=>{ srchQ.value=''; if(document.activeElement===srchQ || !srchSugg.hidden){ srchQ.focus(); renderSugg(); } else clearSearch(); };
+document.getElementById('srchBack').onclick=clearSearch;
+document.getElementById('srchCancel').onclick=()=>{ srchQ.value=searchQ; closeSugg(); srchQ.blur(); };
+srchSugg.addEventListener('click',e=>{
+  const b=e.target.closest('[data-sq],[data-scat],[data-sev]'); if(!b) return;
+  if(b.dataset.sq!=null) applySearch(b.dataset.sq);
+  else if(b.dataset.scat){ clearSearch(); filter=b.dataset.scat; tier='any'; srchQ.blur(); renderHome(); }
+  else { const id=+b.dataset.sev; logSearch(srchQ.value,null,id); srchQ.value=searchQ; closeSugg(); srchQ.blur(); sheetFrom='search_suggestion'; openSheet(id); }
+});
+// tapping anywhere else closes the suggestions and leaves the current search as it was
+document.addEventListener('pointerdown',e=>{ if(!srchSugg.hidden && !e.target.closest('#srch')){ srchQ.value=searchQ; closeSugg(); srchQ.blur(); } });
+srchQ.addEventListener('blur',()=>setTimeout(syncSearchBar,0));
+// what people search for, and how many events it found (the demand data for sponsored placements). Signed-in only, sent quietly.
+async function logSearch(q,results,eventId){
+  if(!sb || !q) return; const u=await dbUser(); if(!u) return;
+  const { error } = await sb.from('search_queries').insert({ user_id:u.id, query:String(q).slice(0,200), result_count:results, picked_event_id:eventId!=null? eidOf(events.find(e=>e.id===eventId)) : null,
+    when_filter:when, type_filter:tier!=='any'?tier:filter, neighborhood:S.nb||null });
+  if(error) console.warn('Supabase search log failed', error);
+}
 
 /* ---------- map: Mapbox if reachable, Paper map otherwise ---------- */
 let map=null, markers=[], paperDrawn=false;
@@ -1725,6 +1893,7 @@ const overlay=document.getElementById('overlay'), sheet=document.getElementById(
 const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
 function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back button (labelled backLabel) that returns to where you came from
   const ev=events.find(e=>e.id===id); if(!ev) return; enrich();
+  sheetCtx={ placement:sheetFrom||placementNow(), query:searchQ||null }; sheetFrom=null;
   const inn=S.rsvp.includes(id), done=S.checked.includes(id);
   const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
   const link=(()=>{ const ticket=okLink(ev.ticket), source=okLink(ev.source); const u=(ticket&&!isRoundup(ticket))?ticket:(source&&!isRoundup(source))?source:(ticket||source);
@@ -2104,16 +2273,21 @@ async function dbRsvp(ev){
   dbProfile(); loadGoing();
 }
 // what people look at and tap, per event, for host stats. Batched, sent quietly (no error toasts), never blocks the app.
-let trackQ=[], trackT=null;
+// placement: where the event was opened from (map, list, search, search_suggestion, picks...), so ads and search can be measured.
+let trackQ=[], trackT=null, sheetFrom=null, sheetCtx={};
+const placementNow=()=> current!=='home'? current : searchQ? 'search' : document.getElementById('homeScreen').classList.contains('home-list')? 'list' : 'map';
 function track(ev,action){
   if(!ev||!sb) return;
-  trackQ.push({ event_id:eidOf(ev), event_title:ev.title||null, action, neighborhood:ev.area||ev.hood||null, category:ev.category||null });
+  trackQ.push({ event_id:eidOf(ev), event_title:ev.title||null, action, neighborhood:ev.area||ev.hood||null, category:ev.category||null,
+    placement:sheetCtx.placement||null, search_query:sheetCtx.query||null });
   clearTimeout(trackT); trackT=setTimeout(flushTrack,4000);
 }
 async function flushTrack(){
   if(!trackQ.length) return; const q=trackQ; trackQ=[];
   const u=await dbUser(); if(!u) return;
-  const { error } = await sb.from('event_actions').insert(q.map(r=>({...r,user_id:u.id})));
+  let { error } = await sb.from('event_actions').insert(q.map(r=>({...r,user_id:u.id})));
+  // until supabase/search.sql adds the placement columns, save the rows without them
+  if(error && /placement|search_query/.test(error.message||'')) ({ error } = await sb.from('event_actions').insert(q.map(({placement,search_query,...r})=>({...r,user_id:u.id}))));
   if(error) console.warn('Supabase tracking save failed', error);
 }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushTrack(); });
@@ -2244,7 +2418,7 @@ async function loadEvents(){
     // category is one of the six; the detailed kind (shown on the event page, and used to guess a missing tier) comes from the tags
     const subOf=r=>{ const g=catKey(catMap(r.category)), tags=r.tags||[],
       t=tags.map(x=>Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===String(x).toLowerCase())).find(Boolean)||catMap(tags.join(' ')); return { category:g, sub: SUB_GROUP[t]===g && !CATS[t]? t : '' }; };
-    events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
+    events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', tags:Array.isArray(r.tags)? r.tags : [], ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
       address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), price:r.price_type||'', age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
       ticket:okLink(r.ticket_url), source:okLink(r.source_url), rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
     eventsState='live'; if(current==='home') renderHome(); loadGoing(); loadSubmissions();
