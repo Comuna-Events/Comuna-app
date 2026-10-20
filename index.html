@@ -857,10 +857,11 @@ function stampSVG(top,bottom,kind,c,size,rot,fill){
 // "RSVP'D" ticket stamp shown when you RSVP: same look as the check-in stamp, Sun ink
 function rsvpStamp(ev,w=240,h=160){
   const c=C.sun, t=ev.title.length>26? ev.title.slice(0,25).trim()+'…' : ev.title, when=(ev.time||'').toUpperCase(), whenFit=when.length>28? when.slice(0,27).trim()+'…' : when;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="RSVP stamp for ${escH(ev.title)}">
+  const rsvp=needsRsvp(ev), word=rsvp? 'RSVP\'D' : 'INTERESTED';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="${rsvp?'RSVP':'Interested'} stamp for ${escH(ev.title)}">
   <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
   <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
-  <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="32" letter-spacing="2" fill="${c}">RSVP'D</text>
+  <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="${rsvp?32:26}" letter-spacing="${rsvp?2:1}"${rsvp?'':' textLength="118" lengthAdjust="spacingAndGlyphs"'} fill="${c}">${word}</text>
   <text x="75" y="66" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="10.5" letter-spacing=".6" fill="${c}">${escH(t.toUpperCase())}</text>
   <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
   <circle cx="75" cy="18" r="3.2" fill="${C.red}"/></svg>`;
@@ -935,7 +936,7 @@ document.getElementById('startSignup').onclick=()=>{ guestFlow=false; go('onb2')
 document.getElementById('startGuest').onclick=()=>{ guestFlow=true; go('onb2'); };
 // no location sharing needed: search the same neighborhoods and cities as "Your neighborhood" in Profile
 const locQ=document.getElementById('locQ'), locList=document.getElementById('locList');
-locQ.placeholder=`Search ${HOODS.length} neighborhoods and cities`;
+locQ.placeholder='Search within LA County';
 locQ.oninput=()=>{ const t=locQ.value.trim().toLowerCase();
   const hits=t? HOODS.filter(h=>h.name.toLowerCase().includes(t)).sort((a,b)=>(a.name.toLowerCase().startsWith(t)?0:1)-(b.name.toLowerCase().startsWith(t)?0:1) || a.name.localeCompare(b.name)).slice(0,6) : [];
   locList.innerHTML= !t? '' : hits.length? hits.map(h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${escH(h.name)}"><span>${escH(h.name)}<small>${h.city?'City':'Los Angeles'}</small></span>${h.name===S.nb?'<em>✓</em>':''}</button>`).join('')
@@ -1390,7 +1391,7 @@ function editInterests(){
 function editHood(){
   const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Your neighborhood</div>
     <h2 style="font-size:28px">Where's home base?</h2><p class="sub">You'll compete on this neighborhood's monthly leaderboard.${S.nb?` Points you've already earned stay on ${S.nb}'s board.`:''}</p>
-    <input class="field" id="hoodQ" type="search" placeholder="Search ${HOODS.length} neighborhoods and cities" autocomplete="off" aria-label="Search neighborhoods and cities">
+    <input class="field" id="hoodQ" type="search" placeholder="Search within LA County" autocomplete="off" aria-label="Search neighborhoods and cities">
     <div class="picklist" id="hoodList"></div>`;
     // closest first; typing searches all of them
     const o=origin(), q=document.getElementById('hoodQ'), row=h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${escH(h.name)}"><span>${escH(h.name)}<small>${h.city?'City':'Los Angeles'} · ${miles(o,h).toFixed(1)} mi</small></span>${h.name===S.nb?'<em>✓</em>':''}</button>`;
