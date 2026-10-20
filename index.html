@@ -92,13 +92,13 @@ img{ max-width:100% }
 /* ---------- onboarding ---------- */
 .onb{ background:var(--green); color:var(--paper) }
 .onb .inner{ flex:1; display:flex; flex-direction:column; padding:44px 26px 34px; position:relative; overflow-y:auto; min-height:0 }
-.onb .skip{ position:absolute; right:22px; top:26px; font-size:13px; color:#CFC3AB }
+.onb .btn.ghost{ border-color:#CFC3AB; color:var(--paper); margin-top:10px }
 .onb .big{ font-family:var(--display); font-weight:900; font-size:60px; line-height:.9; text-transform:uppercase; margin:0 }
 .onb .lede{ color:#DDD1B8; font-size:15px; line-height:1.5; margin:14px 0 22px }
 .stampfield{ position:relative; height:300px; margin:24px -6px 10px }
 .stampfield > *{ position:absolute }
 .onb2{ background:var(--paper) }
-/* shorter phones (or Safari with its toolbars showing): shrink the stamps and headline so "Get started" stays on screen */
+/* shorter phones (or Safari with its toolbars showing): shrink the stamps and headline so "Create account" stays on screen */
 @media (max-height:780px){
   .onb .inner{ padding-top:30px; padding-bottom:24px }
   .stampfield{ zoom:.7; margin:10px -6px 4px }
@@ -462,12 +462,12 @@ img{ max-width:100% }
     <!-- ONBOARDING 1 -->
     <section class="screen onb" data-s="onb1">
       <div class="inner">
-        <button class="skip" data-go="home">Skip</button>
         <div class="wm" id="onbMark" style="font-size:40px;color:var(--paper)"></div>
         <div class="stampfield" id="stampfield"></div>
         <h1 class="big">Your neighborhood has plans.</h1>
         <p class="lede">Explore local events, experiences and pop-ups near you.</p>
-        <button class="btn primary" data-go="onb2" style="margin-top:auto">Get started</button>
+        <button class="btn primary" id="startSignup" style="margin-top:auto">Create account</button>
+        <button class="btn ghost" id="startGuest">Skip sign up</button>
         <button class="signin" id="signinLink">Already have an account? <u>Sign in</u></button>
       </div>
     </section>
@@ -479,6 +479,9 @@ img{ max-width:100% }
         <div class="h1" style="color:var(--green);font-size:44px">Something good is happening nearby.</div>
         <div class="mini-map" id="miniMap" style="height:230px"></div>
         <button class="btn green" id="allowLoc" style="margin-top:14px">Use my location</button>
+        <label class="flabel" for="locQ" style="margin-top:16px">Or search for your neighborhood or city</label>
+        <input class="field" id="locQ" type="search" autocomplete="off" autocorrect="off" spellcheck="false" aria-controls="locList">
+        <div class="picklist" id="locList"></div>
         <button class="btn primary" id="locNext" style="margin-top:auto;margin-top:18px" disabled>Continue</button>
       </div>
     </section>
@@ -600,7 +603,7 @@ img{ max-width:100% }
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
         <button class="linkrow" id="dbCheck">Account sync <span id="dbStatusPf">Tap to check</span></button>
-        <button class="linkrow" id="signOut">Sign out <span id="pfEmail"></span></button>
+        <button class="linkrow" id="signOut"><b id="pfAuth" style="font-weight:inherit">Sign out</b> <span id="pfEmail"></span></button>
       </div>
     </section>
 
@@ -909,10 +912,23 @@ function buildOnb(){
 const locNext=document.getElementById('locNext');
 function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
 locNext.onclick=()=>go('onb3');
+// "Skip sign up" (beta) still asks where you are and what you're into, then goes straight to the app with no name or email
+let guestFlow=false;
+document.getElementById('startSignup').onclick=()=>{ guestFlow=false; go('onb2'); };
+document.getElementById('startGuest').onclick=()=>{ guestFlow=true; go('onb2'); };
+// no location sharing needed: search the same neighborhoods and cities as "Your neighborhood" in Profile
+const locQ=document.getElementById('locQ'), locList=document.getElementById('locList');
+locQ.placeholder=`Search ${HOODS.length} neighborhoods and cities`;
+locQ.oninput=()=>{ const t=locQ.value.trim().toLowerCase();
+  const hits=t? HOODS.filter(h=>h.name.toLowerCase().includes(t)).sort((a,b)=>(a.name.toLowerCase().startsWith(t)?0:1)-(b.name.toLowerCase().startsWith(t)?0:1) || a.name.localeCompare(b.name)).slice(0,6) : [];
+  locList.innerHTML= !t? '' : hits.length? hits.map(h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${escH(h.name)}"><span>${escH(h.name)}<small>${h.city?'City':'Los Angeles'}</small></span>${h.name===S.nb?'<em>✓</em>':''}</button>`).join('')
+    : `<div class="empty">No neighborhood or city called "${escH(locQ.value.trim())}" in LA County yet.</div>`; };
+locList.onclick=e=>{ const b=e.target.closest('[data-hood]'); if(!b) return;
+  setHood(b.dataset.hood); locQ.value=''; locList.innerHTML=''; toast('Got it. Home base is '+S.nb); go('onb3'); };
 document.getElementById('allowLoc').addEventListener('click',()=>{
   if(!navigator.geolocation){ toast('Location isn\'t available on this device. Try another browser or phone.'); return; }
   navigator.geolocation.getCurrentPosition(p=>{ const loc={lat:p.coords.latitude,lng:p.coords.longitude}; setHood(hoodOf(loc).name,loc); toast('Got it. You\'re near '+S.nb); go('onb3'); },
-    ()=>toast('We need your location to show what\'s nearby. Please allow it and try again.'), {timeout:6000});
+    ()=>{ toast('No problem. Search for your neighborhood or city instead.'); locQ.focus(); }, {timeout:6000});
 });
 
 /* sign-up: interests */
@@ -920,7 +936,12 @@ const INTERESTS=Object.values(CATS).map(c=>c.label), INT_EX=Object.fromEntries(O
 const intNext=document.getElementById('intNext');
 function renderInterests(){ const mine=S.interests||[]; document.getElementById('interestList').innerHTML=INTERESTS.map(t=>`<button aria-pressed="${mine.includes(t)}" data-int="${t}">${t}<small>${INT_EX[t]}</small></button>`).join(''); intNext.disabled=!mine.length; intNext.textContent=mine.length?`Continue with ${mine.length}`:'Pick at least one'; }
 document.getElementById('interestList').addEventListener('click',e=>{ const b=e.target.closest('[data-int]'); if(!b) return; const t=b.dataset.int, m=S.interests=S.interests||[]; m.includes(t)? m.splice(m.indexOf(t),1) : m.push(t); save(); renderInterests(); });
-intNext.onclick=()=>openAuth('signup');
+intNext.onclick=()=>guestFlow? startGuest() : openAuth('signup');
+// guests use the app without an account; they can create one later from Profile
+function startGuest(){
+  S.guest=true; S.joined=S.joined||new Date().toISOString().slice(0,10);
+  history=[]; S.kitSeen=false; save(); renderNames(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
+}
 
 /* sign-up: name + email, then the code from the email */
 // a code, not a link: on iPhone an emailed link opens Safari, not the installed app, so the sign-in would land in the wrong place
@@ -1078,17 +1099,18 @@ async function finishAuth(){
 }
 // back to a signed-out, empty passport (sign out, demo reset, or an account from before email sign-in)
 async function signOutLocal(){
-  authed=null; S.signedUp=false; S.email=''; freshPassport(); save();
+  authed=null; S.signedUp=false; S.guest=false; S.email=''; freshPassport(); save();
   if(sb) try{ await sb.auth.signOut({ scope:'local' }); }catch(e){}
 }
 document.getElementById('signOut').onclick=async()=>{
-  if(!S.signedUp) return go('onb1');
+  if(!S.signedUp){ history=[]; return go('onb1'); }
   if(!confirm('Sign out of Comuna? Your passport stays with your account, so you can sign back in any time.')) return;
   await signOutLocal(); renderNames(); history=[]; current=''; openAuth('signin'); history=[]; toast('Signed out');
 };
 function shortName(){ const p=(S.name||'').split(' ').filter(Boolean); return p.length? p[0]+(p[1]?` ${p[p.length-1][0].toUpperCase()}.`:'') : 'You'; }
 function renderNames(){ const n=shortName(); document.getElementById('passName').textContent=`${n} · Los Angeles`; document.getElementById('pfName').textContent=n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
-  document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : 'Not signed in'; document.getElementById('pfNb').textContent=S.nb||'Pick one'; }
+  document.getElementById('pfAuth').textContent=S.signedUp? 'Sign out' : 'Create account or sign in';
+  document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : ''; document.getElementById('pfNb').textContent=S.nb||'Pick one'; }
 
 /* ---------- daily Top 4: one Headliner, Weekly, Hidden Gem and Pop-up near you, once a day ---------- */
 function dailyPicks(){
@@ -2497,7 +2519,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 function boot(){
   ['asideMark','onbMark','homeMark'].forEach(id=>wordmark(document.getElementById(id)));
   buildOnb(); updateDot(); renderNames(); current='';
-  if(S.signedUp){ save(); go('home',false); }
+  if(S.signedUp || S.guest){ save(); go('home',false); }
   else if(S.onboardingComplete) openAuth('signin');
   else go('onb1',false);
   history=[];
