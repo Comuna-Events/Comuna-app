@@ -6,7 +6,7 @@ const toasts=[],sent=[];
 const c={console,Date,Set,Map,passportRevision:0,S:{places:{},rsvp:[],checked:[],visits:0,points:0,rated:[]},
  document:{getElementById:get},overlay:{classList:{add(){},remove(){}}},sheet:get('sheet'),
  hoodByName:()=>({name:'Test',city:'Test'}),cityOf:()=> 'Test',visitedHoods:()=>({}),visitedCities:()=>({}),catKey:x=>x,kindOf:()=> 'regular',
- CATS:{arts:{short:'Arts'}},save(){},dbCheckin(){},track(){},placeStamp:()=>'',escH:x=>x,renderHome(){},
+ CATS:{arts:{short:'Arts'}},save(){},dbCheckin(){},logGuest(){},track(){},placeStamp:()=>'',escH:x=>x,renderHome(){},
  toast:x=>toasts.push(x),eidOf:ev=>ev.eid,sendFeedback:async r=>sent.push(r),dbProfile(){},current:'test',events:[],SUBCATS:{},okLink:x=>x,parseDay:x=>x};
 vm.createContext(c);
 vm.runInContext(source.slice(source.indexOf('const PTS='),source.indexOf('// Most events are free')),c);

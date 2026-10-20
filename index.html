@@ -264,8 +264,8 @@ img{ max-width:100% }
 @keyframes up{ from{ transform:translateY(40px); opacity:.6 } to{ transform:none; opacity:1 } }
 @media (prefers-reduced-motion:reduce){ .sheet{ animation:none } }
 .grab{ width:42px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px; cursor:grab }
-.sheet .sback{ position:sticky; top:0; float:left; margin:-4px 0 0 -8px; height:32px; padding:0 12px 0 6px; border-radius:16px; background:var(--card); color:var(--muted); font-size:13px; font-weight:600; display:flex; align-items:center; gap:2px; z-index:2 }
-.sheet .sback{ max-width:60% } .sheet .sback svg{ flex:none }
+/* icon only: the label (a venue name, "Top 4") ran long and wrapped over the sheet */
+.sheet .sback{ position:sticky; top:0; float:left; margin:-4px 0 0 -8px; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); display:flex; align-items:center; justify-content:center; z-index:2 }
 .sheet .sback ~ .cat{ clear:both; padding-top:10px }
 .sheet .x{ position:sticky; top:0; float:right; margin:-4px -8px 0 0; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); font-size:20px; line-height:1; display:grid; place-items:center; z-index:2 }
 .sheet .cat{ color:var(--red); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase }
@@ -401,6 +401,21 @@ img{ max-width:100% }
 @keyframes youPulse{ 0%{ transform:scale(1); opacity:.35 } 100%{ transform:scale(2.8); opacity:0 } }
 @media (prefers-reduced-motion: reduce){ .youmk .pulse{ animation:none; transform:scale(1.7); opacity:.18 } }
 .lbrow.me{ font-weight:700 } .lbrow.me .r{ color:var(--red) }
+/* guests: progress lives on this phone until they make an account */
+.lbrow.guest{ border:2px dashed var(--red); border-radius:14px; padding:10px 12px; margin:6px -12px }
+.lbrow.guest small{ display:block; font-size:12px; color:var(--muted); font-weight:400 }
+.lbcta{ font-size:14px; line-height:1.5; margin:12px 0 0 } .lbcta + .btn{ margin-top:12px }
+.keepcard{ width:100%; max-width:330px; background:var(--card); color:var(--ink); border-radius:22px; padding:18px; text-align:left; margin-bottom:6px }
+.keepcard b{ display:block; font-size:16px } .keepcard p{ color:var(--muted); font-size:13.5px; line-height:1.45; margin:3px 0 12px }
+.keepcard .btn + button{ display:block; width:100%; margin-top:6px; padding:10px; font-size:14px; color:var(--muted) }
+.guestbar{ display:flex; gap:12px; align-items:center; background:var(--green); color:var(--paper); border-radius:18px; padding:14px 14px 14px 16px; margin-top:6px }
+.guestbar div{ flex:1; min-width:0; font-size:12.5px; color:#DDD1B8; line-height:1.4 } .guestbar div b{ display:block; font-size:14.5px; color:var(--paper) }
+.guestbar .btn{ width:auto; flex:none; padding:0 16px; min-height:44px; font-size:13.5px }
+.carry{ background:var(--card); border-radius:18px; padding:14px 16px; margin-top:16px }
+.carry .k{ font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted) }
+.carry .n3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:8px }
+.carry .n3 b{ display:block; font-family:var(--display); font-weight:900; font-size:30px; color:var(--green); line-height:1 } .carry .n3 span{ font-size:12.5px; color:var(--muted) }
+.carry .hb{ font-size:13px; border-top:1px dashed #DCCDAE; padding-top:10px; margin-top:10px }
 
 /* ---------- profile / alerts ---------- */
 .prof{ display:flex; gap:14px; align-items:center; margin:8px 0 6px }
@@ -502,11 +517,12 @@ img{ max-width:100% }
       <div class="scroll" style="padding-top:28px;padding-bottom:30px;display:flex;flex-direction:column">
         <div class="onbtop"><button class="back" data-back>&larr; Back</button><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
         <div class="h1" id="suTitle" style="color:var(--green);font-size:44px">Put your name on your passport.</div>
+        <div class="carry" id="suCarry" hidden></div>
         <div id="suNameWrap"><label class="flabel" for="suName">Your name</label>
         <input class="field" id="suName" autocomplete="name" placeholder="First and last name"></div>
         <div id="suEmailWrap"><label class="flabel" for="suEmail">Your email</label>
         <input class="field" id="suEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
-        <p class="sub" style="margin-top:8px">We'll email you a sign-in code. No password needed.</p></div>
+        <p class="sub" style="margin-top:8px">We'll email you a sign-in code. No password, and we never share your email.</p></div>
         <button class="btn primary" id="suNext" style="margin-top:auto;margin-top:22px" disabled>Send my code</button>
       </div>
     </section>
@@ -576,6 +592,7 @@ img{ max-width:100% }
     <section class="screen" data-s="passport">
       <div class="topbar"><div style="display:flex;align-items:center;gap:10px"><div class="h1" style="color:var(--green)">Passport</div><img src="stamps/passport-stamp.webp" alt="" style="height:42px;width:auto;transform:rotate(-8deg) translateY(-2px)"></div><button class="pill" data-go="profile">Profile</button></div>
       <div class="scroll">
+        <div class="guestbar" id="guestBar" hidden><div><b>Saved on this phone only</b><span id="guestBarTxt"></span></div><button class="btn primary" id="guestSave">Save</button></div>
         <div class="passcover">
           <div class="k" id="passName">Los Angeles</div>
           <div class="big" id="passCount">0 places
@@ -769,7 +786,7 @@ load();
 // This flag controls navigation only; Supabase still authenticates account access.
 if(S.signedUp) S.onboardingComplete=true;
 // older builds saved a sample passport (18 check-ins, 4 wk streak, 1,240 points) for people who hadn't signed up yet
-if(!S.signedUp) Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[] });
+if(!S.signedUp && !S.guest) Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[] });
 
 /* ---------- geometry ---------- */
 function miles(a,b){ const R=3958.8, dLa=(b.lat-a.lat)*Math.PI/180, dLo=(b.lng-a.lng)*Math.PI/180; const x=Math.sin(dLa/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
@@ -840,10 +857,11 @@ function stampSVG(top,bottom,kind,c,size,rot,fill){
 // "RSVP'D" ticket stamp shown when you RSVP: same look as the check-in stamp, Sun ink
 function rsvpStamp(ev,w=240,h=160){
   const c=C.sun, t=ev.title.length>26? ev.title.slice(0,25).trim()+'…' : ev.title, when=(ev.time||'').toUpperCase(), whenFit=when.length>28? when.slice(0,27).trim()+'…' : when;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="RSVP stamp for ${escH(ev.title)}">
+  const rsvp=needsRsvp(ev), word=rsvp? 'RSVP\'D' : 'INTERESTED';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="${rsvp?'RSVP':'Interested'} stamp for ${escH(ev.title)}">
   <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
   <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
-  <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="32" letter-spacing="2" fill="${c}">RSVP'D</text>
+  <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="${rsvp?32:26}" letter-spacing="${rsvp?2:1}"${rsvp?'':' textLength="118" lengthAdjust="spacingAndGlyphs"'} fill="${c}">${word}</text>
   <text x="75" y="66" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="10.5" letter-spacing=".6" fill="${c}">${escH(t.toUpperCase())}</text>
   <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
   <circle cx="75" cy="18" r="3.2" fill="${C.red}"/></svg>`;
@@ -918,7 +936,7 @@ document.getElementById('startSignup').onclick=()=>{ guestFlow=false; go('onb2')
 document.getElementById('startGuest').onclick=()=>{ guestFlow=true; go('onb2'); };
 // no location sharing needed: search the same neighborhoods and cities as "Your neighborhood" in Profile
 const locQ=document.getElementById('locQ'), locList=document.getElementById('locList');
-locQ.placeholder=`Search ${HOODS.length} neighborhoods and cities`;
+locQ.placeholder='Search within LA County';
 locQ.oninput=()=>{ const t=locQ.value.trim().toLowerCase();
   const hits=t? HOODS.filter(h=>h.name.toLowerCase().includes(t)).sort((a,b)=>(a.name.toLowerCase().startsWith(t)?0:1)-(b.name.toLowerCase().startsWith(t)?0:1) || a.name.localeCompare(b.name)).slice(0,6) : [];
   locList.innerHTML= !t? '' : hits.length? hits.map(h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${escH(h.name)}"><span>${escH(h.name)}<small>${h.city?'City':'Los Angeles'}</small></span>${h.name===S.nb?'<em>✓</em>':''}</button>`).join('')
@@ -957,6 +975,15 @@ function suUpdate(){
   document.getElementById('suEmailWrap').style.display=needEmail?'':'none';
   suNext.textContent=needEmail? 'Send my code' : 'Start exploring';
   suNext.disabled=(needName && !suName.value.trim()) || (needEmail && !emailOk(suEmail.value));
+  renderCarry();
+}
+// a guest making an account (or signing in) sees what comes with them
+function renderCarry(){
+  const el=document.getElementById('suCarry'), n=Object.keys(S.places||{}).length, plans=(S.rsvp||[]).length;
+  el.hidden=!(S.guest && !authed && (n || S.points || plans)); if(el.hidden) return;
+  const cell=(v,l)=>`<div><b>${v.toLocaleString()}</b><span>${l}</span></div>`;
+  el.innerHTML=`<div class="k">Coming with you</div><div class="n3">${cell(n,n===1?'stamp':'stamps')}${cell(S.points||0,'points')}${cell(plans,plans===1?'saved plan':'saved plans')}</div>
+    ${authMode==='signup'?`<div class="hb">Home base: <b>${escH(S.nb||'')}</b> · ${(S.interests||[]).length} interest${(S.interests||[]).length===1?'':'s'}</div>`:''}`;
 }
 function openAuth(mode){
   authMode=mode;
@@ -1082,24 +1109,30 @@ async function finishAuth(){
   if(authed?.id!==user.id) return;
   if(error){ console.warn('Supabase profile load failed',error); toast('Could not load your account. Please reconnect and sign in again.'); return; }
   if(p && p.name){
-    const again=authMode==='signup';
+    const again=authMode==='signup', guest=S.guest? { pts:S.points||0, fb:S.feedbackQueue||[], n:(S.guestLog||[]).length } : null;
     applyAccountProfile(user,p);
+    // a guest signing in to an account they already have: add this phone's stamps to it
+    if(guest){ S.feedbackQueue=guest.fb; S.points+=guest.pts; S.guest=false; save(); await uploadGuest(user); dbProfile(); }
     await restorePassport(user);
     if(authed?.id!==user.id || S.accountId!==user.id) return;
     rebuildMap(); renderNames(); flushFeedback();
     history=[]; filter=myCats().length?'mine':'All'; go('home');
-    toast(again? 'You already have an account, so we signed you in. Welcome back!' : 'Welcome back, '+shortName());
+    toast(guest?.n? 'Signed in. Your stamps from this phone are on your account now.' : again? 'You already have an account, so we signed you in. Welcome back!' : 'Welcome back, '+shortName());
     return;
   }
   if(authMode==='signin'){ authMode='signup'; toast('Let\'s set up your passport'); history=[]; go('onb2'); return; }
-  // real users start with an empty passport (the demo profile is only for showing the app before sign-up)
-  freshPassport();
-  S.accountId=user.id; S.onboardingComplete=true; S.signedUp=true; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=new Date().toISOString().slice(0,10); save(); renderNames(); dbProfile(); flushFeedback();
-  history=[]; S.kitSeen=false; save(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
+  // real users start with an empty passport (the demo profile is only for showing the app before sign-up); guests keep theirs
+  const guest=S.guest; if(!guest) freshPassport();
+  S.accountId=user.id; S.onboardingComplete=true; S.signedUp=true; S.guest=false; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=guest&&S.joined||new Date().toISOString().slice(0,10); save(); renderNames();
+  // the profile first, so uploaded check-ins count toward this neighborhood's board; check-ins before reviews, which need them
+  dbProfile().then(()=>uploadGuest(user)).then(flushFeedback);
+  history=[];
+  if(guest){ filter=myCats().length?'mine':'All'; go('home'); toast('You\'re in. Your stamps are saved to your account.'); return; }
+  S.kitSeen=false; save(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
 }
 // back to a signed-out, empty passport (sign out, demo reset, or an account from before email sign-in)
 async function signOutLocal(){
-  authed=null; S.signedUp=false; S.guest=false; S.email=''; freshPassport(); save();
+  authed=null; S.signedUp=false; S.guest=false; S.guestLog=[]; S.email=''; freshPassport(); save();
   if(sb) try{ await sb.auth.signOut({ scope:'local' }); }catch(e){}
 }
 document.getElementById('signOut').onclick=async()=>{
@@ -1358,7 +1391,7 @@ function editInterests(){
 function editHood(){
   const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Your neighborhood</div>
     <h2 style="font-size:28px">Where's home base?</h2><p class="sub">You'll compete on this neighborhood's monthly leaderboard.${S.nb?` Points you've already earned stay on ${S.nb}'s board.`:''}</p>
-    <input class="field" id="hoodQ" type="search" placeholder="Search ${HOODS.length} neighborhoods and cities" autocomplete="off" aria-label="Search neighborhoods and cities">
+    <input class="field" id="hoodQ" type="search" placeholder="Search within LA County" autocomplete="off" aria-label="Search neighborhoods and cities">
     <div class="picklist" id="hoodList"></div>`;
     // closest first; typing searches all of them
     const o=origin(), q=document.getElementById('hoodQ'), row=h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${escH(h.name)}"><span>${escH(h.name)}<small>${h.city?'City':'Los Angeles'} · ${miles(o,h).toFixed(1)} mi</small></span>${h.name===S.nb?'<em>✓</em>':''}</button>`;
@@ -1376,6 +1409,7 @@ function editHood(){
   draw(); overlay.classList.add('on');
 }
 document.getElementById('pfNbBtn').onclick=editHood;
+document.getElementById('guestSave').onclick=()=>openAuth('signup');
 function openPicker(kind){
   const row=(attr,k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" ${attr}="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   let body;
@@ -1927,7 +1961,7 @@ function addToCalendar(ev){
 /* ---------- event sheet ---------- */
 const overlay=document.getElementById('overlay'), sheet=document.getElementById('sheet');
 const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
-function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back button (labelled backLabel) that returns to where you came from
+function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back button (its aria-label names backLabel) that returns to where you came from
   const ev=events.find(e=>e.id===id); if(!ev) return; enrich();
   sheetCtx={ placement:sheetFrom||placementNow(), query:searchQ||null }; sheetFrom=null;
   const inn=S.rsvp.includes(id), done=S.checked.includes(id);
@@ -1942,7 +1976,7 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
     : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${escH(okRsvpLink(ev))}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
     : `<button class="btn primary" id="rsvpBtn">Interested</button>`;
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel==='Top 4'?'your Top 4':backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>${escH(backLabel)}</button>`:''}<div class="grab"></div>
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel==='Top 4'?'your Top 4':backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div>
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
     <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
     <div class="evwhen">${escH(ev.start?nextWhen(ev):(ev.time||'Soon'))}</div>
@@ -1965,7 +1999,7 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
-  const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); passportRevision++; S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
+  const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); passportRevision++; S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); logGuest('rsvp',{ event_id:eidOf(ev), event_title:ev.title, kind:needsRsvp(ev)?'rsvp':'interested' }); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
     const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; toast(v.msg); return; } checkIn(ev,v.dist); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
@@ -2036,6 +2070,8 @@ function checkIn(ev,dist){
   const earned=[[PTS.checkin,'checked in']];
   const total=earned.reduce((a,x)=>a+x[0],0);
   track(ev,'checkin'); S.checked.push(ev.id); S.visits++; S.points+=total; save(); dbCheckin(ev,dist);
+  logGuest('checkin',{ event_id:eidOf(ev), event_title:ev.title, venue:ev.venue||null, neighborhood:ev.area||ev.hood||null, category:ev.category||null, distance_m:dist??null });
+  const nudge=S.guest && !S.keepNudged; if(nudge){ S.keepNudged=true; save(); }
   overlay.classList.remove('on');
   const un=[]; if(!hadHood) un.push(`New neighborhood: ${hood.name}`); if(!hadCity) un.push(`New city: ${city}`); if(!hadCat) un.push(`First ${CATS[catKey(ev.category)].short.toLowerCase()} stamp`); if(pl.n===5) un.push(`You're a regular here`);
   const m=document.getElementById('stampModal');
@@ -2043,9 +2079,12 @@ function checkIn(ev,dist){
     <h3>${firstPlace?`Stamped: ${escH(ev.venue)}`:`Back at ${escH(ev.venue)}`}</h3>
     <p>${escH(ev.title)}. <b>+${total} points</b> (${earned.map(x=>`+${x[0]} ${x[1]}`).join(', ')}), and ${escH(ev.venue)} knows you came.</p>
     ${un.length?`<div class="unlocks">${un.map(u=>`<span>${u}</span>`).join('')}</div>`:''}
-    <button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>`;
+    ${nudge? `<div class="keepcard"><b>Keep this stamp</b><p>It's saved on this phone for now. Add your email so it's safe if you switch phones or clear your browser.</p>
+      <button class="btn primary" id="keepSave">Create account</button><button id="closeStamp">Not now</button></div>`
+    : '<button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>'}`;
   m.classList.add('on');
   document.getElementById('closeStamp').onclick=()=>{ m.classList.remove('on'); renderHome(); setTimeout(()=>askHowWasIt(ev),300); };
+  if(nudge) document.getElementById('keepSave').onclick=()=>{ m.classList.remove('on'); openAuth('signup'); };
 }
 
 // Most events are free and open: "Interested" saves them. RSVP only when the host needs one, and it opens their link.
@@ -2083,13 +2122,21 @@ async function loadMyPoints(){
 async function loadLeaderboard(){
   const el=document.getElementById('lbList'), me=shortName();
   const empty=`<div class="empty">No points in ${escH(S.nb||'your neighborhood')} yet this month. Save, check in or add an event to get on the board.</div>`;
-  if(!sb){ el.innerHTML=empty; return; }
+  // guests aren't on the board: show where they'd land, and how to get on it
+  const guestBoard=(rows,data,known=true)=>{
+    const mine=S.points||0, rank=data.filter(r=>(+r.points||0)>mine).length+1;
+    if(mine && known) rows.splice(Math.min(rank-1,rows.length),0,`<div class="lbrow guest"><div class="r">${rank<=5?rank:''}</div><div>You'd be ${rank<=5?ordinal(rank):'on the board'}<small>with your ${mine.toLocaleString()} points</small></div><div></div></div>`);
+    el.innerHTML=(rows.length? rows.join('') : empty)+`<p class="lbcta">Guests aren't on the board. Create an account to ${mine?'claim your spot':'join in'} and compete for ${escH(S.nb||'your neighborhood')} this month.</p><button class="btn primary" id="lbClaim">${mine?'Claim my spot':'Create account'}</button>`;
+    document.getElementById('lbClaim').onclick=()=>openAuth('signup');
+  };
+  if(!sb){ if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; return; }
   try{
     const u=(await sb.auth.getSession()).data.session?.user;
     const { data, error } = await sb.from('leaderboard_month').select('user_id,display_name,points').eq('neighborhood',S.nb||'').order('points',{ascending:false}).limit(5); if(error) throw error;
-    el.innerHTML=(data||[]).length? data.map((r,i)=>{ const you=u&&r.user_id===u.id;
-      return `<div class="lbrow ${you?'me':''}"><div class="r">${i+1}</div><div>${escH(you?me:r.display_name||'Explorer')}${you?' (you)':''}</div><div>${(+r.points||0).toLocaleString()} pts</div></div>`; }).join('') : empty;
-  }catch(e){ console.warn('Supabase leaderboard failed', e); el.innerHTML=empty; }
+    const rows=(data||[]).map((r,i)=>{ const you=u&&r.user_id===u.id;
+      return `<div class="lbrow ${you?'me':''}"><div class="r">${i+1}</div><div>${escH(you?me:r.display_name||'Explorer')}${you?' (you)':''}</div><div>${(+r.points||0).toLocaleString()} pts</div></div>`; });
+    if(S.guest) guestBoard(rows,data||[]); else el.innerHTML=rows.length? rows.join('') : empty;
+  }catch(e){ console.warn('Supabase leaderboard failed', e); if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; }
 }
 
 /* ---------- plans ---------- */
@@ -2176,6 +2223,8 @@ function renderPassport(){
   document.getElementById('passCount').textContent=`${nP} place${nP===1?'':'s'}\n${nH} neighborhood${nH===1?'':'s'}\n${nC} cit${nC===1?'y':'ies'}`;
   fitLine(document.getElementById('passCount'));
   document.getElementById('passBar').style.width=Math.min(100,(nH+nC)/(NBHDS.length+CITIES.length)*100)+'%';
+  const nP0=Object.keys(S.places).length; document.getElementById('guestBar').hidden=!S.guest;
+  document.getElementById('guestBarTxt').textContent=nP0||S.points? `Create an account to keep your ${nP0} stamp${nP0===1?'':'s'} and ${(S.points||0).toLocaleString()} points.` : 'Create an account so your stamps are safe if you switch phones.';
   document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
   document.getElementById('passSeal').innerHTML=omark(130,'#F3E7D1','#F3E7D1');
   if(passTab!=='hoods' && passTab!=='cities') passTab='places';
@@ -2283,7 +2332,7 @@ async function checkAccount(){
       if(profileError || authed?.id!==user.id) return;
       if(p && p.name){
         const returnHome=!S.signedUp || S.accountId!==user.id;
-        applyAccountProfile(user,p); await restorePassport(user);
+        applyAccountProfile(user,p); await uploadGuest(user); await restorePassport(user);
         if(authed?.id!==user.id || S.accountId!==user.id) return;
         renderNames(); if(returnHome){ history=[]; filter=myCats().length?'mine':'All'; go('home',false); }
       }
@@ -2333,6 +2382,18 @@ async function dbCheckin(ev,dist){
     neighborhood:ev.area||ev.hood||null, category:ev.category||null, distance_m:dist??null });
   if(error){ console.warn('Supabase check-in save failed', error); dbStatus('check-in save failed: '+error.message,true); }
   dbProfile();
+}
+// guests: check-ins and saves wait on the phone, then go to the account they make (or sign in to)
+function logGuest(t,row){ if(!S.guest) return; (S.guestLog=S.guestLog||[]).push({t,...row}); save(); }
+async function uploadGuest(user){
+  const log=S.guestLog||[]; if(!log.length || !sb || S.accountId!==user.id) return;
+  const sent=new Set();
+  for(const [t,table] of [['checkin','checkins'],['rsvp','rsvps']]){
+    const rows=log.filter(r=>r.t===t).map(({t,...r})=>({...r,user_id:user.id})); if(!rows.length){ sent.add(t); continue; }
+    const { error } = t==='rsvp'? await sb.from(table).upsert(rows) : await sb.from(table).insert(rows);
+    if(error){ console.warn('Supabase guest '+table+' upload failed', error); dbStatus('saving guest '+table+' failed: '+error.message,true); } else sent.add(t);
+  }
+  S.guestLog=(S.guestLog||[]).filter(r=>!sent.has(r.t)); save();   // what failed stays queued for the next launch
 }
 // real "N going" counts from everyone's RSVPs
 async function loadGoing(){
