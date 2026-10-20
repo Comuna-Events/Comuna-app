@@ -20,7 +20,7 @@ const server=http.createServer((req,res)=>{
  const systemChromium=process.env.CHROMIUM_PATH || (fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined);
  const browser=await chromium.launch({headless:true,executablePath:systemChromium,args:['--no-sandbox']});
  try{
-  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',timezoneId:'America/Los_Angeles'});
   await context.route('**/*',route=>new URL(route.request().url()).origin===origin ? route.continue() : route.abort());
   const page=await context.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -97,6 +97,24 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.evaluate(()=>sheetCtx.placement),'search_suggestion');
   await page.evaluate(()=>{ overlay.classList.remove('on'); applySearch('spooky'); openSheet(1); });
   assert.deepEqual(await page.evaluate(()=>sheetCtx),{placement:'search',query:'spooky'});
+
+  // vibes: found by their other words, offered as suggestions, shown on the event
+  await page.evaluate(()=>{ overlay.classList.remove('on'); clearSearch(); const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+3);
+   events=[...events, mk(6,{title:'Pumpkin Patch',category:'community',vibes:['spooky','family-friendly'],start:d})]; });
+  await page.evaluate(()=>applySearch('halloween'));
+  assert.deepEqual(await ids(),[6]);
+  await page.evaluate(()=>applySearch('kids'));
+  assert.deepEqual(await ids(),[6]);
+  await page.evaluate(()=>clearSearch());
+  await page.click('#srchQ');
+  assert.deepEqual(await page.locator('#srchSugg .tagpick button').allTextContents(),['Spooky','Family-friendly']);
+  await page.click('#srchSugg .tagpick button:has-text("Spooky")');
+  assert.equal(await page.evaluate(()=>searchQ),'spooky');
+  assert.deepEqual((await ids()).sort(),[1,2,6]);
+  await page.click('#srchQ');await page.fill('#srchQ','hallo');
+  assert.equal(await page.locator('#srchSugg [data-sq="spooky"]').count(),1);
+  await page.evaluate(()=>{ closeSugg(); openSheet(6); });
+  assert.match(await page.textContent('#sheet .badges'),/Spooky[\s\S]*Family-friendly/);
 
   // typed text is escaped everywhere it shows
   await page.evaluate(()=>{ overlay.classList.remove('on'); window.__injected=0; applySearch('<img src=x onerror="window.__injected=1">'); });

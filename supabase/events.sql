@@ -13,6 +13,7 @@ create table if not exists public.events (
   category          text,
   tier              text check (tier in ('Headliner','Staple','Hidden Gem','Pop-Up')),
   tags              text[] not null default '{}',
+  vibes             text[] not null default '{}',                     -- from the fixed list below; the AI fills these in
   description       text,
   start_date        date,
   end_date          date,
@@ -50,6 +51,14 @@ create table if not exists public.events (
 );
 create index if not exists events_status_idx on public.events (status);
 
+-- vibes: what an event feels like, from a fixed list so they stay consistent and searchable. The nightly ingest
+-- picks them (supabase/functions/_shared/vibes.ts); ingest-vibes fills in events added by hand. Change the list
+-- there, here and in the app's VIBE_WORDS together.
+alter table public.events add column if not exists vibes text[] not null default '{}';   -- added after the first version
+alter table public.events add column if not exists vibes_checked_at timestamptz;          -- private: when ingest-vibes last picked them
+alter table public.events drop constraint if exists events_vibes_check;
+alter table public.events add constraint events_vibes_check check (vibes <@ array['spooky','festive','date night','family-friendly','solo-friendly','late night','live music','dance','chill','creative','cultural','dog-friendly']::text[]);
+
 create or replace function public.events_touch() returns trigger
 language plpgsql set search_path = '' as $$
 begin new.updated_at := now(); return new; end $$;
@@ -65,7 +74,7 @@ create policy "anyone can read events" on public.events
 
 -- Only the columns the app shows are readable; notes and contacts stay in the dashboard.
 revoke all on public.events from anon, authenticated;
-grant select (event_id, name, category, tier, tags, description, start_date, end_date, start_time, end_time,
+grant select (event_id, name, category, tier, tags, vibes, description, start_date, end_date, start_time, end_time,
               recurrence, recurrence_detail, venue, street_address, city, zip, neighborhood, setting,
               parking_transit, price_type, rsvp_required, ticket_url, capacity, age, host, source, source_url,
               image_url, status, verified, lat, lng, updated_at)

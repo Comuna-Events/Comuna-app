@@ -3,8 +3,9 @@
 
 import Anthropic from "npm:@anthropic-ai/sdk";
 import type { Source, SourcePost } from "./ingest.ts";
+import { cleanVibes, VIBE_GUIDE, VIBE_NAMES } from "./vibes.ts";
 
-const MODEL = "claude-sonnet-5-5";
+export const MODEL = "claude-sonnet-5-5";
 
 // Allowed values match the checks on public.events, so a promoted candidate never fails on these.
 const RECURRENCE = ["One-off", "Daily", "Weekly", "Biweekly", "Monthly", "Seasonal / Annual"];
@@ -21,6 +22,7 @@ export interface ExtractedEvent {
   description: string | null;
   category: string | null;
   tags: string[];
+  vibes: string[];           // from VIBES in vibes.ts
   start_date: string | null; // YYYY-MM-DD
   end_date: string | null;
   start_time: string | null; // HH:MM, 24h
@@ -55,6 +57,7 @@ const EVENT_SCHEMA = {
     description: text,
     category: oneOf(CATEGORY),
     tags: { type: "array", items: text },
+    vibes: { type: "array", items: { type: "string", enum: VIBE_NAMES } },
     start_date: text,
     end_date: text,
     start_time: text,
@@ -76,7 +79,7 @@ const EVENT_SCHEMA = {
     notes: text,
   },
   required: [
-    "name", "description", "category", "tags", "start_date", "end_date", "start_time", "end_time",
+    "name", "description", "category", "tags", "vibes", "start_date", "end_date", "start_time", "end_time",
     "recurrence", "recurrence_detail", "venue", "street_address", "city", "zip", "neighborhood", "setting",
     "price_type", "rsvp_required", "ticket_url", "age", "host", "confidence", "notes",
   ],
@@ -99,6 +102,7 @@ Fill each field only from what the post (and any flyer image) actually says. Whe
 - For a repeating event ("every Tuesday"), set recurrence and recurrence_detail, and start_date to the next occurrence on or after today.
 - Leave out events whose last date is before today.
 - category is the closest of the six: Food & Drink (tastings, supper clubs, food festivals), Arts & Entertainment (concerts, comedy, theater, film, galleries, DJ nights, dance), Classes & Workshops (classes, workshops, talks, readings), Active & Outdoors (run clubs, yoga, hikes, sports), Markets & Shopping (farmers, flea and makers markets, pop-up shops), Community & Social (meetups, trivia and game nights, family events, festivals, volunteering, civic). Put the specific kind ("comedy", "jazz", "book club") in tags.
+- ${VIBE_GUIDE}
 - confidence is 0 to 1: how sure you are this is a real, public, upcoming in-person event with the date right.
 - notes: one short line on anything you were unsure about or had to guess, or an empty string.`;
 
@@ -148,7 +152,8 @@ async function ask(
 
   const json = response.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
   const { events } = JSON.parse(json) as { events: ExtractedEvent[] };
-  return events.filter((event) => event.name.trim()).map((event) => ({ ...event, ...blanksToNull(event) }));
+  return events.filter((event) => event.name.trim())
+    .map((event) => ({ ...event, ...blanksToNull(event), vibes: cleanVibes(event.vibes) }));
 }
 
 function blanksToNull(event: ExtractedEvent): Partial<ExtractedEvent> {
