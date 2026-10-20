@@ -40,6 +40,7 @@ create or replace function ingest.run_nightly() returns void
 language plpgsql security definer set search_path = '' as $$
 begin
   perform ingest.run('ingest-web');
+  perform ingest.run('ingest-vibes');   -- vibes for events added by hand (each event is read once)
 end $$;
 revoke execute on function ingest.run_nightly() from public, anon, authenticated;
 

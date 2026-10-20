@@ -79,6 +79,7 @@ create table if not exists ingest.event_candidates (
   name               text,
   category           text,
   tags               text[] not null default '{}',
+  vibes              text[] not null default '{}',
   description        text,
   start_date         date,
   end_date           date,
@@ -116,6 +117,7 @@ create table if not exists ingest.event_candidates (
 create index if not exists event_candidates_review_idx on ingest.event_candidates (status, start_date);
 create index if not exists event_candidates_source_idx on ingest.event_candidates (source_id);
 alter table ingest.event_candidates add column if not exists post_id text;   -- added after the first version
+alter table ingest.event_candidates add column if not exists vibes text[] not null default '{}';
 create index if not exists event_candidates_post_idx on ingest.event_candidates (platform, post_id);
 
 -- updated_at (events_touch comes from events.sql)
@@ -152,11 +154,11 @@ begin
   select 'EVT-' || lpad((coalesce(max(substring(event_id from 5)::int), 0) + 1)::text, 4, '0')
     into new_id from public.events;
 
-  insert into public.events (event_id, name, category, tags, description, start_date, end_date, start_time,
+  insert into public.events (event_id, name, category, tags, vibes, description, start_date, end_date, start_time,
     end_time, recurrence, recurrence_detail, venue, street_address, city, zip, neighborhood, setting,
     price_type, rsvp_required, ticket_url, age, host, source, source_url, image_url, lat, lng,
-    status, added_by, notes)
-  values (new_id, c.name, c.category, c.tags, c.description, c.start_date, c.end_date, c.start_time,
+    status, added_by, notes, vibes_checked_at)
+  values (new_id, c.name, c.category, c.tags, c.vibes, c.description, c.start_date, c.end_date, c.start_time,
     c.end_time, c.recurrence, c.recurrence_detail, c.venue, c.street_address, c.city, c.zip, c.neighborhood,
     c.setting, c.price_type, c.rsvp_required, c.ticket_url, c.age, c.host,
     case c.platform
@@ -171,7 +173,8 @@ begin
       when 'newsletter'    then 'Newsletter'
       else 'Other' end,
     c.source_url, c.image_url, c.lat, c.lng,
-    'Needs verification', 'nightly ingest', 'From event_candidates #' || c.id);
+    'Needs verification', 'nightly ingest', 'From event_candidates #' || c.id,
+    case when cardinality(c.vibes) > 0 then now() end);   -- vibes picked while reading the post; none: ingest-vibes takes a look
 
   update ingest.event_candidates set status = 'promoted', promoted_event_id = new_id where id = c.id;
   return new_id;

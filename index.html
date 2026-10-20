@@ -1187,6 +1187,13 @@ let searchQ='', searchPrev=null, searchHits=null;   // searchHits: event id -> s
 const STOPWORDS=new Set(('a an and the to of in on at for from near me my i im is are am be any some all thing things stuff '
   +'do does what whats where wheres something anything cool fun good great best nice happening going around there here '
   +'this that these those with by or it its can could should would want looking find show give us we you your').split(' '));
+// vibes (events.vibes, picked by the AI from a fixed list) and other words people use for them. Keep the names in step
+// with supabase/functions/_shared/vibes.ts.
+const VIBE_WORDS={ 'spooky':'halloween horror haunted scary ghost creepy costume', 'festive':'holiday seasonal celebration',
+  'date night':'date romantic couples', 'family-friendly':'family kids kid children all ages', 'solo-friendly':'solo alone meet people new friends',
+  'late night':'late night owl', 'live music':'live music band concert', 'dance':'dance dancing', 'chill':'chill relaxed low key quiet',
+  'creative':'creative make craft diy art', 'cultural':'cultural culture heritage tradition', 'dog-friendly':'dog dogs pet pets' };
+const vibeLabel=v=>v[0].toUpperCase()+v.slice(1);
 const TIME_WORDS={ today:'tonight', tonight:'tonight', tonite:'tonight', week:'week', weekend:'week', month:'month' };
 const normText=t=>' '+String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim()+' ';
 function parseSearch(q){
@@ -1198,7 +1205,8 @@ function parseSearch(q){
 function searchFields(ev){
   if(ev._hay) return ev._hay;
   const c=CATS[catKey(ev.category)], s=SUBCATS[ev.sub], k=KINDS[kindOf(ev)];
-  return ev._hay=[[3,normText(ev.title)],[2,normText([...(ev.tags||[]),c.label,c.short,s?s.label:'',k?k.label:''].join(' '))],
+  const vibes=(ev.vibes||[]).flatMap(v=>[v,VIBE_WORDS[v]||'']);
+  return ev._hay=[[3,normText(ev.title)],[2,normText([...(ev.tags||[]),...vibes,c.label,c.short,s?s.label:'',k?k.label:'',ev.price,ev.setting,ev.age].join(' '))],
     [2,normText([ev.venue,ev.host,ev.area,ev.hood].join(' '))],[1,normText(ev.desc)]];
 }
 // a word matches the start of a word in the text ("jazz" finds "jazzy"; "art" does not find "party"); plural or not
@@ -1220,6 +1228,8 @@ function searchState(){
   if(!searchHits || searchHits.events!==events) searchHits={...searchIndex(searchQ),events};
   return searchHits;
 }
+// how many upcoming events have each vibe, in the list's order
+function vibeCounts(){ const live=events.filter(ev=>ev.start? !!nextDate(ev) : true); return Object.keys(VIBE_WORDS).map(v=>[v,live.filter(ev=>(ev.vibes||[]).includes(v)).length]); }
 const searchOK=ev=>{ const s=searchState(); return !s || s.hits.has(ev.id); };
 function picks(){
   enrich();
@@ -1426,14 +1436,17 @@ function renderSugg(){
   const head=t=>`<div class="psub">${t}</div>`;
   let html='';
   if(!q){
-    const cats=Object.keys(CATS).filter(k=>events.some(e=>e.category===k));
-    html=cats.length? head('Browse')+cats.map(k=>opt(`data-scat="${k}"`,catDot(k,30),escH(CATS[k].label),escH(CATS[k].ex),events.filter(e=>e.category===k).length)).join('')
-      : `<div class="psub">Search events, places and vibes</div>`;
+    const cats=Object.keys(CATS).filter(k=>events.some(e=>e.category===k)), vibes=vibeCounts().filter(([,n])=>n);
+    html=(vibes.length? head('Vibes')+`<div class="tagpick">${vibes.map(([v])=>`<button type="button" data-sq="${escH(v)}">${escH(vibeLabel(v))}</button>`).join('')}</div>` : '')
+      + (cats.length? head('Browse')+cats.map(k=>opt(`data-scat="${k}"`,catDot(k,30),escH(CATS[k].label),escH(CATS[k].ex),events.filter(e=>e.category===k).length)).join('')
+      : vibes.length? '' : `<div class="psub">Search events, places and vibes</div>`);
   } else {
     const idx=searchIndex(q), n=idx.hits.size;
     html=`<button type="button" class="sopt go" data-sq="${escH(q)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search “${escH(q)}”<small>${n? (idx.exact?'':'No exact match · ')+`${n} ${n===1?'event':'events'}` : 'No events match yet'}</small></span></button>`;
     if(terms.length){
       const pre=t=>terms.every(w=>normText(t).includes(' '+w));
+      const vibes=vibeCounts().filter(([v,n])=>n && pre(v+' '+VIBE_WORDS[v]));
+      if(vibes.length) html+=head('Vibes')+vibes.map(([v,n])=>opt(`data-sq="${escH(v)}"`,'',escH(vibeLabel(v)),escH(VIBE_WORDS[v]),n)).join('');
       const cats=Object.keys(CATS).filter(k=>events.some(e=>e.category===k) && pre(CATS[k].label+' '+CATS[k].short));
       if(cats.length) html+=head('Categories')+cats.map(k=>opt(`data-scat="${k}"`,catDot(k,30),escH(CATS[k].label),'',events.filter(e=>e.category===k).length)).join('');
       const places=new Map(); events.forEach(ev=>[[ev.area||ev.hood,'Neighborhood'],[ev.venue,'Venue']].forEach(([name,kind])=>{ if(!name||!pre(name)) return;
@@ -1872,6 +1885,7 @@ const vCheck=(ev,sz=16)=>ev&&ev.verified?`<svg class="vcheck" width="${sz}" heig
 function badges(ev){
   const b=[]; if(ev.community) b.push('Community pick'); if(/free/i.test(ev.price)) b.push('Free'); else if(/donation|pay-what/i.test(ev.price)) b.push('Pay what you can'); else if(/paid/i.test(ev.price)) b.push('Paid');
   if(ev.age) b.push(ev.age); if(/indoor/i.test(ev.setting)) b.push('Indoor'); else if(/outdoor/i.test(ev.setting)) b.push('Outdoor'); else if(/both/i.test(ev.setting)) b.push('Indoor + outdoor');
+  (ev.vibes||[]).forEach(v=>b.push(vibeLabel(v)));
   if(ev.rsvpReq) b.push('RSVP required'); return b;
 }
 function directionsUrl(ev){ const q=encodeURIComponent(ev.address||`${ev.venue}, Los Angeles, CA`);
@@ -2399,12 +2413,14 @@ function whenText(r){
 }
 async function mapLimit(items,n,fn){ let i=0; await Promise.all(Array.from({length:n},async()=>{ while(i<items.length){ const k=i++; await fn(items[k],k); } })); }
 // Only these columns are readable from the app (see the grants in supabase/events.sql).
-const EVENT_COLS='event_id,name,category,tier,tags,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,rsvp_required,ticket_url,age,host,source_url,status,verified,lat,lng';
+const EVENT_COLS='event_id,name,category,tier,tags,vibes,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,rsvp_required,ticket_url,age,host,source_url,status,verified,lat,lng';
 async function loadEvents(){
   if(!sb){ eventsState='error'; return; }
   eventsState=events.length?'live':'loading';
   try{
-    const { data, error } = await sb.from('events').select(EVENT_COLS).not('street_address','is',null).order('event_id');
+    let { data, error } = await sb.from('events').select(EVENT_COLS).not('street_address','is',null).order('event_id');
+    // until events.sql adds the vibes column, load without it
+    if(error && /vibes/.test(error.message||'')) ({ data, error } = await sb.from('events').select(EVENT_COLS.replace(',vibes','')).not('street_address','is',null).order('event_id'));
     if(error) throw error;
     let rows=data
       .filter(r=>r.name && String(r.street_address).trim())                     // no address yet → not shown
@@ -2418,7 +2434,7 @@ async function loadEvents(){
     // category is one of the six; the detailed kind (shown on the event page, and used to guess a missing tier) comes from the tags
     const subOf=r=>{ const g=catKey(catMap(r.category)), tags=r.tags||[],
       t=tags.map(x=>Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===String(x).toLowerCase())).find(Boolean)||catMap(tags.join(' ')); return { category:g, sub: SUB_GROUP[t]===g && !CATS[t]? t : '' }; };
-    events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', tags:Array.isArray(r.tags)? r.tags : [], ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
+    events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', tags:Array.isArray(r.tags)? r.tags : [], vibes:Array.isArray(r.vibes)? r.vibes.filter(v=>VIBE_WORDS[v]) : [], ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
       address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), price:r.price_type||'', age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
       ticket:okLink(r.ticket_url), source:okLink(r.source_url), rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
     eventsState='live'; if(current==='home') renderHome(); loadGoing(); loadSubmissions();

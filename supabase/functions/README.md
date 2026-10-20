@@ -11,6 +11,8 @@ _shared/ingest.ts      shared: loads sources, skips posts already read, saves ca
 _shared/extract.ts     shared: the Claude prompt and the fields it returns
 ingest-instagram/      fetchPosts for Instagram                   ← Instagram owner
 ingest-web/            city calendars and venue / event websites  ← web owner (works already; improve per site)
+_shared/vibes.ts       shared: the fixed list of vibes (spooky, date night, live music...) the AI picks from
+ingest-vibes/          picks vibes for events that don't have them (added by hand, or from before vibes)
 ```
 
 **Your job is one function: `fetchPosts(source)`** in your platform's `index.ts`. Return the account's recent
@@ -75,4 +77,7 @@ that `post_id` from `event_candidates`.
   reads it. If the image link isn't publicly reachable, the post is read from the text alone.
 - Posts with no event are saved with status `rejected` (and posts with only events we already have, with
   `duplicate`) so they aren't read and paid for again. Filter on `rejected` to check what the AI skipped.
+- Vibes: the AI picks each event's vibes while reading the post (list in `_shared/vibes.ts`). `ingest-vibes` runs
+  with the nightly ingest and fills them in for any event that hasn't been checked yet, 20 events per Claude call.
+  Add `?dry=1` to see its picks for the next 40 events without saving; see the top of `ingest-vibes/index.ts`.
 - Each new post or changed page costs one Claude call (`claude-sonnet-5-5` at low effort). The model is set at the top of `_shared/extract.ts`.
