@@ -14,6 +14,8 @@ comment on table  public.event_submissions  is '[App users] Events people sugges
 comment on table  public.event_actions     is '[App users] Every view and tap on an event (directions, calendar, link, invite...). Raw log for event_stats.';
 comment on view   public.event_going       is '[App users] How many people are going to each event (counted from rsvps). The app reads this.';
 comment on view   public.event_stats       is '[App users] Per-event totals built from event_actions: views, saves, clicks, check-ins.';
+comment on table  public.search_queries    is '[App users] Every search run from the map''s search bar: the words, how many events it found, the filters shown.';
+comment on view   public.search_terms      is '[App users] Last 30 days of searches, most common first, with how often each found nothing.';
 comment on view   public.leaderboard_month is '[App users] This month''s points per person, built from rsvps, checkins, feedback and submissions.';
 
 -- [We manage]
