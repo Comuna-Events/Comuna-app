@@ -14,16 +14,17 @@ function setup(data=fixture()){
  const sb={auth:{getSession:async()=>({data:{session:{user}}}),getUser:async()=>({data:{user},error:null})},from(table){
   const filters=[];
   const result=()=>({data:(data[table]||[]).filter(r=>filters.every(([k,v])=>r[k]===v)),error:flags.fail===table?{message:'offline'}:null});
-  const q={select(){return q;},eq(k,v){filters.push([k,v]);return q;},order(){return q;},async range(start,end){log.push({table,filters:[...filters],start,end});if(flags.gate && table==='checkins')await flags.gate;const r=result();return {...r,data:r.data.slice(start,end+1)};},async in(k,keys){log.push({table,keys});return {data:(data[table]||[]).filter(r=>keys.includes(r[k])),error:flags.fail===table?{message:'unavailable'}:null};},async maybeSingle(){return {data:profile,error:flags.fail===table?{message:'offline'}:null};}};return q;
+  const q={select(){return q;},eq(k,v){filters.push([k,v]);return q;},order(){return q;},async range(start,end){log.push({table,filters:[...filters],start,end});if(flags.gate && table==='checkins')await flags.gate;const r=result();return {...r,data:r.data.slice(start,end+1)};},async in(k,keys){log.push({table,keys});return {data:(data[table]||[]).filter(r=>keys.includes(r[k])),error:flags.fail===table?{message:'unavailable'}:null};},async maybeSingle(){return {data:profile,error:flags.fail===table?{message:'offline'}:null};},async insert(rows){(data[table]=data[table]||[]).push(...rows.map((r,i)=>({id:100+i,...r})));return {error:null};},async upsert(rows){return q.insert(rows);}};return q;
  }};
  const context={sb,console:{warn(){}},S:{accountId:'joe',places:{old:{n:1}},rsvp:[],checked:[],visits:0,points:665,monthPts:665},authed:user,myPtsAt:0,current:'passport',HOODS:[{name:'Santa Monica',city:'Santa Monica'}],HOOD_RENAMED:{},Date,Number,Map,Set,Promise,
- save(){calls.save++;},rebuildMap(){},renderNames(){},updateDot(){},renderPassport(){},renderProfile(){},renderPlans(){},renderHome(){},
+ save(){calls.save++;},dbStatus(){},rebuildMap(){},renderNames(){},updateDot(){},renderPassport(){},renderProfile(){},renderPlans(){},renderHome(){},
  hoodByName:name=>({name}),fixInterests:x=>x,catKey:x=>x,tierKey:t=>t==='Hidden Gem'?'niche':'popup',toast(){},flushFeedback(){},myCats:()=>[],go(){},shortName:()=> 'Joe',dbProfile(){calls.profileWrite++;},history:[],authMode:'signin',filter:'All'};
  vm.createContext(context);vm.runInContext(block+'\nthis.freshPassport=freshPassport;',context);
  for(const name of ['finishAuth','checkAccount','dbUser']){
   const start=source.indexOf(`async function ${name}(){`),end=source.indexOf('\n}',start)+2;
   vm.runInContext(source.slice(start,end),context);
  }
+ vm.runInContext(source.slice(source.indexOf('function logGuest('),source.indexOf('// real "N going"')),context);
  return {c:context,log,calls,flags};
 }
 (async()=>{
@@ -49,5 +50,9 @@ function setup(data=fixture()){
  const paginated=fixture();paginated.checkins=Array.from({length:1001},(_,i)=>({id:i,user_id:'joe',event_id:'EVT-1',venue:'Venue A',category:'arts'}));const pages=setup(paginated);await pages.c.restorePassport(user);assert.equal(pages.c.S.visits,1001);assert.equal(pages.log.filter(x=>x.table==='checkins').length,3);
  const login=setup();login.c.S.accountId=null;await login.c.finishAuth();assert.equal(login.c.S.visits,4);assert.equal(login.c.S.points,665);assert.equal(login.calls.profileWrite,0);
  const reopen=setup();reopen.c.S.signedUp=false;reopen.c.S.accountId=null;await reopen.c.checkAccount();assert.equal(reopen.c.S.signedUp,true);assert.equal(reopen.c.S.visits,4);assert.equal(reopen.calls.profileWrite,0,'opening must read profile before any write');
+ const guest=setup();Object.assign(guest.c.S,{accountId:null,guest:true,points:200,feedbackQueue:[],guestLog:[{t:'checkin',event_id:'EVT-5',venue:'Guest venue',category:'arts',distance_m:20},{t:'rsvp',event_id:'EVT-6',kind:'interested'}]});
+ await guest.c.finishAuth();assert.equal(guest.c.S.guest,false);assert.equal(guest.c.S.points,865,'a guest signing in keeps the points earned on this phone');
+ assert.equal(guest.c.S.visits,5);assert.ok(guest.c.S.places['Guest venue'],'guest stamps upload to the account');assert.equal(guest.c.S.guestLog.length,0);
+ assert.ok(guest.c.S.rsvp.includes(100006),'guest saves upload to the account');
  console.log('Passport restoration checks passed: sign-in, session reopen, history pagination, archived/deleted venues, Plans, repeat loads, account isolation, stale responses and read failures.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
