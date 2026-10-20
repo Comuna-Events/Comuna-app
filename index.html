@@ -1145,17 +1145,22 @@ function renderNames(){ const n=shortName(); document.getElementById('passName')
   document.getElementById('pfAuth').textContent=S.signedUp? 'Sign out' : 'Create account or sign in';
   document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : ''; document.getElementById('pfNb').textContent=S.nb||'Pick one'; }
 
-/* ---------- daily Top 4: one Headliner, Weekly, Hidden Gem and Pop-up near you, once a day ---------- */
+/* ---------- daily Top 4: up to four events within 5 miles, once a day ---------- */
+const PICK_MAX_MI=5;   // ~18 "min away"; anything farther never makes the Top 4
 function dailyPicks(){
   enrich();
   const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label));
   // only things happening in the next 7 days (today included), so daily picks stay timely
   const t0=today0(), soon=ev=>{ const d=ev.start? nextDate(ev) : evDate(ev); return !!d && d>=t0 && d-t0<7*864e5; };
-  const pool=events.filter(ev=>!S.checked.includes(ev.id) && !S.rsvp.includes(ev.id) && ev.mi!=null && soon(ev));
+  const pool=events.filter(ev=>!S.checked.includes(ev.id) && !S.rsvp.includes(ev.id) && ev.mi!=null && ev.mi<=PICK_MAX_MI && soon(ev));
   // closest first, with a nudge toward what you're into; the day number rotates ties so picks change daily
   const day=Math.floor(Date.now()/864e5);
   const score=ev=>ev.mi*(want.includes(ev.category)?0.6:1)+((ev.id*7+day)%5)*0.05;
-  return ['cornerstone','regular','niche','popup'].map(k=>pool.filter(ev=>kindOf(ev)===k).sort((x,y)=>score(x)-score(y))[0]).filter(Boolean);
+  const ranked=pool.sort((x,y)=>score(x)-score(y)), order=['cornerstone','regular','niche','popup'];
+  // the best of each type that has one nearby, then the next best of any type, so two Pop-ups and no Headliner is fine
+  const picks=order.map(k=>ranked.find(ev=>kindOf(ev)===k)).filter(Boolean);
+  for(const ev of ranked){ if(picks.length>=4) break; if(!picks.includes(ev)) picks.push(ev); }
+  return picks.slice(0,4).sort((x,y)=>order.indexOf(kindOf(x))-order.indexOf(kindOf(y)) || score(x)-score(y));
 }
 function maybeDailyPicks(){
   if(S.kitSeen===false) return;   // the starter kit goes first; it hands off to these picks when closed
