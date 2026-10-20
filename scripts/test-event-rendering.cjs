@@ -62,7 +62,7 @@ const server=http.createServer((req,res)=>{
   await harmless('#sheet');
   assert.equal(await page.locator('#sheet h2').textContent(),payload);
   assert.equal(await page.locator('#sheet .desc').innerText(),payload+'\nSecond line');
-  assert.equal(await page.locator('#sheetBack').textContent(),payload);
+  assert.equal(await page.locator('#sheetBack').textContent(),'','back is icon-only; its destination is in the aria-label');
   assert.equal(await page.locator('#sheetBack').getAttribute('aria-label'),'Back to '+payload);
   for(const verified of [false,true]){
    await page.evaluate(verified=>{events[0].verified=verified;openSheet(events[0].id);},verified);

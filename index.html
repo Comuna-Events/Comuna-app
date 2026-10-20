@@ -264,8 +264,8 @@ img{ max-width:100% }
 @keyframes up{ from{ transform:translateY(40px); opacity:.6 } to{ transform:none; opacity:1 } }
 @media (prefers-reduced-motion:reduce){ .sheet{ animation:none } }
 .grab{ width:42px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px; cursor:grab }
-.sheet .sback{ position:sticky; top:0; float:left; margin:-4px 0 0 -8px; height:32px; padding:0 12px 0 6px; border-radius:16px; background:var(--card); color:var(--muted); font-size:13px; font-weight:600; display:flex; align-items:center; gap:2px; z-index:2 }
-.sheet .sback{ max-width:60% } .sheet .sback svg{ flex:none }
+/* icon only: the label (a venue name, "Top 4") ran long and wrapped over the sheet */
+.sheet .sback{ position:sticky; top:0; float:left; margin:-4px 0 0 -8px; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); display:flex; align-items:center; justify-content:center; z-index:2 }
 .sheet .sback ~ .cat{ clear:both; padding-top:10px }
 .sheet .x{ position:sticky; top:0; float:right; margin:-4px -8px 0 0; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); font-size:20px; line-height:1; display:grid; place-items:center; z-index:2 }
 .sheet .cat{ color:var(--red); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase }
@@ -1961,7 +1961,7 @@ function addToCalendar(ev){
 /* ---------- event sheet ---------- */
 const overlay=document.getElementById('overlay'), sheet=document.getElementById('sheet');
 const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
-function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back button (labelled backLabel) that returns to where you came from
+function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back button (its aria-label names backLabel) that returns to where you came from
   const ev=events.find(e=>e.id===id); if(!ev) return; enrich();
   sheetCtx={ placement:sheetFrom||placementNow(), query:searchQ||null }; sheetFrom=null;
   const inn=S.rsvp.includes(id), done=S.checked.includes(id);
@@ -1976,7 +1976,7 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
     : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${escH(okRsvpLink(ev))}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
     : `<button class="btn primary" id="rsvpBtn">Interested</button>`;
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel==='Top 4'?'your Top 4':backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>${escH(backLabel)}</button>`:''}<div class="grab"></div>
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel==='Top 4'?'your Top 4':backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div>
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
     <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
     <div class="evwhen">${escH(ev.start?nextWhen(ev):(ev.time||'Soon'))}</div>
