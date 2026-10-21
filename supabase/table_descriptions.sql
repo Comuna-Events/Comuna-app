@@ -1,5 +1,5 @@
 -- Comuna: a one-line description on every table, shown in Supabase > Database > Tables.
--- Run in Supabase > SQL Editor after event_ingest.sql; safe to re-run. Add a line here for any new table.
+-- Run in Supabase > SQL Editor after event_ingest.sql and guests.sql; safe to re-run. Add a line here for any new table.
 --
 --   [App users]  written by the app as people use it. Read it, don't hand-edit it.
 --   [We manage]  we fill it in; the app reads it.
@@ -16,6 +16,8 @@ comment on view   public.event_going       is '[App users] How many people are g
 comment on view   public.event_stats       is '[App users] Per-event totals built from event_actions: views, saves, clicks, check-ins.';
 comment on table  public.search_queries    is '[App users] Every search run from the map''s search bar: the words, how many events it found, the filters shown.';
 comment on view   public.search_terms      is '[App users] Last 30 days of searches, most common first, with how often each found nothing.';
+comment on table  public.guest_sessions    is '[App users] One row per guest install (skipped sign-up): neighborhood, interests, opens, and the account they made later, if any.';
+comment on view   public.guest_funnel      is '[App users] Guests per week: how many came back and how many made an account.';
 comment on view   public.leaderboard_month is '[App users] This month''s points per person, built from rsvps, checkins, feedback and submissions.';
 
 -- [We manage]

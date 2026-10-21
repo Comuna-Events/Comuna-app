@@ -11,7 +11,7 @@ function fixture(){return {
 };}
 function setup(data=fixture()){
  const log=[],calls={save:0,profileWrite:0},flags={fail:null,gate:null};
- const sb={auth:{getSession:async()=>({data:{session:{user}}}),getUser:async()=>({data:{user},error:null})},from(table){
+ const sb={auth:{getSession:async()=>({data:{session:{user}}}),getUser:async()=>({data:{user},error:null})},async rpc(fn,args){log.push({rpc:fn,args});return {error:null};},from(table){
   const filters=[];
   const result=()=>({data:(data[table]||[]).filter(r=>filters.every(([k,v])=>r[k]===v)),error:flags.fail===table?{message:'offline'}:null});
   const q={select(){return q;},eq(k,v){filters.push([k,v]);return q;},order(){return q;},async range(start,end){log.push({table,filters:[...filters],start,end});if(flags.gate && table==='checkins')await flags.gate;const r=result();return {...r,data:r.data.slice(start,end+1)};},async in(k,keys){log.push({table,keys});return {data:(data[table]||[]).filter(r=>keys.includes(r[k])),error:flags.fail===table?{message:'unavailable'}:null};},async maybeSingle(){return {data:profile,error:flags.fail===table?{message:'offline'}:null};},async insert(rows){(data[table]=data[table]||[]).push(...rows.map((r,i)=>({id:100+i,...r})));return {error:null};},async upsert(rows){return q.insert(rows);}};return q;
@@ -50,9 +50,10 @@ function setup(data=fixture()){
  const paginated=fixture();paginated.checkins=Array.from({length:1001},(_,i)=>({id:i,user_id:'joe',event_id:'EVT-1',venue:'Venue A',category:'arts'}));const pages=setup(paginated);await pages.c.restorePassport(user);assert.equal(pages.c.S.visits,1001);assert.equal(pages.log.filter(x=>x.table==='checkins').length,3);
  const login=setup();login.c.S.accountId=null;await login.c.finishAuth();assert.equal(login.c.S.visits,4);assert.equal(login.c.S.points,665);assert.equal(login.calls.profileWrite,0);
  const reopen=setup();reopen.c.S.signedUp=false;reopen.c.S.accountId=null;await reopen.c.checkAccount();assert.equal(reopen.c.S.signedUp,true);assert.equal(reopen.c.S.visits,4);assert.equal(reopen.calls.profileWrite,0,'opening must read profile before any write');
- const guest=setup();Object.assign(guest.c.S,{accountId:null,guest:true,points:200,feedbackQueue:[],guestLog:[{t:'checkin',event_id:'EVT-5',venue:'Guest venue',category:'arts',distance_m:20},{t:'rsvp',event_id:'EVT-6',kind:'interested'}]});
+ const guest=setup();Object.assign(guest.c.S,{accountId:null,guest:true,deviceId:'phone-1',points:200,feedbackQueue:[],guestLog:[{t:'checkin',event_id:'EVT-5',venue:'Guest venue',category:'arts',distance_m:20},{t:'rsvp',event_id:'EVT-6',kind:'interested'}]});
  await guest.c.finishAuth();assert.equal(guest.c.S.guest,false);assert.equal(guest.c.S.points,865,'a guest signing in keeps the points earned on this phone');
  assert.equal(guest.c.S.visits,5);assert.ok(guest.c.S.places['Guest venue'],'guest stamps upload to the account');assert.equal(guest.c.S.guestLog.length,0);
  assert.ok(guest.c.S.rsvp.includes(100006),'guest saves upload to the account');
+ assert.equal(JSON.stringify(guest.log.filter(x=>x.rpc)),JSON.stringify([{rpc:'guest_converted',args:{p_device:'phone-1'}}]),'a guest signing in links this phone\'s guest activity to the account');
  console.log('Passport restoration checks passed: sign-in, session reopen, history pagination, archived/deleted venues, Plans, repeat loads, account isolation, stale responses and read failures.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

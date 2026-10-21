@@ -780,7 +780,9 @@ let S;
 function load(){ try{ const r=localStorage.getItem('comuna_v3'); S = r? Object.assign(JSON.parse(JSON.stringify(START)), JSON.parse(r)) : JSON.parse(JSON.stringify(START)); }catch(e){ S=JSON.parse(JSON.stringify(START)); }
   // interests saved under the detailed category names or the old four groups
   S.interests=fixInterests(S.interests);
-  S.nb=HOOD_RENAMED[S.nb]||S.nb; }
+  S.nb=HOOD_RENAMED[S.nb]||S.nb;
+  // a random id for this install (no name or email), so guest activity can be counted and linked to the account they make
+  if(!S.deviceId) try{ S.deviceId=crypto.randomUUID(); }catch(e){ S.deviceId='xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16)); } }
 function save(){ try{ localStorage.setItem('comuna_v3', JSON.stringify(S)); }catch(e){} }
 load();
 // This flag controls navigation only; Supabase still authenticates account access.
@@ -959,6 +961,7 @@ intNext.onclick=()=>guestFlow? startGuest() : openAuth('signup');
 function startGuest(){
   S.guest=true; S.joined=S.joined||new Date().toISOString().slice(0,10);
   history=[]; S.kitSeen=false; save(); renderNames(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
+  guestSeen();
 }
 
 /* sign-up: name + email, then the code from the email */
@@ -1112,7 +1115,7 @@ async function finishAuth(){
     const again=authMode==='signup', guest=S.guest? { pts:S.points||0, fb:S.feedbackQueue||[], n:(S.guestLog||[]).length } : null;
     applyAccountProfile(user,p);
     // a guest signing in to an account they already have: add this phone's stamps to it
-    if(guest){ S.feedbackQueue=guest.fb; S.points+=guest.pts; S.guest=false; save(); await uploadGuest(user); dbProfile(); }
+    if(guest){ S.feedbackQueue=guest.fb; S.points+=guest.pts; S.guest=false; save(); guestConverted(); await uploadGuest(user); dbProfile(); }
     await restorePassport(user);
     if(authed?.id!==user.id || S.accountId!==user.id) return;
     rebuildMap(); renderNames(); flushFeedback();
@@ -1126,6 +1129,7 @@ async function finishAuth(){
   S.accountId=user.id; S.onboardingComplete=true; S.signedUp=true; S.guest=false; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=guest&&S.joined||new Date().toISOString().slice(0,10); save(); renderNames();
   // the profile first, so uploaded check-ins count toward this neighborhood's board; check-ins before reviews, which need them
   dbProfile().then(()=>uploadGuest(user)).then(flushFeedback);
+  if(guest) guestConverted();
   history=[];
   if(guest){ filter=myCats().length?'mine':'All'; go('home'); toast('You\'re in. Your stamps are saved to your account.'); return; }
   S.kitSeen=false; save(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
@@ -1538,10 +1542,10 @@ srchSugg.addEventListener('click',e=>{
 // tapping anywhere else closes the suggestions and leaves the current search as it was
 document.addEventListener('pointerdown',e=>{ if(!srchSugg.hidden && !e.target.closest('#srch')){ srchQ.value=searchQ; closeSugg(); srchQ.blur(); } });
 srchQ.addEventListener('blur',()=>setTimeout(syncSearchBar,0));
-// what people search for, and how many events it found (the demand data for sponsored placements). Signed-in only, sent quietly.
+// what people search for, and how many events it found (the demand data for sponsored placements). Signed-in users and guests, sent quietly.
 async function logSearch(q,results,eventId){
-  if(!sb || !q) return; const u=await dbUser(); if(!u) return;
-  const { error } = await sb.from('search_queries').insert({ user_id:u.id, query:String(q).slice(0,200), result_count:results, picked_event_id:eventId!=null? eidOf(events.find(e=>e.id===eventId)) : null,
+  if(!sb || !q) return; const u=await dbUser(); if(!u && !S.guest) return;
+  const { error } = await sb.from('search_queries').insert({ user_id:u?.id??null, device_id:S.deviceId, query:String(q).slice(0,200), result_count:results, picked_event_id:eventId!=null? eidOf(events.find(e=>e.id===eventId)) : null,
     when_filter:when, type_filter:tier!=='any'?tier:filter, neighborhood:S.nb||null });
   if(error) console.warn('Supabase search log failed', error);
 }
@@ -2374,10 +2378,12 @@ function track(ev,action){
 }
 async function flushTrack(){
   if(!trackQ.length) return; const q=trackQ; trackQ=[];
-  const u=await dbUser(); if(!u) return;
-  let { error } = await sb.from('event_actions').insert(q.map(r=>({...r,user_id:u.id})));
-  // until supabase/search.sql adds the placement columns, save the rows without them
-  if(error && /placement|search_query/.test(error.message||'')) ({ error } = await sb.from('event_actions').insert(q.map(({placement,search_query,...r})=>({...r,user_id:u.id}))));
+  const u=await dbUser(); if(!u && !S.guest) return;
+  // guests are saved by device_id alone (supabase/guests.sql); signed-in rows carry both
+  const rows=q.map(r=>({...r,user_id:u?.id??null,device_id:S.deviceId}));
+  let { error } = await sb.from('event_actions').insert(rows);
+  // until supabase/guests.sql adds device_id, save signed-in rows without it (guest rows wait for it)
+  if(error && u && /device_id/.test(error.message||'')) ({ error } = await sb.from('event_actions').insert(rows.map(({device_id,...r})=>r)));
   if(error) console.warn('Supabase tracking save failed', error);
 }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushTrack(); });
@@ -2399,6 +2405,18 @@ async function uploadGuest(user){
     if(error){ console.warn('Supabase guest '+table+' upload failed', error); dbStatus('saving guest '+table+' failed: '+error.message,true); } else sent.add(t);
   }
   S.guestLog=(S.guestLog||[]).filter(r=>!sent.has(r.t)); save();   // what failed stays queued for the next launch
+}
+// guests: counted per install (supabase/guests.sql), with where they are and what they're into. Sent quietly.
+async function guestSeen(){
+  if(!sb || !S.guest) return;
+  const { error } = await sb.rpc('guest_seen', { p_device:S.deviceId, p_neighborhood:S.nb||null, p_interests:S.interests||[] });
+  if(error) console.warn('Supabase guest save failed', error);
+}
+// a guest made an account (or signed in to one): link this install's guest activity to it
+async function guestConverted(){
+  const u=await dbUser(); if(!u) return;
+  const { error } = await sb.rpc('guest_converted', { p_device:S.deviceId });
+  if(error) console.warn('Supabase guest link failed', error);
 }
 // real "N going" counts from everyone's RSVPs
 async function loadGoing(){
@@ -2599,6 +2617,7 @@ function boot(){
   history=[];
   tryMapbox(); loadEvents();
   checkAccount().then(flushFeedback);   // returning user: keep the profile in sync
+  guestSeen();
   refreshLoc();
 
 }
