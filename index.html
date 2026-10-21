@@ -164,21 +164,22 @@ img{ max-width:100% }
 .chips::-webkit-scrollbar{ display:none }
 .chip{ flex:none; border:1.5px solid var(--ink); border-radius:30px; padding:6px 13px; font-size:13px; font-weight:500 }
 .chip.on{ background:var(--ink); color:var(--paper) }
-.fbtn{ flex:1; display:flex; align-items:baseline; gap:6px; min-width:0; border:1px solid #DCCDAE; border-radius:20px; padding:7px 12px; font-size:13px; font-weight:600; color:var(--ink); background:var(--card); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+#homeScreen{ --home-control-height:34px }
+.fbtn{ flex:1; display:flex; align-items:center; gap:6px; min-width:0; height:var(--home-control-height); border:1px solid #DCCDAE; border-radius:20px; padding:0 12px; font-size:13px; font-weight:600; color:var(--ink); background:var(--card); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .fbtn small{ font-size:10px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.05em } .fbtn i{ margin-left:auto; font-style:normal; font-size:11px; color:var(--muted) }
 .fbtn.set::before{ content:''; flex:none; align-self:center; width:6px; height:6px; border-radius:50%; background:var(--green) }
 /* search: sits between the wordmark row and the When / Type filters; a search sets those same filters, plus one keyword chip */
 .srch{ position:relative; display:flex; align-items:center; gap:10px; margin:4px 20px 0 }
 .srch [hidden]{ display:none }
-.srchbox{ flex:1; min-width:0; display:flex; align-items:center; gap:10px; height:46px; padding:0 12px 0 14px; background:var(--card); border:1.5px solid #DCCDAE; border-radius:23px; box-shadow:0 4px 14px rgba(38,37,31,.10) }
+.srchbox{ flex:1; min-width:0; display:flex; align-items:center; gap:10px; height:var(--home-control-height); padding:0 12px 0 14px; background:var(--card); border:1.5px solid #DCCDAE; border-radius:20px; box-shadow:0 4px 14px rgba(38,37,31,.10) }
 .srchbox:focus-within{ border-color:var(--green) }
 .srchbox input{ flex:1; min-width:0; border:0; background:none; font:inherit; font-size:16px; color:var(--ink); outline:none; -webkit-appearance:none; appearance:none; text-overflow:ellipsis }  /* 16px keeps iOS from zooming in on focus */
 .srchbox input::-webkit-search-cancel-button{ display:none }
 .srchbox input::placeholder{ color:var(--muted) }
 .srchico{ flex:none; width:26px; height:26px; margin-left:-3px; display:grid; place-items:center; color:var(--green); border-radius:50% }
 .srchx{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--line); display:grid; place-items:center }
-.srchcancel{ flex:none; font-size:14px; font-weight:700; color:var(--green); padding:10px 2px }
-.srchsugg{ position:absolute; left:0; right:0; top:54px; z-index:2; background:var(--paper); border-radius:18px; box-shadow:0 12px 30px rgba(38,37,31,.22); max-height:min(60vh,520px); overflow-y:auto; padding:4px 14px 12px }
+.srchcancel{ flex:none; height:var(--home-control-height); font-size:14px; font-weight:700; color:var(--green); padding:0 2px }
+.srchsugg{ position:absolute; left:0; right:0; top:calc(100% + 8px); z-index:2; background:var(--paper); border-radius:18px; box-shadow:0 12px 30px rgba(38,37,31,.22); max-height:min(60vh,520px); overflow-y:auto; padding:4px 14px 12px }
 .srchsugg .psub{ margin-top:14px }
 .sopt{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:11px 2px; border-bottom:1px dashed #DCCDAE; font-size:15px }
 .sopt > span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis } .sopt small{ display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
@@ -1259,7 +1260,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList
 // category filter: 'All', one category key, or 'mine' (the interests you picked at sign-up, the default)
 const myCats=()=>Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label));
 const catOK=(ev,c)=> c==='All' || (c==='mine'? myCats().includes(ev.category) : ev.category===c);
-let filter=myCats().length?'mine':'All', when='week', tier='any';
+let filter=myCats().length?'mine':'All', when='tonight', tier='any';
 // time filter: next occurrence falls today / within 7 days / within 30 days (rolling windows)
 const WHEN=[['any','Anytime'],['tonight','Today'],['week','This week'],['month','This month']];
 function inWindow(ev){
