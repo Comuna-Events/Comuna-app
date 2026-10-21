@@ -775,7 +775,7 @@ let eventsState = 'loading';   // 'loading' | 'live' | 'error'
 
 /* ---------- state ---------- */
 // Every check-in stamps a PLACE. Neighborhood, city and state stamps are earned from the places you've been.
-const START = { places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[], redeemed:[], alertsRead:false, nb:'Silver Lake', loc:null, name:'', interests:[], joined:new Date().toISOString().slice(0,10) };
+const START = { places:{}, points:0, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], alertsRead:false, nb:'Silver Lake', loc:null, name:'', interests:[], joined:new Date().toISOString().slice(0,10) };
 let S;
 function load(){ try{ const r=localStorage.getItem('comuna_v3'); S = r? Object.assign(JSON.parse(JSON.stringify(START)), JSON.parse(r)) : JSON.parse(JSON.stringify(START)); }catch(e){ S=JSON.parse(JSON.stringify(START)); }
   // interests saved under the detailed category names or the old four groups
@@ -788,7 +788,7 @@ load();
 // This flag controls navigation only; Supabase still authenticates account access.
 if(S.signedUp) S.onboardingComplete=true;
 // older builds saved a sample passport (18 check-ins, 4 wk streak, 1,240 points) for people who hadn't signed up yet
-if(!S.signedUp && !S.guest) Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:[], checked:[] });
+if(!S.signedUp && !S.guest) Object.assign(S,{ places:{}, points:0, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[] });
 
 /* ---------- geometry ---------- */
 function miles(a,b){ const R=3958.8, dLa=(b.lat-a.lat)*Math.PI/180, dLo=(b.lng-a.lng)*Math.PI/180; const x=Math.sin(dLa/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
@@ -1037,7 +1037,7 @@ codeNext.onclick=async()=>{
   authed=data.user; S.email=codeEmail; save(); finishAuth();
 };
 let passportRestoreId=0, passportRevision=0;
-const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; return Object.assign(S,{ accountId:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
+const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; return Object.assign(S,{ accountId:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
 function applyAccountProfile(user,p){
   if(S.accountId!==user.id) freshPassport();
   S.accountId=user.id; S.email=user.email||''; S.name=p.name; S.points=p.points||0;
@@ -1057,7 +1057,9 @@ function historyEventId(eid){
 async function readAccountRows(table,columns,userId,tieBreaker){
   const rows=[],size=500;
   for(let start=0;;start+=size){
-    const {data,error}=await sb.from(table).select(columns).eq('user_id',userId).order('created_at').order(tieBreaker).range(start,start+size-1);
+    let query=sb.from(table).select(columns).eq('user_id',userId).order('created_at').order(tieBreaker);
+    if(table==='rsvps') query=query.order('occurrence_date');
+    const {data,error}=await query.range(start,start+size-1);
     if(error) throw error;
     rows.push(...(data||[])); if((data||[]).length<size) return rows;
   }
@@ -1068,7 +1070,7 @@ async function restorePassport(user){
   try{
     const [checkins,plans]=await Promise.all([
       readAccountRows('checkins','id,event_id,venue,neighborhood,category,created_at',user.id,'id'),
-      readAccountRows('rsvps','event_id,created_at',user.id,'event_id')
+      readAccountRows('rsvps','event_id,occurrence_date,created_at',user.id,'event_id')
     ]);
     const details=new Map(), ids=[...new Set(checkins.map(r=>String(r.event_id)))];
     // Read historical records directly, not the filtered current discovery list.
@@ -1096,6 +1098,7 @@ async function restorePassport(user){
     }
     S.places=places; S.checked=[...new Set(checked)]; S.visits=checkins.length;
     S.rsvp=[...new Set(plans.map(r=>historyEventId(r.event_id)).filter(id=>id!=null))];
+    S.rsvpDates={}; plans.forEach(r=>{ const id=historyEventId(r.event_id); if(id==null) return; const date=r.occurrence_date || (r.created_at||'').slice(0,10); if(date) (S.rsvpDates[id] ||= []).push(date); });
     save(); rebuildMap(); renderNames(); updateDot();
     if(current==='passport') renderPassport(); else if(current==='profile') renderProfile(); else if(current==='plans') renderPlans(); else if(current==='home') renderHome();
     return true;
@@ -1149,6 +1152,30 @@ function renderNames(){ const n=shortName(); document.getElementById('passName')
   document.getElementById('pfAuth').textContent=S.signedUp? 'Sign out' : 'Create account or sign in';
   document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : ''; document.getElementById('pfNb').textContent=S.nb||'Pick one'; }
 
+// Plans belong to individual occurrences, never to the entire recurring series.
+function planDayKey(day){ return `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`; }
+function planDay(date){ return /^\d{4}-\d{2}-\d{2}$/.test(date||'') ? new Date(date+'T00:00:00') : null; }
+function selectedPlanDay(ev){ return planDay(ev.occurrenceDate) || nextDate(ev) || evDate(ev); }
+function savedPlanDates(ev){
+  const dates=S.rsvpDates ||= {};
+  if(!Object.prototype.hasOwnProperty.call(dates,ev.id)){
+    // Old device-only saves have no timestamp. Pin once at upgrade; never roll forward.
+    const day=S.rsvp.includes(ev.id) ? selectedPlanDay(ev) : null;
+    dates[ev.id]=day?[planDayKey(day)]:[]; if(day) save();
+  }
+  return dates[ev.id];
+}
+function hasPlan(ev,day=selectedPlanDay(ev)){ return !!day && savedPlanDates(ev).includes(planDayKey(day)); }
+function rememberPlan(ev,day){
+  const dates=savedPlanDates(ev), key=planDayKey(day);
+  if(!dates.includes(key)) dates.push(key);
+  if(!S.rsvp.includes(ev.id)) S.rsvp.push(ev.id);
+}
+function forgetPlan(ev,day){
+  S.rsvpDates[ev.id]=savedPlanDates(ev).filter(date=>date!==planDayKey(day));
+  if(!S.rsvpDates[ev.id].length) S.rsvp=S.rsvp.filter(id=>id!==ev.id);
+}
+
 /* ---------- daily Top 4: up to four events within 5 miles, once a day ---------- */
 const PICK_MAX_MI=5;   // ~18 "min away"; anything farther never makes the Top 4
 function dailyPicks(){
@@ -1156,7 +1183,7 @@ function dailyPicks(){
   const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label));
   // only things happening in the next 7 days (today included), so daily picks stay timely
   const t0=today0(), soon=ev=>{ const d=ev.start? nextDate(ev) : evDate(ev); return !!d && d>=t0 && d-t0<7*864e5; };
-  const pool=events.filter(ev=>!S.checked.includes(ev.id) && !S.rsvp.includes(ev.id) && ev.mi!=null && ev.mi<=PICK_MAX_MI && soon(ev));
+  const pool=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && ev.mi!=null && ev.mi<=PICK_MAX_MI && soon(ev));
   // closest first, with a nudge toward what you're into; the day number rotates ties so picks change daily
   const day=Math.floor(Date.now()/864e5);
   const score=ev=>ev.mi*(want.includes(ev.category)?0.6:1)+((ev.id*7+day)%5)*0.05;
@@ -1313,7 +1340,7 @@ function cardTitle(ev){
   return title;
 }
 function cardHtml(ev){
-    const done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
+    const done=S.checked.includes(ev.id), inn=hasPlan(ev);
     return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?'<span class="chk">&check;</span>':''}</div>
       <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</b> · ${escH(ev.venue)}${inn&&!done?' · Saved':''}</div></div>
       <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
@@ -1635,7 +1662,7 @@ function openVenue(list){
   const dayOf=ev=>{ const d=nextDate(ev); if(!d) return ev.time? String(ev.time).split('·')[0].trim() : 'Coming up';
     const diff=Math.round((d-today)/864e5); return diff===0?'Today':diff===1?'Tomorrow':d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); };
   let rows='', last=null;
-  evs.forEach(ev=>{ const day=dayOf(ev), done=S.checked.includes(ev.id), inn=S.rsvp.includes(ev.id);
+  evs.forEach(ev=>{ const day=dayOf(ev), done=S.checked.includes(ev.id), inn=hasPlan(ev);
     if(day!==last){ rows+=`<div class="vday">${escH(day)}</div>`; last=day; }
     rows+=`<button class="vrow" data-vev="${ev.id}">${catDot(ev.category,24)}<div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH([ev.t0?fmtTime(ev.t0):'',mixed?ev.venue:'',(SUBCATS[ev.sub]||CATS[catKey(ev.category)]).label,done?'Stamped':inn?'Saved':''].filter(Boolean).join(' · '))}</div></div></button>`; });
   const ev=evs[0];
@@ -1939,7 +1966,7 @@ function nextDate(ev,now=eventNow()){
   return null;
 }
 function nextWhen(ev){
-  const d=nextDate(ev); if(!d) return ev.time||'Soon';
+  const d=selectedPlanDay(ev); if(!d) return ev.time||'Soon';
   const today=eventNow(); today.setHours(0,0,0,0); const diff=Math.round((d-today)/864e5);
   if(diff<0) return 'Happening now';
   const day=diff===0?'Today':diff===1?'Tomorrow':d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
@@ -1956,12 +1983,13 @@ function badges(ev){
 function directionsUrl(ev){ const q=encodeURIComponent(ev.address||`${ev.venue}, Los Angeles, CA`);
   return /iPhone|iPad|Macintosh/.test(navigator.userAgent)? `https://maps.apple.com/?daddr=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`; }
 function addToCalendar(ev){
-  const d=nextDate(ev)||new Date(), a=hm(ev.t0)||[19,0], b=hm(ev.t1);
+  const d=selectedPlanDay(ev); if(!d) return toast('Choose an event date before adding it to your calendar.');
+  const a=hm(ev.t0)||[19,0], b=hm(ev.t1);
   const st=new Date(d); st.setHours(a[0],a[1],0,0); const en=new Date(st); if(b){ en.setHours(b[0],b[1],0,0); if(en<=st) en.setDate(en.getDate()+1); } else en.setHours(st.getHours()+2);
   const f=x=>x.getFullYear()+String(x.getMonth()+1).padStart(2,'0')+String(x.getDate()).padStart(2,'0')+'T'+String(x.getHours()).padStart(2,'0')+String(x.getMinutes()).padStart(2,'0')+'00';
   const esc=t=>String(t||'').replace(/([,;\\])/g,'\\$1').replace(/\n/g,' ');
-  const rec=(ev.rec||'').toLowerCase(), rr=/biweekly/.test(rec)?'RRULE:FREQ=WEEKLY;INTERVAL=2' : /weekly/.test(rec)?'RRULE:FREQ=WEEKLY' : /daily/.test(rec)?'RRULE:FREQ=DAILY' : '';
-  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Comuna//EN','BEGIN:VEVENT','UID:comuna-'+ev.id+'-'+Date.now()+'@comuna','DTSTAMP:'+f(new Date()),'DTSTART:'+f(st),'DTEND:'+f(en), rr,
+  // Calendar exports are for this occurrence only; never emit a series RRULE.
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Comuna//EN','BEGIN:VEVENT','UID:comuna-'+ev.id+'-'+Date.now()+'@comuna','DTSTAMP:'+f(new Date()),'DTSTART:'+f(st),'DTEND:'+f(en),
     'SUMMARY:'+esc(ev.title),'LOCATION:'+esc([ev.venue,ev.address].filter(Boolean).join(', ')),'DESCRIPTION:'+esc(ev.desc),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc(ev.title+' starts in 2 hours'),'TRIGGER:-PT2H','END:VALARM','END:VEVENT','END:VCALENDAR'].filter(Boolean).join('\r\n');
   const url=URL.createObjectURL(new Blob([ics],{type:'text/calendar'})); const l=document.createElement('a'); l.href=url; l.download=(ev.title||'event').replace(/[^\w]+/g,'-').slice(0,40)+'.ics'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000);
   toast('Calendar file ready: open it to add the event (with a 2-hour reminder)');
@@ -1970,10 +1998,11 @@ function addToCalendar(ev){
 /* ---------- event sheet ---------- */
 const overlay=document.getElementById('overlay'), sheet=document.getElementById('sheet');
 const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
-function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back button (its aria-label names backLabel) that returns to where you came from
-  const ev=events.find(e=>e.id===id); if(!ev) return; enrich();
+function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: optional, adds a back button (its aria-label names backLabel) that returns to where you came from
+  const base=events.find(e=>e.id===id); if(!base) return;
+  const ev=occurrenceDate?{...base,occurrenceDate}:base; enrich();
   sheetCtx={ placement:sheetFrom||placementNow(), query:searchQ||null }; sheetFrom=null;
-  const inn=S.rsvp.includes(id), done=S.checked.includes(id);
+  const inn=hasPlan(ev), done=S.checked.includes(id);
   const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
   const link=(()=>{ const ticket=okLink(ev.ticket), source=okLink(ev.source); const u=(ticket&&!isRoundup(ticket))?ticket:(source&&!isRoundup(source))?source:(ticket||source);
     if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the RSVP button already opens it
@@ -2008,7 +2037,15 @@ function openSheet(id,back,backLabel='Top 4'){   // back: optional, adds a back 
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
-  const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{ track(ev,needsRsvp(ev)?'rsvp':'interested'); passportRevision++; S.rsvp.push(id); const pts=savePts(ev); S.points+=pts; save(); dbRsvp(ev); logGuest('rsvp',{ event_id:eidOf(ev), event_title:ev.title, kind:needsRsvp(ev)?'rsvp':'interested' }); overlay.classList.remove('on'); renderHome(); showRsvp(events.find(e=>e.id===id),pts); };
+  const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{
+    const day=selectedPlanDay(ev); if(!day || !occursOn(ev,day)){ toast('Choose a published event date before saving.'); return false; }
+    const occurrence={...ev,occurrenceDate:planDayKey(day)};
+    if(hasPlan(ev,day)) return;
+    track(ev,needsRsvp(ev)?'rsvp':'interested'); passportRevision++; rememberPlan(ev,day);
+    const pts=savePts(ev); S.points+=pts; save(); dbRsvp(occurrence);
+    logGuest('rsvp',{ event_id:eidOf(ev), event_title:ev.title, kind:needsRsvp(ev)?'rsvp':'interested', occurrence_date:occurrence.occurrenceDate });
+    overlay.classList.remove('on'); renderHome(); if(current==='plans') renderPlans(); showRsvp(occurrence,pts);
+  };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
     const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; toast(v.msg); return; } checkIn(ev,v.dist); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
@@ -2107,13 +2144,13 @@ function showRsvp(ev,pts=0){
   const m=document.getElementById('stampModal');
   m.innerHTML=`<div class="stampbox">${rsvpStamp(ev)}</div>
     <h3>${needsRsvp(ev)?'Saved. Finish your RSVP':'Saved to your plans'}</h3>
-    <p>${escH(ev.title)}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${needsRsvp(ev)?'Complete the RSVP on the host\'s page so they hold your spot. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin} more.</p>
+    <p>${escH(ev.title)}${ev.occurrenceDate?' on '+escH(planDay(ev.occurrenceDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${needsRsvp(ev)?'Complete the RSVP on the host\'s page so they hold your spot. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin} more.</p>
     <div class="unlocks"><button class="btn ghost" id="rsvpCal" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Remind me (+ Calendar)</button><button class="btn ghost" id="rsvpInvite" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Invite friends</button></div>
     <button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>`;
   m.classList.add('on');
   document.getElementById('closeStamp').onclick=()=>m.classList.remove('on');
   document.getElementById('rsvpCal').onclick=()=>addToCalendar(ev);
-  document.getElementById('rsvpInvite').onclick=()=>{ m.classList.remove('on'); openSheet(ev.id); setTimeout(()=>document.getElementById('shareBtn')?.click(),50); };
+  document.getElementById('rsvpInvite').onclick=()=>{ m.classList.remove('on'); openSheet(ev.id,null,'Top 4',ev.occurrenceDate); setTimeout(()=>document.getElementById('shareBtn')?.click(),50); };
 }
 
 // your points this month, from the same Supabase view as the leaderboard (so both always match)
@@ -2183,16 +2220,16 @@ function renderPlans(){
   document.getElementById('calMonth').textContent=calView.toLocaleString('en-US',{month:'long'})+(y!==t.getFullYear()?' '+y:'');
   let g=WD.map(w=>`<div class="wd">${w}</div>`).join('')+'<div></div>'.repeat(calView.getDay());
   for(let n=1;n<=new Date(y,m+1,0).getDate();n++){
-    const d=new Date(y,m,n), evs=byDay[ymd(d)]||[], mine=evs.some(e=>S.rsvp.includes(e.id));
+    const d=new Date(y,m,n), evs=byDay[ymd(d)]||[], mine=evs.some(e=>hasPlan(e,d));
     const cls=['day',d<t?'past':'',+d===+t?'today':'',+d===+calSel?'sel':'',mine?'mine':''].join(' ');
     g+=`<button class="${cls}" data-day="${n}"><span>${n}</span></button>`;   // only your own plans are marked (red); no dots for other events
   }
   document.getElementById('calGrid').innerHTML=g;
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
-  const card=ev=>{ const inn=S.rsvp.includes(ev.id), done=S.checked.includes(ev.id);
+  const card=ev=>{ const inn=hasPlan(ev,calSel), done=S.checked.includes(ev.id);
     return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!done?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">${needsRsvp(ev)?'Cancel RSVP':'Remove from Plans'}</button>`:''}</div>`; };
-  const mineL=dayEvs.filter(ev=>S.rsvp.includes(ev.id)), also=dayEvs.filter(ev=>!S.rsvp.includes(ev.id) && (!isT || (nextDate(ev) && nextDate(ev)<=t))).sort((a,b)=>(a.mi??99)-(b.mi??99));
+  const mineL=dayEvs.filter(ev=>hasPlan(ev,calSel)), also=dayEvs.filter(ev=>!hasPlan(ev,calSel) && (!isT || (nextDate(ev) && nextDate(ev)<=t))).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
     : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "Interested" on an event and it lands here.</div>`;
   document.getElementById('alsoHead').textContent=`Also happening ${isT?'today':calSel.toLocaleString('en-US',{weekday:'long'})}`;
@@ -2201,20 +2238,22 @@ function renderPlans(){
   // real invites will come from friends on Comuna; nothing to show until then
   document.getElementById('inviteList').innerHTML=`<div class="empty">No invites yet. When a friend invites you to something, it shows up here.</div>`;
 }
-document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open); const s=e.target.closest('[data-share]'); if(s) shareEv(events.find(x=>x.id===+s.dataset.share)); });
+document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open,null,'Top 4',planDayKey(calSel)); const s=e.target.closest('[data-share]'); if(s) shareEv({...events.find(x=>x.id===+s.dataset.share),occurrenceDate:planDayKey(calSel)}); });
 
 // Cancels only the Comuna plan; external tickets/registrations stay with the host.
 async function cancelPlan(id,button){
   const ev=events.find(e=>e.id===id);
-  if(!ev || !S.rsvp.includes(id) || S.checked.includes(id) || button.disabled) return;
+  const day=new Date(calSel);
+  if(!ev || !hasPlan(ev,day) || S.checked.includes(id) || button.disabled) return;
   const label=button.textContent; button.disabled=true; button.textContent='Removing…';
   try{
     if(S.signedUp){
       const u=await dbUser(); if(!u || !sb) throw new Error('Sign in or reconnect to cancel your RSVP.');
-      const {error}=await sb.from('rsvps').delete().eq('user_id',u.id).eq('event_id',eidOf(ev)).select('event_id');
+      const {error}=await sb.from('rsvps').delete().eq('user_id',u.id).eq('event_id',eidOf(ev)).eq('occurrence_date',planDayKey(day)).select('event_id');
       if(error) throw error;
     }
-    passportRevision++; S.rsvp=S.rsvp.filter(saved=>saved!==id); save();
+    passportRevision++; forgetPlan(ev,day);
+    S.guestLog=(S.guestLog||[]).filter(r=>!(r.t==='rsvp' && r.event_id===eidOf(ev) && r.occurrence_date===planDayKey(day))); save();
     renderPlans(); renderHome(); if(S.signedUp) loadGoing();
     toast(needsRsvp(ev)?'RSVP removed from Comuna Plans. Cancel any host registration or tickets separately.':'Removed from your Plans.');
   }catch(error){ console.warn('RSVP cancellation failed',error); toast('Could not remove this plan. Check your connection and sign-in, then try again.'); }
@@ -2275,18 +2314,18 @@ let ALERTS=[];
 function buildAlerts(){
   const t=today0(), out=[];
   (S.rsvp||[]).forEach(id=>{ const ev=events.find(e=>e.id===id); if(!ev || S.checked.includes(id)) return;
-    const d=ev.start? nextDate(ev) : evDate(ev); if(!d) return; const days=Math.round((d-t)/864e5); if(days<0||days>6) return;
+    savedPlanDates(ev).forEach(date=>{ const d=planDay(date); if(!d) return; const days=Math.round((d-t)/864e5); if(days<0||days>6) return;
     const when=days===0?'Today':days===1?'Tomorrow':d.toLocaleString('en-US',{weekday:'long'}), tm=ev.t0? fmtTime(ev.t0) : (String(ev.time||'').split('·')[1]||'').trim();
-    out.push({ key:id+'@'+ymd(d), days, t:`${when}: ${ev.title}`, s:[ev.venue,tm].filter(Boolean).join(' · '), w:d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}), ic:'cal', ev:id }); });
+    out.push({ key:id+'@'+ymd(d), days, t:`${when}: ${ev.title}`, s:[ev.venue,tm].filter(Boolean).join(' · '), w:d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}), ic:'cal', ev:id, date }); }); });
   ALERTS=out.sort((a,b)=>a.days-b.days); return ALERTS;
 }
 const unseen=()=>ALERTS.filter(a=>!(S.alertsSeen||[]).includes(a.key));
 function renderAlerts(){
   buildAlerts(); const seen=S.alertsSeen||[];
   const icon=k=>({cal:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.red}" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,music:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.red}" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,invite:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.blue}" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`,stamp:`<svg width="22" height="22" viewBox="-28 -28 56 56">${glyph('star',C.sun)}</svg>`,coffee:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.green}" stroke-width="2"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h2a2 2 0 0 1 0 4h-2"/></svg>`}[k]);
-  document.getElementById('alertList').innerHTML=ALERTS.length? ALERTS.map((a,i)=>`<button class="alert ${seen.includes(a.key)?'':'unread'}" ${a.ev?`data-alert-ev="${a.ev}"`:''}><div class="ic">${icon(a.ic)}</div><div><div class="t">${escH(a.t)}</div><div class="s">${escH(a.s)}</div><div class="w">${escH(a.w)}</div></div></button>`).join('') : `<div class="empty"><span class="hand">all quiet</span>No alerts yet. Tap "Interested" on an event and we'll remind you here when it's coming up.</div>`;
+  document.getElementById('alertList').innerHTML=ALERTS.length? ALERTS.map((a,i)=>`<button class="alert ${seen.includes(a.key)?'':'unread'}" ${a.ev?`data-alert-ev="${a.ev}" data-alert-date="${a.date||''}"`:''}><div class="ic">${icon(a.ic)}</div><div><div class="t">${escH(a.t)}</div><div class="s">${escH(a.s)}</div><div class="w">${escH(a.w)}</div></div></button>`).join('') : `<div class="empty"><span class="hand">all quiet</span>No alerts yet. Tap "Interested" on an event and we'll remind you here when it's coming up.</div>`;
 }
-document.getElementById('alertList').addEventListener('click',e=>{ const a=e.target.closest('[data-alert-ev]'); if(a) openSheet(+a.dataset.alertEv); });
+document.getElementById('alertList').addEventListener('click',e=>{ const a=e.target.closest('[data-alert-ev]'); if(a) openSheet(+a.dataset.alertEv,null,'Top 4',a.dataset.alertDate||null); });
 function updateDot(){ buildAlerts(); const n=unseen().length, d=document.getElementById('alertDot'); d.textContent=n; d.style.display=n?'grid':'none'; }
 
 /* keep the Mapbox corner controls just below the header, whatever its height */
@@ -2362,7 +2401,7 @@ async function dbProfile(){
 const eidOf = ev => ev.eid || String(ev.id);
 async function dbRsvp(ev){
   if(!ev) return; const u=await dbUser(); if(!u) return;
-  const { error } = await sb.from('rsvps').upsert({ user_id:u.id, event_id:eidOf(ev), event_title:ev.title, kind:needsRsvp(ev)?'rsvp':'interested' });
+  const { error } = await sb.from('rsvps').upsert({ user_id:u.id, event_id:eidOf(ev), event_title:ev.title, kind:needsRsvp(ev)?'rsvp':'interested', occurrence_date:ev.occurrenceDate }, {onConflict:'user_id,event_id,occurrence_date'});
   if(error){ console.warn('Supabase RSVP save failed', error); dbStatus('RSVP save failed: '+error.message,true); }
   dbProfile(); loadGoing();
 }
@@ -2400,8 +2439,8 @@ async function uploadGuest(user){
   const log=S.guestLog||[]; if(!log.length || !sb || S.accountId!==user.id) return;
   const sent=new Set();
   for(const [t,table] of [['checkin','checkins'],['rsvp','rsvps']]){
-    const rows=log.filter(r=>r.t===t).map(({t,...r})=>({...r,user_id:user.id})); if(!rows.length){ sent.add(t); continue; }
-    const { error } = t==='rsvp'? await sb.from(table).upsert(rows) : await sb.from(table).insert(rows);
+    const rows=log.filter(r=>r.t===t).map(({t,...r})=>{ if(t==='rsvp' && !r.occurrence_date){ const id=historyEventId(r.event_id); r.occurrence_date=S.rsvpDates?.[id]?.[0] || planDayKey(today0()); } return {...r,user_id:user.id}; }); if(!rows.length){ sent.add(t); continue; }
+    const { error } = t==='rsvp'? await sb.from(table).upsert(rows,{onConflict:'user_id,event_id,occurrence_date'}) : await sb.from(table).insert(rows);
     if(error){ console.warn('Supabase guest '+table+' upload failed', error); dbStatus('saving guest '+table+' failed: '+error.message,true); } else sent.add(t);
   }
   S.guestLog=(S.guestLog||[]).filter(r=>!sent.has(r.t)); save();   // what failed stays queued for the next launch
