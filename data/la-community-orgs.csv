@@ -1,0 +1,45 @@
+category,name,neighborhood,events_url,feed_type,ingest,note
+Cultural center,Arroyo Arts Collective / Art Park (Hermon Park),Montecito Heights,https://culturela.org/cultural-centers/art-park-arroyo-seco-hermon-park,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Barnsdall Arts Center,East Hollywood,https://culturela.org/cultural-centers/barnsdall-arts-center,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Barnsdall Gallery Theatre,East Hollywood,https://culturela.org/cultural-centers/barnsdall-gallery-theatre,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Barnsdall Junior Arts Center Gallery,East Hollywood,https://culturela.org/cultural-centers/barnsdall-junior-arts-center-gallery-barnsdall-junior-arts-center-gallery,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Bridge Gallery (City Hall),Downtown,https://culturela.org/cultural-centers/bridge-gallery-city-hall,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Canoga Park Youth Arts Center,Canoga Park,https://culturela.org/cultural-centers/canoga-park-youth-arts-center,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Center for the Arts Eagle Rock,Eagle Rock,https://culturela.org/cultural-centers/center-for-the-arts-eagle-rock,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Hollyhock House,East Hollywood,https://culturela.org/cultural-centers/hollyhock-house,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Lankershim Arts Center,North Hollywood,https://culturela.org/cultural-centers/lankershim-arts-center,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Lincoln Heights Youth Arts Center,Lincoln Heights,https://culturela.org/cultural-centers/lincoln-heights-youth-arts-center,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,LA Municipal Art Gallery (LAMAG),East Hollywood,https://culturela.org/cultural-centers/los-angeles-municipal-art-gallery-lamag,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Los Angeles Theatre Center (LATC),Downtown,https://culturela.org/cultural-centers/los-angeles-theatre-center-latc,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Madrid Theatre,Canoga Park,https://culturela.org/cultural-centers/madrid-theatre,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,McGroarty Arts Center,Tujunga,https://culturela.org/cultural-centers/mcgroarty-arts-center,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Nate Holden Performing Arts Center,Mid-City,https://culturela.org/cultural-centers/nate-holden-performing-arts-center,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Sun Valley Youth Arts Center (Stone House),Sun Valley,https://culturela.org/cultural-centers/sun-valley-youth-arts-centerstone-house,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Taxco Cultural Center,,https://culturela.org/cultural-centers/taxco,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Vision Theatre,Leimert Park,https://culturela.org/cultural-centers/vision-theatre,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Warner Grand Theatre,San Pedro,https://culturela.org/cultural-centers/warner-grand-theatre,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,Watts Towers Arts Center Campus,Watts,https://culturela.org/cultural-centers/watts-towers-campus,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,William Grant Still Arts Center,West Adams,https://culturela.org/cultural-centers/william-grant-still-arts-center,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,William Reagh LA Photography Center,,https://culturela.org/cultural-centers/william-reagh-la-photography-center,page,covered by the DCA homepage source,City Dept. of Cultural Affairs center; its page has no event listings
+Cultural center,LA Department of Cultural Affairs (homepage events),,https://culturela.org/,page,new source,Lists upcoming events across all 22 DCA centers (the centers' own pages have no event listings)
+Cultural center,LA County Department of Arts & Culture – Calendar,,https://www.lacountyarts.org/calendar,page,new source,County arts programs
+Cultural center,Japanese American Cultural & Community Center (JACCC),Little Tokyo,https://www.jaccc.org/events,page,new source,
+Cultural center,Self Help Graphics & Art,Boyle Heights,https://www.selfhelpgraphics.com/upcoming-events?format=json,Squarespace JSON,new source,Día de los Muertos programs; 1300 E 1st St
+Cultural center,Chinese American Museum,Downtown,https://camla.org/upcoming-events/,page,new source,Instagram already a source
+Cultural center,Armenian American Museum & Cultural Center,Glendale,https://www.armenianamericanmuseum.org/events,page,new source,Events calendar was empty today
+Cultural center,Los Angeles LGBT Center – Arts & Events,Hollywood,https://www.lalgbtcenter.org/events,page,new source,Instagram already a source
+Cultural center,Korean Cultural Center LA,Mid-Wilshire,https://www.kccla.org/,none found,no route yet,Site redirects in a loop
+Cultural center,Instituto Cultural Mexicano,Downtown,https://www.icmla.org/,none found,no route yet,Bot check (403)
+Cultural center,FilAm ARTS,,https://filamarts.org/,none found,no route yet,No events page found
+Cultural center,Casa 0101 Theater,Boyle Heights,https://www.casa0101.org/,none found,no route yet,Bot check
+Volunteer,TreePeople,,https://treepeople.org/events/,page,new source,"Tree plantings, park care, Coldwater Canyon events"
+Volunteer,Surfrider Foundation LA,,https://la.surfrider.org/events,page,new source,Beach cleanups
+Volunteer,Friends of the LA River (FoLAR),,https://folar.org/events,page,new source,River cleanups (La Gran Limpieza)
+Volunteer,LA Regional Food Bank – Events,,https://www.lafoodbank.org/events/,page,new source,Fundraisers and food distributions
+Volunteer,VA Greater LA – Events (Legion/VFW bingo etc.),West Los Angeles,https://www.va.gov/greater-los-angeles-health-care/events/,page,new source,Public bingo nights run with American Legion Post 283 and VFW Post 2075
+Volunteer,Heal the Bay,,https://healthebay.org/events/,page,already a source,Already a source (Heal the Bay Aquarium); its events JSON had 4 upcoming
+Volunteer,L.A. Works,,https://volunteer.laworks.com/calendar,none found,no route yet,Listings load in the browser (HandsOn Connect); no readable feed
+Civic club,Elks lodges (elks.org lodge calendars),,https://www.elks.org/lodges/lodgecalendar.cfm?LodgeNumber=906,none found,no route yet,Calendars load in the browser; most lodges post on Facebook
+Civic club,Pasadena Elks Lodge 672,Pasadena,https://pasadenaelks672.org/,none found,no route yet,Site has no events page
+Civic club,Rotary District 5280 (west LA clubs),,https://rotary5280.org/,none found,no route yet,ClubRunner; events are mostly member meetings
+Civic club,American Legion / VFW posts,,,none found,no route yet,No post calendars online; public events show up via chambers (Burbank Chamber already a source) and the VA page above
