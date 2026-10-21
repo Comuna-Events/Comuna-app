@@ -410,6 +410,7 @@ img{ max-width:100% }
 .keepcard b{ display:block; font-size:16px } .keepcard p{ color:var(--muted); font-size:13.5px; line-height:1.45; margin:3px 0 12px }
 .keepcard .btn + button{ display:block; width:100%; margin-top:6px; padding:10px; font-size:14px; color:var(--muted) }
 .guestbar{ display:flex; gap:12px; align-items:center; background:var(--green); color:var(--paper); border-radius:18px; padding:14px 14px 14px 16px; margin-top:6px }
+.guestbar[hidden]{ display:none }
 .guestbar div{ flex:1; min-width:0; font-size:12.5px; color:#DDD1B8; line-height:1.4 } .guestbar div b{ display:block; font-size:14.5px; color:var(--paper) }
 .guestbar .btn{ width:auto; flex:none; padding:0 16px; min-height:44px; font-size:13.5px }
 .carry{ background:var(--card); border-radius:18px; padding:14px 16px; margin-top:16px }
@@ -2272,7 +2273,7 @@ function renderPassport(){
   document.getElementById('passCount').textContent=`${nP} place${nP===1?'':'s'}\n${nH} neighborhood${nH===1?'':'s'}\n${nC} cit${nC===1?'y':'ies'}`;
   fitLine(document.getElementById('passCount'));
   document.getElementById('passBar').style.width=Math.min(100,(nH+nC)/(NBHDS.length+CITIES.length)*100)+'%';
-  const nP0=Object.keys(S.places).length; document.getElementById('guestBar').hidden=!S.guest;
+  const nP0=Object.keys(S.places).length; document.getElementById('guestBar').hidden=!(S.guest && !S.signedUp && !S.accountId);
   document.getElementById('guestBarTxt').textContent=nP0||S.points? `Create an account to keep your ${nP0} stamp${nP0===1?'':'s'} and ${(S.points||0).toLocaleString()} points.` : 'Create an account so your stamps are safe if you switch phones.';
   document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
   document.getElementById('passSeal').innerHTML=omark(130,'#F3E7D1','#F3E7D1');
