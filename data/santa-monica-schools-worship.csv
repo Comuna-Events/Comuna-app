@@ -1,0 +1,70 @@
+category,type,name,address,zip,confidence,notes
+School,Public high,Santa Monica High School (Samohi),601 Pico Blvd,90405,confirmed,Barnum Hall concerts and plays; band/choir/orchestra tickets on Ticket Tailor; school calendar at samohi.smmusd.org
+School,Public high (continuation),Olympic High School,721 Ocean Park Blvd,90405,verify,Address from a real estate blog
+School,Public middle,Lincoln Middle School,1501 California Ave,90403,confirmed,Scream Fest haunted house and fall festival (Oct 23-25 2026)
+School,Public middle,John Adams Middle School (JAMS),2425 16th St,90405,confirmed,Performing Arts Center hosts district concerts (e.g. Bands on the Road)
+School,Public K-8,Santa Monica Alternative School House (SMASH),2525 5th St,90405,verify,Shares a block with John Muir; check whether the two have merged
+School,Public elementary,John Muir Elementary,2526 6th St,90405,verify,See SMASH
+School,Public elementary,Edison Language Academy,2402 Virginia Ave,90404,confirmed,Spanish dual immersion
+School,Public elementary,Franklin Elementary,2400 Montana Ave,90403,confirmed,Halloween Carnival (late Oct Saturday 10am-4pm; free entry)
+School,Public elementary,Grant Elementary,2368 Pearl St,90405,confirmed,Fall Festival (late Oct 1-6pm)
+School,Public elementary,McKinley Elementary,2401 Santa Monica Blvd,90404,confirmed,Harvest Festival; back-to-school picnic
+School,Public elementary,Roosevelt Elementary,801 Montana Ave,90403,confirmed,
+School,Public elementary,Will Rogers Learning Community,2401 14th St,90405,confirmed,
+School,Private PK-12,Saint Monica Preparatory,1039 7th St,90403,confirmed,Formerly St. Monica Catholic elementary + high school; on the St. Monica parish campus
+School,Private K-12,Crossroads School (Middle & Upper),1714 21st St,90404,confirmed,
+School,Private elementary,Crossroads School (Elementary),1715 Olympic Blvd,90404,verify,Address from memory; not confirmed by search
+School,Private K-12,New Roads School,3131 Olympic Blvd,90404,confirmed,
+School,Private high,Pacifica Christian High School,1730 Wilshire Blvd,90403,confirmed,Same address as Pilgrim Lutheran Church
+School,Private PK-8,St. Anne School,2015 Colorado Ave,90404,confirmed,On the St. Anne parish campus
+School,Private K-6,Carlthorp School,438 San Vicente Blvd,90402,confirmed,
+School,Private K-6,PS1 Pluralistic School,1454 Euclid St,90404,confirmed,
+School,Private PK-6,Santa Monica Montessori School,1909 Colorado Ave,90404,verify,Directory listing only
+School,Private K-12,Lighthouse Church School / Lighthouse Christian Academy,1220 20th St,90404,verify,Also listed at 1424 Yale St; hosts a community fall festival (late Oct)
+School,Private K-12,Delphi Academy of Santa Monica,1229 4th St,90401,verify,Directory listing only
+School,Private K-8,Westside Waldorf School,1439 15th St,90404,verify,Sources conflict (also listed at 2601 Colorado Ave and in Pacific Palisades); early childhood center at 1441 15th St
+School,Preschool,Santa Monica Early Childhood Lab School,1802 4th St,90401,confirmed,Run with SMC
+School,Preschool,Mount Olive Lutheran Preschool,1343 Ocean Park Blvd,90405,confirmed,On the Mount Olive church campus
+College,Community college,Santa Monica College - Main Campus,1900 Pico Blvd,90405,confirmed,Planetarium (Friday night shows; Sunday 1pm family shows); glass pumpkin sales in October
+College,Community college,SMC Performing Arts Center / Broad Stage,1310 11th St,90401,confirmed,Broad Stage season plus visiting events; Barrett Art Gallery
+College,Community college,SMC Emeritus Campus,1227 2nd St,90401,confirmed,Classes for older adults; gallery and acting troupe shows
+College,Community college,SMC Center for Media and Design,1660 Stewart St,90404,confirmed,
+College,Community college,SMC Airport Arts Campus,2800 Airport Ave,90405,confirmed,Ceramics program (likely source of student art sales)
+Worship,Catholic,St. Monica Catholic Church,725 California Ave,90403,confirmed,Free Thanksgiving feast; Nov 2 interfaith memorial for people who died unhoused
+Worship,Catholic,St. Anne Catholic Church & Shrine,2013 Colorado Ave,90404,confirmed,House number varies by source (2011/2013/2017)
+Worship,Catholic,St. Clement Catholic Church,3102 3rd St,90405,verify,Directory listing only
+Worship,Episcopal,St. Augustine by-the-Sea,1227 4th St,90401,confirmed,
+Worship,Presbyterian,First Presbyterian Church of Santa Monica,1220 2nd St,90401,confirmed,Harvest Festival (mid/late Oct Sunday 11am-1pm); Christmas Festival; Santa Monica Music Festival (July); calendar at fpcsantamonica.org
+Worship,Methodist,First United Methodist Church of Santa Monica,1008 11th St,90403,confirmed,
+Worship,Methodist,Church in Ocean Park,235 Hill St,90405,confirmed,Also hosts Karov Community (Jewish) services
+Worship,Methodist (CME),Phillips Chapel CME Church,2001 4th St,90405,confirmed,Historic Black church in Ocean Park
+Worship,Lutheran,Mount Olive Lutheran Church,1343 Ocean Park Blvd,90405,confirmed,
+Worship,Lutheran,Pilgrim Lutheran Church,1730 Wilshire Blvd,90403,confirmed,Shares a campus with Pacifica Christian High School
+Worship,Lutheran,St. Paul's Lutheran Church,958 Lincoln Blvd,90403,confirmed,
+Worship,Baptist,Calvary Baptist Church,1502 20th St,90404,confirmed,
+Worship,Baptist,Greater Morning Star Baptist Church,1973 17th St,90404,confirmed,
+Worship,Baptist,Bible Baptist Church,2516 20th St,90405,verify,Directory listing only
+Worship,Baptist,Trinity Baptist Church (Trinity Church of Santa Monica),1015 California Ave,90403,verify,Two names at the same address; probably one congregation
+Worship,Foursquare,The Lighthouse Church (Santa Monica Foursquare),1220 20th St,90404,confirmed,Same campus as Lighthouse Church School
+Worship,Seventh-day Adventist,Santa Monica SDA Church,1254 19th St,90404,verify,
+Worship,Seventh-day Adventist,Delaware Avenue SDA Church,1845 20th St,90404,confirmed,Address from the church's own site
+Worship,Church of Christ,Santa Monica Church of Christ,1762 15th St,90404,verify,
+Worship,Christian Science,First Church of Christ Scientist,505 Arizona Ave,90401,verify,
+Worship,Latter-day Saints,Church of Jesus Christ of Latter-day Saints (Centinela),1257 Centinela Ave,90404,confirmed,
+Worship,Latter-day Saints,Church of Jesus Christ of Latter-day Saints (2nd St),2301 2nd St,90405,confirmed,
+Worship,Coptic Orthodox,St. Peter and St. Paul Coptic Orthodox Church,1245 4th St,90401,verify,
+Worship,Nondenominational,Westside Christian Fellowship,2948 Colorado Ave,90404,verify,Directory data may be stale
+Worship,Nazarene,Santa Monica Church of the Nazarene,,90403,verify,No street address found
+Worship,Nondenominational,Vintage Church LA,,,verify,Listed in Santa Monica; no address found
+Worship,Quaker,Santa Monica Friends Meeting,1440 Harvard St,90404,confirmed,
+Worship,Jewish (Reform),The Santa Monica Synagogue,1448 18th St,90404,verify,Official site has said both 1260 and 1448 18th St
+Worship,Jewish (Reform),Beth Shir Sholom,1827 California Ave,90403,confirmed,
+Worship,Jewish (Conservative),Kehillat Ma'arav,1715 21st St,90404,confirmed,
+Worship,Jewish (Chabad),Chabad of Santa Monica,1428 17th St,90404,confirmed,
+Worship,Jewish (Chabad),Living Torah Center / Jewish Center of the Bay Cities,1341 9th St,90401,verify,
+Worship,Jewish (Orthodox),Nessah Israel (Santa Monica),1537 Franklin St,90404,verify,Directory listing only
+Worship,Jewish (Orthodox),Young Israel of Santa Monica,201 Hampton Ave,,verify,Hampton Ave may be in Venice; check
+Worship,Islam,Islamic Center of Santa Monica,1111 Washington Ave,90403,verify,Directory listing only
+Worship,Baha'i,Santa Monica Baha'i Center,3102 Colorado Ave,90404,verify,Directory listing only
+Worship,Buddhist,SGI-USA (Soka Gakkai) Santa Monica,606 Wilshire Blvd,90401,verify,Address from memory; directory confirms a Santa Monica presence only
+Worship,Buddhist,Westside Shambhala Meditation Group,,,verify,Listed in Santa Monica on Yelp; no address found
