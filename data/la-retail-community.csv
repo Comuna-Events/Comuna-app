@@ -1,0 +1,21 @@
+category,name,neighborhood,events_url,ingest,note
+YMCA,YMCA of Metropolitan LA (all branches),,https://www.ymcala.org/events,new source,"Community runs, holiday events, fundraisers"
+YMCA,Santa Monica Family YMCA,Santa Monica,https://ymcasm.org/,no route yet,Homepage only; no events page found
+Bookstore,Chevalier's Books,Larchmont,https://www.chevaliersbooks.com/events,new source,Author talks and readings
+Bookstore,Octavia's Bookshelf,Pasadena,https://www.octaviasbookshelf.com/events,new source,
+Bookstore,Pages: A Bookstore,Manhattan Beach,https://www.pagesabookstore.com/events,new source,
+Bookstore,Skylight Books,Los Feliz,https://skylightbooks.com/events,new source (blocked our server),Bot check; may work from the ingest runner
+Bookstore,"Diesel, A Bookstore",Brentwood,https://www.dieselbookstore.com/event,new source (blocked our server),Bot check
+Bookstore,Book Soup,West Hollywood,https://www.booksoup.com/events,new source (blocked our server),Bot check
+Bookstore,Vroman's Bookstore,Pasadena,https://www.vromansbookstore.com/events,new source (blocked our server),Bot check; Instagram already a source
+Bookstore,Eso Won Books,Leimert Park,https://www.esowonbookstore.com/,new source (blocked our server),Bot check
+Bookstore,Children's Book World,Rancho Park,https://www.childrensbookworld.com/events,new source (blocked our server),Bot check
+Bookstore,The Last Bookstore,Downtown,https://www.lastbookstorela.com/events,already a source,
+Bookstore,Small World Books,Venice,https://www.smallworldbooks.com/,no route yet,No events page found
+Bookstore,Stories Books & Cafe,Echo Park,https://www.storiesla.com/events,no route yet,Page loads its content in the browser
+Bookstore,Zibby's Bookshop,Santa Monica,https://zibbysbookshop.com/pages/events,no route yet,Events page had no dated listings
+Bookstore,Barnes & Noble (all LA stores),,https://www.barnesandnoble.com/events,no route yet,Blocked (403)
+Outdoor retail,REI (LA stores),,https://www.rei.com/events,no route yet,Connection refused; REI classes and group outings are listed on rei.com/events
+Run club / retail,Lululemon run clubs,,https://www.lululemon.com/en-us/c/community/events,no route yet,Blocked (403); run clubs are mostly announced on each store's Instagram
+Run club / retail,Fleet Feet Burbank,Burbank,https://www.fleetfeet.com/s/burbank/events,no route yet,Page loads its events in the browser
+Run club / retail,Heartbreak Hill Running Co (Santa Monica),Santa Monica,,no route yet,Group runs announced on Instagram
