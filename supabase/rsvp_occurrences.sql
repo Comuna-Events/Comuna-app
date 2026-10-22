@@ -37,9 +37,11 @@ alter table public.rsvps drop constraint rsvps_pkey;
 alter table public.rsvps add primary key (user_id,event_id,occurrence_date);
 
 -- One person saving two dates is still one interested person in the series total.
-create or replace view public.event_going as
+create or replace view public.event_going with (security_invoker = true) as
 select event_id,count(distinct user_id)::integer as going
 from public.rsvps group by event_id;
+-- not readable from the app's API: it reads going_counts() (security_hardening.sql)
+revoke all on public.event_going from anon, authenticated;
 
 comment on column public.rsvps.occurrence_date is
 'The specific local event day selected by the user. Legacy records were inferred once from creation time; this is not a recurring-series subscription.';

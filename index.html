@@ -2226,8 +2226,9 @@ let myPtsAt=0;
 async function loadMyPoints(){
   if(!sb || Date.now()-myPtsAt<60000) return; myPtsAt=Date.now();
   try{ const u=(await sb.auth.getSession()).data.session?.user; if(!u) return;
-    const { data, error } = await sb.from('leaderboard_month').select('points').eq('user_id',u.id).maybeSingle(); if(error) throw error;
-    const n=data?.points||0; if(S.monthPts!==n){ S.monthPts=n; save(); }
+    // total across every board you earned on this month (supabase/security_hardening.sql)
+    const { data, error } = await sb.rpc('my_points_this_month'); if(error) throw error;
+    const n=+data||0; if(S.monthPts!==n){ S.monthPts=n; save(); }
     const el=document.getElementById('psPts'); if(el) el.textContent=n.toLocaleString();
     const lab=document.getElementById('psPtsLab'); if(lab) lab.textContent='points this month';
   }catch(e){ console.warn('Supabase my points failed', e); }
@@ -2246,8 +2247,9 @@ async function loadLeaderboard(){
   if(!sb){ if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; return; }
   try{
     const u=(await sb.auth.getSession()).data.session?.user;
-    const { data, error } = await sb.from('leaderboard_month').select('user_id,display_name,points').eq('neighborhood',S.nb||'').order('points',{ascending:false}).limit(5); if(error) throw error;
-    const rows=(data||[]).map((r,i)=>{ const you=u&&r.user_id===u.id;
+    // no one else's user id reaches the phone: the database marks your own row (supabase/security_hardening.sql)
+    const { data, error } = await sb.rpc('leaderboard_top',{ p_board:S.nb||'', p_limit:5 }); if(error) throw error;
+    const rows=(data||[]).map((r,i)=>{ const you=!!u&&r.is_me;
       return `<div class="lbrow ${you?'me':''}"><div class="r">${i+1}</div><div>${escH(you?me:r.display_name||'Explorer')}${you?' (you)':''}</div><div>${(+r.points||0).toLocaleString()} pts</div></div>`; });
     if(S.guest) guestBoard(rows,data||[]); else el.innerHTML=rows.length? rows.join('') : empty;
   }catch(e){ console.warn('Supabase leaderboard failed', e); if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; }
@@ -2538,7 +2540,7 @@ async function guestConverted(){
 async function loadGoing(){
   if(!sb) return;
   try{
-    const { data, error } = await sb.from('event_going').select('event_id,going'); if(error) throw error;
+    const { data, error } = await sb.rpc('going_counts'); if(error) throw error;
     const m=Object.fromEntries((data||[]).map(r=>[r.event_id,r.going]));
     let changed=false; events.forEach(ev=>{ if(!ev.eid) return; const g=m[ev.eid]||0; if(ev.going!==g){ ev.going=g; changed=true; } });
     if(changed && current==='home') renderHome();
