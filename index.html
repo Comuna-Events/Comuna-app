@@ -473,12 +473,16 @@ img{ max-width:100% }
   <div class="aside">
     <div class="wm" id="asideMark" style="font-size:34px"></div>
     <h1>Explore where you live.</h1>
-    <p>An interactive prototype of the Comuna app, rebuilt on Brand Guide v2. Tap through the phone: find tonight's picks, RSVP, check in, and collect the neighborhood stamp.</p>
-    <p class="note">nothing is saved to a server. it all lives in your browser.</p>
-    <p id="mapStatus" style="font-size:12.5px">Map: loading…</p>
-    <p id="dbStatus" style="font-size:12.5px">Database: not signed in yet</p>
-    <div class="jump" id="jump"></div>
-    <button class="restart" id="restart">Restart the demo</button>
+    <p>Comuna shows what's on in your neighborhood: tonight's picks, markets, shows and meetups across Los Angeles. Save the ones you like, check in when you go, and collect each neighborhood's stamp.</p>
+    <p>It's made for your phone: open this page there and add it to your Home Screen.</p>
+    <!-- team tools: only with ?dev at the end of the link -->
+    <div id="devTools" hidden>
+      <p style="font-size:12.5px;font-weight:700;margin-top:18px">Team tools</p>
+      <p id="mapStatus" style="font-size:12.5px">Map: loading…</p>
+      <p id="dbStatus" style="font-size:12.5px">Database: not signed in yet</p>
+      <div class="jump" id="jump"></div>
+      <button class="restart" id="restart">Restart the demo</button>
+    </div>
   </div>
 
   <div class="phone"><div class="app" id="app">
@@ -628,7 +632,7 @@ img{ max-width:100% }
         <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
-        <button class="linkrow" id="dbCheck">Account sync <span id="dbStatusPf">Tap to check</span></button>
+        <button class="linkrow" id="dbCheck" hidden>Account sync <span id="dbStatusPf">Tap to check</span></button>
         <button class="linkrow" id="signOut"><b id="pfAuth" style="font-weight:inherit">Sign out</b> <span id="pfEmail"></span></button>
         <button class="linkrow danger" id="deleteAccount" hidden>Delete account <span>Erases points and history</span></button>
       </div>
@@ -2673,7 +2677,11 @@ async function loadEvents(){
   }catch(e){ console.warn('Events failed to load', e); if(eventsState!=='live'){ eventsState='error'; if(current==='home') renderHome(); } }
 }
 
-/* ---------- demo chrome ---------- */
+/* ---------- team tools ---------- */
+// Only when the link ends in ?dev (e.g. …/index.html?dev): the jump buttons, demo reset and map / database status
+// beside the phone on a laptop, and Account sync in Profile. Everyone else gets the plain app.
+const DEV=new URLSearchParams(location.search).has('dev');
+if(DEV){ document.getElementById('devTools').hidden=false; document.getElementById('dbCheck').hidden=false; }
 const jumps=[['onb1','Intro'],['kit','Starter kit',1],['picks','Top 4 today',1],['home','Map'],['plans','Plans'],['passport','Passport'],['alerts','Alerts']];
 document.getElementById('jump').innerHTML=jumps.map(j=>`<button data-${j[2]?'pop':'go'}="${j[0]}">${j[1]}</button>`).join('');
 // pop-up jumps: open the starter kit or today's Top 4 over the map, whatever was seen before

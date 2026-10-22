@@ -1,27 +1,56 @@
-# Comuna (installable on iPhone/Android)
+# Comuna
 
-## 1. Get it on GitHub (using VS Code)
+Comuna shows what's on in your neighborhood across Los Angeles. People save events to their plans, check in
+when they go (verified by location), collect each neighborhood's stamp on their passport, and compete on a
+monthly neighborhood leaderboard. It runs as a web app that can be added to a phone's Home Screen.
 
-1. In VS Code, open this folder (`site/`) or drag these files into a new repo folder.
-2. Open the built-in Source Control panel → **Publish to GitHub** (or run `git init`, `git add .`, `git commit -m "initial commit"`, then push to a new repo from github.com).
-3. Make sure `index.html`, `manifest.json`, `service-worker.js`, and the `icons/` folder all end up in the **root** of the repo (not nested in a subfolder), GitHub Pages serves from the root by default.
+## How it's built
 
-## 2. Turn on GitHub Pages
+- **`index.html`** is the whole app: markup, styles and code in one file, no build step.
+  `places.js` holds every neighborhood and city boundary (built by `scripts/build-places.mjs` from `data/raw/`).
+- **Supabase** stores everything: the event catalogue, accounts (email code sign-in, no passwords), plans,
+  check-ins, points, reports and guest counts. The publishable key in `index.html` is safe to ship; row-level
+  security decides what each person can read and write.
+- **Mapbox** draws the map. Event locations are stored in the database (see `supabase/ADDING_EVENTS.md`).
+- **`service-worker.js`** caches the app shell so it opens offline. Change `CACHE_NAME` whenever you change
+  a file it caches, so phones pick up the new version.
 
-1. On github.com, open the repo → **Settings → Pages**.
-2. Under "Build and deployment", set Source to **Deploy from a branch**, branch `main`, folder `/ (root)`.
-3. Save. GitHub gives you a URL like:
-   `https://yourusername.github.io/your-repo-name/`
-   It can take a minute or two to go live the first time.
+## Deploying
 
-## 3. Open it on your phone
+GitHub Pages serves the repository root from `main`, so merging a pull request publishes it within a few minutes.
+The app always fetches the newest `index.html` when it opens.
 
-- **iPhone (Safari):** open the URL above → tap the **Share** icon → **Add to Home Screen**. It now opens full-screen with its own icon, no browser bar.
-- **Android (Chrome):** open the URL → tap the **⋮** menu → **Install app** (or Chrome may prompt you automatically). Same result: a real home-screen icon.
+Database changes are SQL files in `supabase/`. Each one says at the top what it does and how to run it
+(Supabase > SQL Editor). Some come in two steps, where the second step must wait until the matching app
+change is live; the file says so.
 
-Once installed, the dev harness (title, jump bar, restart button) is hidden automatically so it feels like the real app. Tap the small 🛠 icon in the top-right corner any time to bring the dev tools back, useful when you're testing with the team, not needed for outside testers.
+## Using it on a phone
 
-## Notes
+- **iPhone (Safari):** open the site, tap **Share**, then **Add to Home Screen**.
+- **Android (Chrome):** open the site, tap **⋮**, then **Install app**.
 
-- This is still a front-end-only build: nothing you do in it is saved to a server, and closing/reopening resets anything not saved to Supabase (events, accounts, RSVPs, check-ins). See the "productizing" conversation for what it takes to wire up a real backend.
-- If you want a shareable link in the next five minutes without touching GitHub Pages settings, you can also drag this whole folder onto https://app.netlify.com/drop for an instant temporary URL, useful for a quick same-day test before wiring up the permanent GitHub Pages link.
+## Team tools
+
+Add `?dev` to the end of the link (for example `…/index.html?dev`) to show the team tools:
+
+- on a laptop, beside the phone: map and database status, buttons that jump to each screen, and **Restart the demo**
+  (signs out and clears everything saved on that browser);
+- in Profile: **Account sync**, which checks the connection to Supabase.
+
+Everyone else sees the plain app.
+
+## Adding events
+
+Events are added straight to the `events` table. Every event needs a map location, or nobody can check in:
+read `supabase/ADDING_EVENTS.md` before adding or importing any.
+
+## Team checks
+
+- **Reported events**, daily: `select * from event_reports_review;` in the SQL Editor. How to restore, remove or
+  block is at the top of `supabase/event_reports.sql`.
+
+## Tests
+
+Each file in `scripts/test-*.cjs` runs with `node scripts/<file>` and prints what it checked. The browser tests
+need Playwright and Chromium. The `scripts/test-*.sql` files check database changes against the live database
+inside a transaction that's always rolled back; run them in the SQL Editor and read the report in the error message.
