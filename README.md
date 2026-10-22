@@ -12,6 +12,8 @@ monthly neighborhood leaderboard. It runs as a web app that can be added to a ph
   check-ins, points, reports and guest counts. The publishable key in `index.html` is safe to ship; row-level
   security decides what each person can read and write.
 - **Mapbox** draws the map. Event locations are stored in the database (see `supabase/ADDING_EVENTS.md`).
+- **`icons/`** holds the app icons, built from the Comuna mark by `scripts/build-icons.py`.
+  `icons/app-store-1024.png` is the one to upload to App Store Connect.
 - **`service-worker.js`** caches the app shell so it opens offline. Change `CACHE_NAME` whenever you change
   a file it caches, so phones pick up the new version.
 
