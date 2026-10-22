@@ -442,6 +442,9 @@ img{ max-width:100% }
 .darkscr .stats3 div{ background:#34322A; color:#B9AE97 }
 .darkscr .stats3 b{ color:var(--paper) }
 .darkscr .linkrow{ background:#34322A; color:var(--paper) }
+.linkrow[hidden]{ display:none }
+.darkscr .linkrow.danger{ color:#EE8A74; gap:12px; white-space:nowrap }   /* lighter than --red so it's readable on the dark card */
+.linkrow.danger span{ white-space:normal; text-align:right }
 .darkscr .linkrow span{ color:#B9AE97 }
 
 /* ---------- nav ---------- */
@@ -623,6 +626,7 @@ img{ max-width:100% }
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
         <button class="linkrow" id="dbCheck">Account sync <span id="dbStatusPf">Tap to check</span></button>
         <button class="linkrow" id="signOut"><b id="pfAuth" style="font-weight:inherit">Sign out</b> <span id="pfEmail"></span></button>
+        <button class="linkrow danger" id="deleteAccount" hidden>Delete account <span>Erases points and history</span></button>
       </div>
     </section>
 
@@ -1144,14 +1148,30 @@ async function signOutLocal(){
   authed=null; S.signedUp=false; S.guest=false; S.guestLog=[]; S.email=''; freshPassport(); save();
   if(sb) try{ await sb.auth.signOut({ scope:'local' }); }catch(e){}
 }
+// signed out with nothing left on this phone, not even the install id: back to the welcome screen
+async function wipePhone(){
+  trackQ=[]; await signOutLocal(); try{ localStorage.removeItem('comuna_v3'); }catch(e){} load();
+  filter=myCats().length?'mine':'All'; history=[]; current=''; go('onb1',false); renderHome(); updateDot();
+}
 document.getElementById('signOut').onclick=async()=>{
   if(!S.signedUp){ history=[]; return go('onb1'); }
   if(!confirm('Sign out of Comuna? Your passport stays with your account, so you can sign back in any time.')) return;
   await signOutLocal(); renderNames(); history=[]; current=''; openAuth('signin'); history=[]; toast('Signed out');
 };
+// App Store requirement. delete_my_account() (supabase/delete_account.sql) erases the account, its points and history;
+// approved events the person shared stay listed without their name.
+document.getElementById('deleteAccount').onclick=async e=>{
+  const b=e.currentTarget; if(!S.signedUp) return;
+  if(!confirm('Delete your Comuna account? This permanently erases your passport, stamps, points, check-ins and plans. Events you shared that were approved stay listed, without your name. This can\'t be undone.')) return;
+  const u=await dbUser(); if(!u){ toast('Sign in again to delete your account.'); return; }
+  b.disabled=true; const { error } = await sb.rpc('delete_my_account'); b.disabled=false;
+  if(error){ console.warn('Supabase account deletion failed', error); toast('Couldn\'t delete your account. Check your connection and try again.'); return; }
+  await wipePhone(); toast('Your account was deleted');
+};
 function shortName(){ const p=(S.name||'').split(' ').filter(Boolean); return p.length? p[0]+(p[1]?` ${p[p.length-1][0].toUpperCase()}.`:'') : 'You'; }
 function renderNames(){ const n=shortName(); document.getElementById('passName').textContent=`${n} · Los Angeles`; document.getElementById('pfName').textContent=n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
   document.getElementById('pfAuth').textContent=S.signedUp? 'Sign out' : 'Create account or sign in';
+  document.getElementById('deleteAccount').hidden=!S.signedUp;
   document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : ''; document.getElementById('pfNb').textContent=S.nb||'Pick one'; }
 
 // Plans belong to individual occurrences, never to the entire recurring series.
@@ -2623,7 +2643,7 @@ document.getElementById('jump').addEventListener('click',e=>{
   const picks=dailyPicks(); if(!picks.length){ toast('No picks nearby right now'); return; }
   showPicks(picks);
 });
-document.getElementById('restart').onclick=async()=>{ await signOutLocal(); try{ localStorage.removeItem('comuna_v3'); }catch(e){} load(); filter=myCats().length?'mine':'All'; history=[]; current=''; go('onb1',false); renderHome(); updateDot(); toast('Demo reset'); };
+document.getElementById('restart').onclick=async()=>{ await wipePhone(); toast('Demo reset'); };
 
 /* ---------- PWA: service worker registration ---------- */
 if("serviceWorker" in navigator){
