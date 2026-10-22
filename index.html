@@ -873,11 +873,11 @@ function stampSVG(top,bottom,kind,c,size,rot,fill){
 // "RSVP'D" ticket stamp shown when you RSVP: same look as the check-in stamp, Sun ink
 function rsvpStamp(ev,w=240,h=160){
   const c=C.sun, t=ev.title.length>26? ev.title.slice(0,25).trim()+'…' : ev.title, when=(ev.time||'').toUpperCase(), whenFit=when.length>28? when.slice(0,27).trim()+'…' : when;
-  const rsvp=needsRsvp(ev), word=rsvp? 'RSVP\'D' : 'INTERESTED';
-  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="${rsvp?'RSVP':'Interested'} stamp for ${escH(ev.title)}">
+  const word='RSVP\'D';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="RSVP stamp for ${escH(ev.title)}">
   <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
   <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
-  <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="${rsvp?32:26}" letter-spacing="${rsvp?2:1}"${rsvp?'':' textLength="118" lengthAdjust="spacingAndGlyphs"'} fill="${c}">${word}</text>
+  <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="32" letter-spacing="2" fill="${c}">${word}</text>
   <text x="75" y="66" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="10.5" letter-spacing=".6" fill="${c}">${escH(t.toUpperCase())}</text>
   <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
   <circle cx="75" cy="18" r="3.2" fill="${C.red}"/></svg>`;
@@ -1252,7 +1252,7 @@ function kitHtml(){
      <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
      <ol class="kitsteps">
       <li><div><b>Explore the map</b><span>Tap any pin. Tap <b style="display:inline">?</b> anytime for what the colors mean.</span></div></li>
-      <li><div><b>Tap "Interested"</b><span>It saves to your Plans.</span></div></li>
+      <li><div><b>Tap "RSVP"</b><span>It saves to your Plans.</span></div></li>
       <li><div><b>Check in when you're there</b><span>Collect the stamp and earn points.</span></div></li>
      </ol>`;
 }
@@ -2072,12 +2072,12 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the RSVP button already opens it
     return `<a class="evlink" href="${escH(u)}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
   const showHost=ev.host && ev.host!==ev.venue;
-  const meta=[showHost?`Hosted by ${escH(ev.host)}`:'', ev.going?`${ev.going} interested on Comuna`:'', link].filter(Boolean).join(' · ');
+  const meta=[showHost?`Hosted by ${escH(ev.host)}`:'', ev.going?`${ev.going} RSVP’d on Comuna`:'', link].filter(Boolean).join(' · ');
   const icon=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
     : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${escH(okRsvpLink(ev))}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
-    : `<button class="btn primary" id="rsvpBtn">Interested</button>`;
+    : `<button class="btn primary" id="rsvpBtn">RSVP</button>`;
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel==='Top 4'?'your Top 4':backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div>
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
     <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
@@ -2107,9 +2107,9 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     const day=selectedPlanDay(ev); if(!day || !occursOn(ev,day)){ toast('Choose a published event date before saving.'); return false; }
     const occurrence={...ev,occurrenceDate:planDayKey(day)};
     if(hasPlan(ev,day)) return;
-    track(ev,needsRsvp(ev)?'rsvp':'interested'); passportRevision++; rememberPlan(ev,day);
+    track(ev,'rsvp'); passportRevision++; rememberPlan(ev,day);
     const pts=savePts(ev); S.points+=pts; save(); dbRsvp(occurrence);
-    logGuest('rsvp',{ event_id:eidOf(ev), event_title:ev.title, kind:needsRsvp(ev)?'rsvp':'interested', occurrence_date:occurrence.occurrenceDate });
+    logGuest('rsvp',{ event_id:eidOf(ev), event_title:ev.title, kind:'rsvp', occurrence_date:occurrence.occurrenceDate });
     overlay.classList.remove('on'); renderHome(); if(current==='plans') renderPlans(); showRsvp(occurrence,pts);
   };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
@@ -2205,18 +2205,18 @@ function checkIn(ev,dist,pos){
   if(nudge) document.getElementById('keepSave').onclick=()=>{ m.classList.remove('on'); openAuth('signup'); };
 }
 
-// Most events are free and open: "Interested" saves them. RSVP only when the host needs one, and it opens their link.
+// Every RSVP saves one occurrence. Only paid ticket requirements open the host page from the RSVP button.
 // links to roundup articles, listicles and search pages: shown as "Read about it", never as the event page or RSVP
 const ROUNDUP=/welikela|timeout\.com|smdp\.com|hoodline|yelp\.com|wikipedia|eventbrite\.\w+\/d\/|laist\.com|secretlosangeles|atly\.com|nightlifehiker|localemagazine|fodors|opentable|westsidelosangeles|trivianearme|dolosangeles\.com\/(p|venues)\/|allevents|outxout\.com\/guides|tiktok|mommypoppins|venicepaparazzi|lamag\.com|lonelyplanet|211la|discoverlosangeles|eventsincalifornia|eventticketscenter|foodjournalmagazine|pubtrivianight|free2funla|westsidetoday|beverlypress|pasadenanow|sfvlocal|ianirarousso|clmp\.org|songkick|bandsintown|foxla\.com|pickleheads|nohoartsdistrict\.com\/noho-news|theinfatuation|patch\.com|ma\.to\//i;
 const isRoundup=u=>ROUNDUP.test(u||'');
-const okRsvpLink=ev=>{ const u=okLink(ev.ticket)||(ev.rsvpReq?okLink(ev.source):''); return u && !isRoundup(u)? u : ''; };
-function needsRsvp(ev){ return !!okRsvpLink(ev) && (ev.rsvpReq || !!ev.ticket); }
+const okRsvpLink=ev=>{ const u=okLink(ev.ticket)||(ev.rsvpReq || /^paid$/i.test(String(ev.price||'').trim())?okLink(ev.source):''); return u && !isRoundup(u)? u : ''; };
+function needsRsvp(ev){ return /^paid$/i.test(String(ev.price||'').trim()) && !!okRsvpLink(ev); }
 function showRsvp(ev,pts=0){
   if(!ev) return;
   const m=document.getElementById('stampModal');
   m.innerHTML=`<div class="stampbox">${rsvpStamp(ev)}</div>
-    <h3>${needsRsvp(ev)?'Saved. Finish your RSVP':'Saved to your plans'}</h3>
-    <p>${escH(ev.title)}${ev.occurrenceDate?' on '+escH(planDay(ev.occurrenceDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${needsRsvp(ev)?'Complete the RSVP on the host\'s page so they hold your spot. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin} more.</p>
+    <h3>${needsRsvp(ev)?'RSVP saved. Get your tickets':'RSVP saved'}</h3>
+    <p>${escH(ev.title)}${ev.occurrenceDate?' on '+escH(planDay(ev.occurrenceDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${needsRsvp(ev)?'Complete registration or buy tickets on the host\'s page to confirm admission. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin} more.</p>
     <div class="unlocks"><button class="btn ghost" id="rsvpCal" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Remind me (+ Calendar)</button><button class="btn ghost" id="rsvpInvite" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Invite friends</button></div>
     <button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>`;
   m.classList.add('on');
@@ -2302,10 +2302,10 @@ function renderPlans(){
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
   const card=ev=>{ const inn=hasPlan(ev,calSel), done=S.checked.includes(ev.id);
-    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${ev.going?ev.going+' interested · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!done?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">${needsRsvp(ev)?'Cancel RSVP':'Remove from Plans'}</button>`:''}</div>`; };
+    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${ev.going?ev.going+' RSVP’d · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">Cancel RSVP</button>`:''}</div>`; };
   const mineL=dayEvs.filter(ev=>hasPlan(ev,calSel)), also=dayEvs.filter(ev=>!hasPlan(ev,calSel) && (!isT || (nextDate(ev) && nextDate(ev)<=t))).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
-    : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "Interested" on an event and it lands here.</div>`;
+    : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "RSVP" on an event and it lands here.</div>`;
   document.getElementById('alsoHead').textContent=`Also happening ${isT?'today':calSel.toLocaleString('en-US',{weekday:'long'})}`;
   document.getElementById('alsoHead').hidden=!also.length;
   document.getElementById('alsoList').innerHTML=also.slice(0,15).map(card).join('');
@@ -2318,7 +2318,7 @@ document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const c
 async function cancelPlan(id,button){
   const ev=events.find(e=>e.id===id);
   const day=new Date(calSel);
-  if(!ev || !hasPlan(ev,day) || S.checked.includes(id) || button.disabled) return;
+  if(!ev || !hasPlan(ev,day) || button.disabled) return;
   const label=button.textContent; button.disabled=true; button.textContent='Removing…';
   try{
     if(S.signedUp){
@@ -2329,7 +2329,7 @@ async function cancelPlan(id,button){
     passportRevision++; forgetPlan(ev,day);
     S.guestLog=(S.guestLog||[]).filter(r=>!(r.t==='rsvp' && r.event_id===eidOf(ev) && r.occurrence_date===planDayKey(day))); save();
     renderPlans(); renderHome(); if(S.signedUp) loadGoing();
-    toast(needsRsvp(ev)?'RSVP removed from Comuna Plans. Cancel any host registration or tickets separately.':'Removed from your Plans.');
+    toast(needsRsvp(ev)?'RSVP removed from Comuna Plans. Cancel any host registration or tickets separately.':'RSVP canceled.');
   }catch(error){ console.warn('RSVP cancellation failed',error); toast('Could not remove this plan. Check your connection and sign-in, then try again.'); }
   finally{ button.disabled=false; button.textContent=label; }
 }
@@ -2383,7 +2383,7 @@ document.getElementById('passTabs').addEventListener('click',e=>{ const b=e.targ
 
 /* ---------- profile / alerts ---------- */
 function renderProfile(){ document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up'; }
-// reminders for events you saved (Interested/RSVP) happening in the next 7 days
+// reminders for events you RSVP’d to happening in the next 7 days
 let ALERTS=[];
 function buildAlerts(){
   const t=today0(), out=[];
@@ -2397,7 +2397,7 @@ const unseen=()=>ALERTS.filter(a=>!(S.alertsSeen||[]).includes(a.key));
 function renderAlerts(){
   buildAlerts(); const seen=S.alertsSeen||[];
   const icon=k=>({cal:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.red}" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,music:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.red}" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,invite:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.blue}" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`,stamp:`<svg width="22" height="22" viewBox="-28 -28 56 56">${glyph('star',C.sun)}</svg>`,coffee:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.green}" stroke-width="2"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h2a2 2 0 0 1 0 4h-2"/></svg>`}[k]);
-  document.getElementById('alertList').innerHTML=ALERTS.length? ALERTS.map((a,i)=>`<button class="alert ${seen.includes(a.key)?'':'unread'}" ${a.ev?`data-alert-ev="${a.ev}" data-alert-date="${a.date||''}"`:''}><div class="ic">${icon(a.ic)}</div><div><div class="t">${escH(a.t)}</div><div class="s">${escH(a.s)}</div><div class="w">${escH(a.w)}</div></div></button>`).join('') : `<div class="empty"><span class="hand">all quiet</span>No alerts yet. Tap "Interested" on an event and we'll remind you here when it's coming up.</div>`;
+  document.getElementById('alertList').innerHTML=ALERTS.length? ALERTS.map((a,i)=>`<button class="alert ${seen.includes(a.key)?'':'unread'}" ${a.ev?`data-alert-ev="${a.ev}" data-alert-date="${a.date||''}"`:''}><div class="ic">${icon(a.ic)}</div><div><div class="t">${escH(a.t)}</div><div class="s">${escH(a.s)}</div><div class="w">${escH(a.w)}</div></div></button>`).join('') : `<div class="empty"><span class="hand">all quiet</span>No alerts yet. Tap "RSVP" on an event and we'll remind you here when it's coming up.</div>`;
 }
 document.getElementById('alertList').addEventListener('click',e=>{ const a=e.target.closest('[data-alert-ev]'); if(a) openSheet(+a.dataset.alertEv,null,'Top 4',a.dataset.alertDate||null); });
 function updateDot(){ buildAlerts(); const n=unseen().length, d=document.getElementById('alertDot'); d.textContent=n; d.style.display=n?'grid':'none'; }
@@ -2475,7 +2475,7 @@ async function dbProfile(){
 const eidOf = ev => ev.eid || String(ev.id);
 async function dbRsvp(ev){
   if(!ev) return; const u=await dbUser(); if(!u) return;
-  const { error } = await sb.from('rsvps').upsert({ user_id:u.id, event_id:eidOf(ev), event_title:ev.title, kind:needsRsvp(ev)?'rsvp':'interested', occurrence_date:ev.occurrenceDate }, {onConflict:'user_id,event_id,occurrence_date'});
+  const { error } = await sb.from('rsvps').upsert({ user_id:u.id, event_id:eidOf(ev), event_title:ev.title, kind:'rsvp', occurrence_date:ev.occurrenceDate }, {onConflict:'user_id,event_id,occurrence_date'});
   if(error){ console.warn('Supabase RSVP save failed', error); dbStatus('RSVP save failed: '+error.message,true); }
   dbProfile(); loadGoing();
 }

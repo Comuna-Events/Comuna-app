@@ -36,5 +36,24 @@ c.addToCalendar({...weekly,occurrenceDate:'2026-10-27'});
  await c.dbRsvp({...weekly,occurrenceDate:'2026-10-27'});assert.equal(writes[0].row.occurrence_date,'2026-10-27');assert.equal(writes[0].options.onConflict,'user_id,event_id,occurrence_date');
  c.rememberPlan(weekly,day(20));vm.runInContext('calSel=new Date(2026,9,20)',c);await c.cancelPlan(1,{textContent:'Cancel RSVP',disabled:false});
  assert.ok(filters.some(([k,v])=>k==='occurrence_date'&&v==='2026-10-20'));assert.equal(c.hasPlan(weekly,day(27)),true);assert.equal(c.hasPlan(weekly,day(20)),false);
+ // Free events, including free registration links, never use the ticket arrow.
+ c.okLink=u=>/^https:\/\//.test(u||'')?u:'';
+ vm.runInContext(source.slice(source.indexOf('const ROUNDUP='),source.indexOf('function needsRsvp(')),c);
+ vm.runInContext(source.slice(source.indexOf('function needsRsvp('),source.indexOf('function showRsvp(')),c);
+ for(const price of ['Free','Donation / Pay-what-you-can','']) assert.equal(c.needsRsvp({price,rsvpReq:true,ticket:'https://example.com/register'}),false);
+ assert.equal(c.needsRsvp({price:'Paid',ticket:'https://example.com/tickets'}),true);
+ assert.equal(c.needsRsvp({price:'Paid'}),false);
+ assert.equal(c.needsRsvp({price:'Paid',source:'https://example.com/register'}),true);
+ assert.equal(c.needsRsvp({price:'Paid',ticket:'https://www.timeout.com/los-angeles/things-to-do'}),false);
+ assert.equal(writes[0].row.kind,'rsvp');
+ // Former Interested saves and checked-in events use the same cancellation path.
+ c.S.checked.push(2);vm.runInContext('calSel=new Date(2026,9,21);renderPlans()',c);
+ assert.ok(el('planList').innerHTML.includes('Cancel RSVP'));
+ await c.cancelPlan(2,{textContent:'Cancel RSVP',disabled:false});
+ assert.equal(c.hasPlan(daily,day(21)),false);assert.ok(c.S.checked.includes(2),'earned stamp survives RSVP cancellation');
+ c.S.signedUp=false;c.rememberPlan(daily,day(22));c.S.guestLog=[{t:'rsvp',event_id:'2',kind:'interested',occurrence_date:'2026-10-22'}];
+ vm.runInContext('calSel=new Date(2026,9,22)',c);await c.cancelPlan(2,{textContent:'Cancel RSVP',disabled:false});
+ assert.equal(c.hasPlan(daily,day(22)),false);assert.equal(c.S.guestLog.length,0);
+ assert.ok(!/Interested|INTERESTED|interested/.test(source),'all event actions use RSVP');
  console.log('Occurrence RSVP checks passed: daily/weekly isolation, multiple saves, date-scoped DB writes/cancellation, calendar markings, legacy pinning, selected-date calendar export.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
