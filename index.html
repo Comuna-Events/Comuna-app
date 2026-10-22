@@ -32,7 +32,7 @@
 <style>
 :root{
   --paper:#F3E7D1; --paper-2:#EFE2C8; --card:#FBF6EA; --ink:#26251F; --muted:#6B675A; --line:#E2D5BC;
-  --green:#244D3A; --red:#C9533D; --sun:#D6A638; --blue:#4B66A8;
+  --green:#244D3A; --red:#A43726; --red-action:#B43F2C; --focus:#244D3A; --sun:#D6A638; --blue:#4B66A8;
   --stage:#E9DDC6; --stage-ink:#26251F; --stage-muted:#6B675A;
   --display:'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
   --sans:'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -47,7 +47,7 @@ html{ height:100%; height:100dvh; scroll-padding-top:env(safe-area-inset-top,0px
 *,*::before,*::after{ box-sizing:border-box }
 body{ margin:0; height:100%; background:var(--stage); color:var(--stage-ink); font-family:var(--sans); -webkit-font-smoothing:antialiased }
 button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; padding:0 }
-button:focus-visible, a:focus-visible{ outline:2px solid var(--sun); outline-offset:2px; border-radius:6px }
+button:focus-visible, a:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; border-radius:6px }
 img{ max-width:100% }
 
 /* ---------- stage (desktop) ---------- */
@@ -83,14 +83,14 @@ img{ max-width:100% }
 .iconbtn{ width:40px; height:40px; border-radius:50%; display:grid; place-items:center; position:relative; background:var(--card) }
 .dot{ position:absolute; top:4px; right:3px; min-width:17px; height:17px; border-radius:9px; background:var(--red); color:#fff; font-size:10px; font-weight:700; display:grid; place-items:center; padding:0 4px; border:2px solid var(--paper) }
 .btn{ display:block; width:100%; text-align:center; border-radius:14px; padding:15px; font-weight:700; font-size:15px }
-.btn.primary{ background:var(--red); color:#fff }
+.btn.primary{ background:var(--red-action); color:#fff }
 .btn.green{ background:var(--green); color:var(--paper) }
 .btn.ghost{ border:1.5px solid var(--ink) }
 .btn:disabled{ opacity:.45; cursor:default }
 .pill{ display:inline-flex; align-items:center; gap:6px; background:var(--card); border-radius:30px; padding:7px 12px; font-size:13px; font-weight:500 }
 
 /* ---------- onboarding ---------- */
-.onb{ background:var(--green); color:var(--paper) }
+.onb{ --focus:var(--paper); background:var(--green); color:var(--paper) }
 .onb .inner{ flex:1; display:flex; flex-direction:column; padding:44px 26px 34px; position:relative; overflow-y:auto; min-height:0 }
 .onb .btn.ghost{ border-color:#CFC3AB; color:var(--paper); margin-top:10px }
 .onb .big{ font-family:var(--display); font-weight:900; font-size:60px; line-height:.9; text-transform:uppercase; margin:0 }
@@ -434,7 +434,7 @@ img{ max-width:100% }
 .back{ display:inline-flex; align-items:center; gap:6px; font-weight:700; font-size:14px; padding:6px 0 }
 
 /* ---------- profile: dark, so it reads apart from the Passport ---------- */
-.darkscr{ background:var(--ink); color:var(--paper) }
+.darkscr{ --focus:var(--paper); background:var(--ink); color:var(--paper) }
 .darkscr .h1{ color:var(--paper) }
 .darkscr .sub{ color:#B9AE97 }
 .darkscr .pill{ background:#34322A; color:var(--paper) }
@@ -732,7 +732,7 @@ const CATS = {
   classes:   { label:'Classes & Workshops',  short:'Classes', bg:'#D6A638', fg:'#26251F', ex:'workshops, classes, talks, author readings' },
   active:    { label:'Active & Outdoors',    short:'Active',  bg:'#244D3A', fg:'#F3E7D1', ex:'run clubs, yoga, hikes, pickup games' },
   markets:   { label:'Markets & Shopping',   short:'Markets', bg:'#26251F', fg:'#F3E7D1', ex:'farmers markets, flea markets, makers fairs' },
-  community: { label:'Community & Social',   short:'Social',  bg:'#E08A6E', fg:'#F3E7D1', ex:'meetups, neighborhood festivals, volunteering' }
+  community: { label:'Community & Social',   short:'Social',  bg:'#E08A6E', fg:'#26251F', ex:'meetups, neighborhood festivals, volunteering' }
 };
 const SUB_GROUP = { music:'arts', comedy:'arts', film:'arts', immersive:'arts', nightlife:'arts', food:'food', markets:'markets',
   wellness:'active', outdoors:'active', sports:'active', workshops:'classes', social:'community', community:'community',
