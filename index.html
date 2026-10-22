@@ -2049,7 +2049,11 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     overlay.classList.remove('on'); renderHome(); if(current==='plans') renderPlans(); showRsvp(occurrence,pts);
   };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
-    const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; toast(v.msg); return; } checkIn(ev,v.dist); };
+    const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; toast(v.msg); return; }
+    // signed in: Supabase measures the distance and checks the schedule itself, and the stamp waits for it
+    const u=S.guest? null : await dbUser();
+    if(u){ const r=await dbCheckin(ev,v.pos); if(!r.ok){ c.disabled=false; c.textContent=lab; toast(r.msg); return; } }
+    checkIn(ev,v.dist,v.pos); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
 }
 overlay.addEventListener('click',e=>{ if(e.target===overlay) overlay.classList.remove('on'); });
@@ -2098,7 +2102,8 @@ function verifyHere(ev){
     navigator.geolocation.getCurrentPosition(p=>{
       const dist=Math.round(metersBetween({lat:p.coords.latitude,lng:p.coords.longitude},{lat:ev.lat,lng:ev.lng}));
       const slack=Math.min(p.coords.accuracy||0,200);                // allow for fuzzy GPS, up to 200 m
-      if(dist-slack<=CHECKIN_M) res({ok:true,dist});
+      const pos={lat:p.coords.latitude,lng:p.coords.longitude,accuracy:p.coords.accuracy??null,at:new Date().toISOString()};
+      if(dist-slack<=CHECKIN_M) res({ok:true,dist,pos});
       else res({ok:false,msg:`Looks like you're about ${(dist/1609).toFixed(1)} mi away. Check in once you're at ${ev.venue}.`});
     },()=>res({ok:false,msg:'Turn on location for Comuna to check in. It\'s only used to confirm you\'re there.'}),
     {enableHighAccuracy:true,timeout:15000,maximumAge:60000});
@@ -2109,7 +2114,7 @@ function verifyHere(ev){
 const PTS={ save:10, checkin:100, rate:100, submit:100, turnout:25 }, SAVES_PER_DAY=5;
 function savePts(ev){ const d=new Date().toDateString(); if(!S.saveDay||S.saveDay.d!==d) S.saveDay={d,n:0};
   S.saveDay.n++; return S.saveDay.n<=SAVES_PER_DAY? PTS.save : 0; }
-function checkIn(ev,dist){
+function checkIn(ev,dist,pos){
   passportRevision++;
   const hood=hoodByName(ev.hood), city=cityOf(hood);
   const hadHood=!!hood.city||!!visitedHoods()[hood.name], hadCity=!!visitedCities()[city], hadCat=Object.values(S.places).some(p=>catKey(p.cat)===ev.category);
@@ -2117,8 +2122,9 @@ function checkIn(ev,dist){
   const firstPlace=pl.n===0; pl.n++;
   const earned=[[PTS.checkin,'checked in']];
   const total=earned.reduce((a,x)=>a+x[0],0);
-  track(ev,'checkin'); S.checked.push(ev.id); S.visits++; S.points+=total; save(); dbCheckin(ev,dist);
-  logGuest('checkin',{ event_id:eidOf(ev), event_title:ev.title, venue:ev.venue||null, neighborhood:ev.area||ev.hood||null, category:ev.category||null, distance_m:dist??null });
+  track(ev,'checkin'); S.checked.push(ev.id); S.visits++; S.points+=total; save();
+  logGuest('checkin',{ event_id:eidOf(ev), event_title:ev.title, venue:ev.venue||null, neighborhood:ev.area||ev.hood||null, category:ev.category||null, distance_m:dist??null,
+    lat:pos?.lat??null, lng:pos?.lng??null, accuracy:pos?.accuracy??null, at:pos?.at??null });
   const nudge=S.guest && !S.keepNudged; if(nudge){ S.keepNudged=true; save(); }
   overlay.classList.remove('on');
   const un=[]; if(!hadHood) un.push(`New neighborhood: ${hood.name}`); if(!hadCity) un.push(`New city: ${city}`); if(!hadCat) un.push(`First ${CATS[catKey(ev.category)].short.toLowerCase()} stamp`); if(pl.n===5) un.push(`You're a regular here`);
@@ -2428,22 +2434,31 @@ async function flushTrack(){
   if(error) console.warn('Supabase tracking save failed', error);
 }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushTrack(); });
-async function dbCheckin(ev,dist){
-  const u=await dbUser(); if(!u) return;
-  const { error } = await sb.from('checkins').insert({ user_id:u.id, event_id:eidOf(ev), event_title:ev.title, venue:ev.venue||null,
-    neighborhood:ev.area||ev.hood||null, category:ev.category||null, distance_m:dist??null });
-  if(error){ console.warn('Supabase check-in save failed', error); dbStatus('check-in save failed: '+error.message,true); }
-  dbProfile();
+// check-ins go through check_in() (supabase/checkin_verify.sql): Supabase looks up the event's location and schedule,
+// measures the distance itself and allows one check-in per event a day. Its refusals are sentences to show as-is.
+const checkinArgs=(eventId,pos)=>({ p_event_id:eventId, p_lat:pos?.lat??null, p_lng:pos?.lng??null, p_accuracy:pos?.accuracy??null, p_at:pos?.at??null });
+async function dbCheckin(ev,pos){
+  const { error } = await sb.rpc('check_in', checkinArgs(eidOf(ev),{...pos,at:null}));
+  if(error){ console.warn('Supabase check-in failed', error);
+    return { ok:false, msg: error.code==='P0001'? error.message : 'Couldn\'t reach Comuna to check you in. Check your connection and try again.' }; }
+  dbProfile(); return { ok:true };
 }
-// guests: check-ins and saves wait on the phone, then go to the account they make (or sign in to)
+// guests: check-ins and saves wait on the phone, then go to the account they make (or sign in to).
+// Supabase keeps a guest check-in it can't verify (from before check-ins kept a location, or over 7 days old) as a stamp without points.
 function logGuest(t,row){ if(!S.guest) return; (S.guestLog=S.guestLog||[]).push({t,...row}); save(); }
 async function uploadGuest(user){
   const log=S.guestLog||[]; if(!log.length || !sb || S.accountId!==user.id) return;
   const sent=new Set();
-  for(const [t,table] of [['checkin','checkins'],['rsvp','rsvps']]){
-    const rows=log.filter(r=>r.t===t).map(({t,...r})=>{ if(t==='rsvp' && !r.occurrence_date){ const id=historyEventId(r.event_id); r.occurrence_date=S.rsvpDates?.[id]?.[0] || planDayKey(today0()); } return {...r,user_id:user.id}; }); if(!rows.length){ sent.add(t); continue; }
-    const { error } = t==='rsvp'? await sb.from(table).upsert(rows,{onConflict:'user_id,event_id,occurrence_date'}) : await sb.from(table).insert(rows);
-    if(error){ console.warn('Supabase guest '+table+' upload failed', error); dbStatus('saving guest '+table+' failed: '+error.message,true); } else sent.add(t);
+  const checks=log.filter(r=>r.t==='checkin'); let checksLeft=false;
+  for(const r of checks){
+    const { error } = await sb.rpc('check_in', checkinArgs(r.event_id,r));
+    if(error && error.code!=='P0001'){ console.warn('Supabase guest check-in upload failed', error); checksLeft=true; break; }
+  }
+  if(checks.length && !checksLeft) sent.add('checkin');
+  const rows=log.filter(r=>r.t==='rsvp').map(({t,...r})=>{ if(!r.occurrence_date){ const id=historyEventId(r.event_id); r.occurrence_date=S.rsvpDates?.[id]?.[0] || planDayKey(today0()); } return {...r,user_id:user.id}; });
+  if(rows.length){
+    const { error } = await sb.from('rsvps').upsert(rows,{onConflict:'user_id,event_id,occurrence_date'});
+    if(error){ console.warn('Supabase guest rsvps upload failed', error); dbStatus('saving guest rsvps failed: '+error.message,true); } else sent.add('rsvp');
   }
   S.guestLog=(S.guestLog||[]).filter(r=>!sent.has(r.t)); save();   // what failed stays queued for the next launch
 }

@@ -1,6 +1,6 @@
 -- Comuna: points rules (run once in Supabase > SQL Editor; safe to re-run).
 --  Save it:  Interested or RSVP +10. Only your first 5 saves each day earn points.
---  Go:       verified check-in +100 (the app confirmed you were within 600 m)
+--  Go:       verified check-in +100 (check_in() in checkin_verify.sql confirmed you were there)
 --              +100 for reviewing it afterward (once per attended event)
 --  Share it: approved event you added +100 (first 3 each week),
 --              plus +25 for each other person who checks in to it (max 500 per event).
