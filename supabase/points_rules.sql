@@ -1,11 +1,10 @@
 -- Comuna: points rules (run once in Supabase > SQL Editor; safe to re-run).
 --  Save it:  Interested or RSVP +10. Only your first 5 saves each day earn points.
---  Go:       verified check-in +100 (the app confirmed you were within 600 m)
+--  Go:       verified check-in +100 (check_in() in checkin_verify.sql confirmed you were there)
 --              +100 for reviewing it afterward (once per attended event)
 --  Share it: approved event you added +100 (first 3 each week),
 --              plus +25 for each other person who checks in to it (max 500 per event).
 --  Duplicates: set status = 'duplicate' (or 'rejected') instead of 'approved'; they earn nothing.
---  Gift cards: 3+ verified check-ins this month (gift_card_eligible column), counted across all boards.
 --  Boards: points count toward the home neighborhood you had when you earned them. Change it in Profile and
 --          new points go to the new board; what you already earned stays where it was.
 
@@ -37,7 +36,9 @@ update checkins c          set board = p.neighborhood from profiles p where p.id
 update feedback f          set board = p.neighborhood from profiles p where p.id = f.user_id and f.board is null;
 update event_submissions s set board = p.neighborhood from profiles p where p.id = s.user_id and s.board is null;
 
-create or replace view leaderboard_month as
+-- drop first: create or replace can't remove a column from an existing view
+drop view if exists leaderboard_month;
+create view leaderboard_month as
 with m as (select date_trunc('month', now()) as start),
 saves as (
   select user_id, board,
@@ -92,8 +93,8 @@ select pr.id as user_id,
          || coalesce(' ' || upper(left(nullif(split_part(pr.name,' ',array_length(string_to_array(pr.name,' '),1)),split_part(pr.name,' ',1)),1)) || '.', '') as display_name,
        b.board as neighborhood,
        b.points,
-       (sum(b.ci) over (partition by b.user_id))::int as checkins,   -- all boards: you qualify by going out, wherever
-       sum(b.ci) over (partition by b.user_id) >= 3   as gift_card_eligible
+       (sum(b.ci) over (partition by b.user_id))::int as checkins   -- counted across all boards
 from boards b join profiles pr on pr.id = b.user_id;
 
 grant select on leaderboard_month to anon, authenticated;
+comment on view leaderboard_month is '[App users] This month''s points per person, built from rsvps, checkins, feedback and submissions.';

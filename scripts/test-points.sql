@@ -62,6 +62,5 @@ select pr.id as user_id,
          || coalesce(' ' || upper(left(nullif(split_part(pr.name,' ',array_length(string_to_array(pr.name,' '),1)),split_part(pr.name,' ',1)),1)) || '.', '') as display_name,
        b.board as neighborhood,
        b.points,
-       (sum(b.ci) over (partition by b.user_id))::int as checkins,   -- all boards: you qualify by going out, wherever
-       sum(b.ci) over (partition by b.user_id) >= 3   as gift_card_eligible
+       (sum(b.ci) over (partition by b.user_id))::int as checkins   -- counted across all boards
 from boards b join profiles pr on pr.id = b.user_id;
