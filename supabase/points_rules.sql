@@ -38,7 +38,7 @@ update event_submissions s set board = p.neighborhood from profiles p where p.id
 
 -- drop first: create or replace can't remove a column from an existing view
 drop view if exists leaderboard_month;
-create view leaderboard_month as
+create view leaderboard_month with (security_invoker = true) as
 with m as (select date_trunc('month', now()) as start),
 saves as (
   select user_id, board,
@@ -96,5 +96,6 @@ select pr.id as user_id,
        (sum(b.ci) over (partition by b.user_id))::int as checkins   -- counted across all boards
 from boards b join profiles pr on pr.id = b.user_id;
 
-grant select on leaderboard_month to anon, authenticated;
+-- not readable from the app's API: it reads leaderboard_top() and my_points_this_month() (security_hardening.sql)
+revoke all on leaderboard_month from anon, authenticated;
 comment on view leaderboard_month is '[App users] This month''s points per person, built from rsvps, checkins, feedback and submissions.';
