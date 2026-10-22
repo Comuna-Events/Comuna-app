@@ -285,6 +285,10 @@ img{ max-width:100% }
 .evrec{ font-size:12.5px; color:var(--muted); margin-top:2px }
 .badges > span.tier{ background:var(--sun); border-color:var(--sun); color:var(--ink) }
 .evmeta{ font-size:13px; color:var(--muted); margin:-4px 0 10px } .evmeta a{ color:var(--green); font-weight:700; white-space:nowrap }
+.reportlink{ font-size:13px; color:var(--muted); text-decoration:underline; text-underline-offset:3px; padding:6px 0; margin:0 0 8px }
+.reasons{ display:flex; flex-direction:column; gap:8px; margin:14px 0 16px }
+.reasons button{ text-align:left; background:var(--card); border:1.5px solid transparent; border-radius:14px; padding:13px 14px; font-size:14px; font-weight:600 }
+.reasons button[aria-pressed="true"]{ border-color:var(--green) }
 .sheetfoot{ position:sticky; bottom:calc(-26px - env(safe-area-inset-bottom,0px)); display:flex; gap:8px; align-items:stretch; background:var(--paper); margin:6px -22px calc(-26px - env(safe-area-inset-bottom,0px)); padding:12px 22px calc(26px + env(safe-area-inset-bottom,0px)); border-top:1px solid #E2D5BA }
 .sheetfoot .ib{ flex:none; width:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:14px; background:var(--card); color:var(--green); font-size:10px; font-weight:700; text-decoration:none }
 .sheetfoot .btn{ flex:1; width:auto }
@@ -1921,6 +1925,39 @@ function showPinMap(){
   } else { subMap.jumpTo({ center:ll, zoom:16 }); subMarker.setLngLat(ll); subMap.resize(); }
 }
 document.getElementById('addSoon').onclick=()=>{ if(subMap){ try{ subMap.remove(); }catch(e){} subMap=null; } openSubmit(); };
+/* reporting an event someone shared (App Store guideline 1.2). It disappears for you straight away; 2 reports from
+   signed-in people hide it for everyone until the team reviews it (supabase/event_reports.sql). */
+const REPORT_REASONS=['Spam or a scam','Offensive or inappropriate','Not a real event, or wrong details','Something else'];
+function openReport(ev,cancel){
+  let reason=null;
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
+    <h2>Report this event</h2>
+    <p class="desc">What's wrong with "${escH(ev.title)}"? It disappears for you right away, and the Comuna team reviews every report.</p>
+    <div class="reasons" role="group" aria-label="Reason">${REPORT_REASONS.map((r,i)=>`<button type="button" data-r="${i}" aria-pressed="false">${r}</button>`).join('')}</div>
+    <button class="btn primary" id="reportSend" disabled>Send report</button>
+    <button class="reportlink" id="reportCancel" style="display:block;margin:10px auto 0">Cancel</button>`;
+  sheet.scrollTop=0;
+  const send=document.getElementById('reportSend');
+  sheet.querySelector('.reasons').onclick=e=>{ const b=e.target.closest('[data-r]'); if(!b) return; reason=REPORT_REASONS[b.dataset.r];
+    sheet.querySelectorAll('.reasons button').forEach(x=>x.setAttribute('aria-pressed',x===b)); send.disabled=false; };
+  document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  document.getElementById('reportCancel').onclick=cancel;
+  send.onclick=async()=>{ send.disabled=true; send.textContent='Sending…';
+    if(!await dbReport(ev,reason)){ send.disabled=false; send.textContent='Send report'; toast('Couldn\'t send your report. Check your connection and try again.'); return; }
+    (S.reported=S.reported||[]).push(ev.eid); save();
+    events=events.filter(x=>x.eid!==ev.eid); communityEvents=communityEvents.filter(x=>x.eid!==ev.eid);
+    overlay.classList.remove('on'); renderHome(); if(current==='plans') renderPlans();
+    toast('Thanks for reporting it. You won\'t see this event again.'); };
+}
+// signed in: counts toward hiding the event. Guests report by install id, which the team sees but doesn't hide anything.
+async function dbReport(ev,reason){
+  if(!sb) return false;
+  const u=S.guest? null : await dbUser();
+  const { error } = await sb.from('event_reports').insert({ event_id:ev.eid, reason, user_id:u?.id??null, device_id:u? null : S.deviceId });
+  if(error && error.code!=='23505'){ console.warn('Supabase report failed', error); return false; }   // 23505: already reported it
+  return true;
+}
+
 // approved community events join the map; your own approvals earn +100 points once each
 let communityEvents=[];
 async function loadSubmissions(){
@@ -1928,7 +1965,8 @@ async function loadSubmissions(){
   try{
     const { data, error } = await sb.from('event_submissions').select('*').eq('status','approved'); if(error) throw error;
     // Keep raw text for sharing/storage; HTML renderers escape it once. Only http(s) links are kept.
-    communityEvents=(data||[]).filter(r=>r.lat!=null && okLink(r.link)).map(r=>({ id:200000+r.id, eid:'SUB-'+r.id, community:true, title:String(r.title||''), venue:String(r.venue||''), address:String(r.address||''),
+    // hidden after reports (supabase/event_reports.sql), or reported by you: not shown
+    communityEvents=(data||[]).filter(r=>r.lat!=null && okLink(r.link) && !r.hidden_at && !(S.reported||[]).includes('SUB-'+r.id)).map(r=>({ id:200000+r.id, eid:'SUB-'+r.id, community:true, title:String(r.title||''), venue:String(r.venue||''), address:String(r.address||''),
       lat:r.lat, lng:r.lng, sub:SUBCATS[r.category]? r.category : '', category:catKey(r.category), kind:/one/i.test(r.recurrence||'')? 'popup' : 'regular', area:'', host:r.is_host? String(r.venue||'') : 'Shared by a neighbor',
       desc:String(r.description||''), source:okLink(r.link), price:r.price||'', rec:r.recurrence==='One-time'?'One-off':(r.recurrence||''), start:parseDay(r.event_date), t0:r.start_time? String(r.start_time).slice(0,5) : '', t1:r.end_time? String(r.end_time).slice(0,5) : '',
       time:'', going:0, fromGroup:0, live:false, startsIn:'' }));
@@ -2045,6 +2083,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${SUBCATS[ev.sub]?`<span>${SUBCATS[ev.sub].short}</span>`:''}${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${escH(x)}</span>`).join('')}</div>
     ${ev.desc?`<p class="desc">${escLines(ev.desc)}</p>`:''}
     ${meta?`<div class="evmeta">${meta}</div>`:''}
+    ${ev.community?'<button class="reportlink" id="reportBtn">Report this event</button>':''}
     ${(ev.parking||ev.alcohol!==undefined)?`<div class="practical">${ev.parking?`Parking: ${escLines(ev.parking)}<br>`:''}${ev.alcohol===true?'Drinks available, 21+ to drink':ev.alcohol===false?'Alcohol-free':''}</div>`:''}
     <div class="sheetfoot">
       <a class="ib" id="dirBtn" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener" aria-label="Directions">${icon('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>')}Directions</a>
@@ -2059,6 +2098,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
+  const rb=document.getElementById('reportBtn'); if(rb) rb.onclick=()=>openReport(ev,()=>openSheet(id,back,backLabel,occurrenceDate));
   const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{
     const day=selectedPlanDay(ev); if(!day || !occursOn(ev,day)){ toast('Choose a published event date before saving.'); return false; }
     const occurrence={...ev,occurrenceDate:planDayKey(day)};
