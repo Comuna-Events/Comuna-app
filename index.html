@@ -2052,11 +2052,11 @@ function badges(ev){
 // Free / paid stated on its own line under when + where, so it isn't lost among the tags
 function priceLine(ev){
   const p=String(ev.price||''), hasLink=!!(okLink(ev.ticket)||okLink(ev.source));
-  const tag='<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>', ticket='<path d="M3 9a3 3 0 0 0 0 6v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a3 3 0 0 1 0-6V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M14 5v14" stroke-dasharray="2 2"/>';
+  const tag='<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>', dollar='<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>';
   const ic=d=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const [cls,label,hint]= /free/i.test(p)? ['free',ic(tag)+'Free',ev.rsvpReq?'Registration required':'']
     : /donation|pay-what/i.test(p)? ['paid',ic(tag)+'Pay what you can','Donations welcome']
-    : /paid/i.test(p)? ['paid',ic(ticket)+'Paid',hasLink?'Tickets from the host':'']
+    : /paid/i.test(p)? ['paid',ic(dollar)+'Paid',hasLink?'Tickets from the host':'']
     : ['unknown','Price not listed',hasLink?'Check the event page':''];
   return `<div class="evprice ${cls}"><b>${label}</b>${hint?`<span>${hint}</span>`:''}</div>`;
 }
