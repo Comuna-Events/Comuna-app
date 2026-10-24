@@ -49,6 +49,13 @@ const server=http.createServer((req,res)=>{
   if(before){const baseline=await setup('/before.html');assert.deepEqual(await normalSnapshot(page),await normalSnapshot(baseline),'normal event layout/text/links must be unchanged');await baseline.close();}
   assert.equal((await normalSnapshot(page)).title,"A Summer's Night & Music");
   if(process.env.RENDER_SCREENSHOT) await page.screenshot({path:process.env.RENDER_SCREENSHOT});
+  // Price sits on its own line under when/where, not among the tag badges.
+  for(const [price,label,cls] of [['Free','Free','free'],['Paid','Paid','paid'],['Donation / Pay-what-you-can','Pay what you can','paid'],['','Price not listed','unknown']]){
+   await page.evaluate(price=>{events=[makeTestEvent({price})];S.rsvp=[];openSheet(events[0].id);},price);
+   assert.equal(await page.locator('#sheet .evprice b').textContent(),label);
+   assert.equal(await page.locator('#sheet .evprice.'+cls).count(),1);
+   assert.doesNotMatch(await page.locator('#sheet .badges').textContent(),/Free|Paid|Pay what you can/,'price should not repeat in the badges');
+  }
   const payload='<img src=x onerror="window.__injected=1"><svg onload="window.__injected=1"></svg> & "quotes"';
   await page.evaluate(payload=>{
    window.__injected=0;
