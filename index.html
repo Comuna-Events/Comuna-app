@@ -284,10 +284,10 @@ img{ max-width:100% }
 .evwhere{ display:block; font-size:14px; color:var(--ink); text-decoration:none; line-height:1.4 } .evwhere span{ color:var(--muted) }
 .evrec{ font-size:12.5px; color:var(--muted); margin-top:2px }
 .evprice{ display:flex; align-items:center; gap:8px; margin:10px 0 0; font-size:13px; color:var(--muted) }
-.evprice b{ display:inline-flex; align-items:center; gap:5px; font-size:14px; font-weight:800; padding:5px 12px; border-radius:20px; background:var(--card); color:var(--ink); border:1.5px solid var(--line) }
+.evprice b{ display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; background:var(--card); color:var(--ink); border:1px solid var(--line) }   /* same size as .badges pills */
 .evprice.free b{ background:var(--green); border-color:var(--green); color:#fff }
 .evprice.paid b{ border-color:var(--ink) }
-.evprice.unknown b{ font-weight:700; color:var(--muted) }
+.evprice.unknown b{ color:var(--muted) }
 .badges > span.tier{ background:var(--sun); border-color:var(--sun); color:var(--ink) }
 .evmeta{ font-size:13px; color:var(--muted); margin:-4px 0 10px } .evmeta a{ color:var(--green); font-weight:700; white-space:nowrap }
 .reportlink{ font-size:13px; color:var(--muted); text-decoration:underline; text-underline-offset:3px; padding:6px 0; margin:0 0 8px }
@@ -2053,7 +2053,7 @@ function badges(ev){
 function priceLine(ev){
   const p=String(ev.price||''), hasLink=!!(okLink(ev.ticket)||okLink(ev.source));
   const tag='<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>', dollar='<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>';
-  const ic=d=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ic=d=>`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const [cls,label,hint]= /free/i.test(p)? ['free',ic(tag)+'Free',ev.rsvpReq?'Registration required':'']
     : /donation|pay-what/i.test(p)? ['paid',ic(tag)+'Pay what you can','Donations welcome']
     : /paid/i.test(p)? ['paid',ic(dollar)+'Paid',hasLink?'Tickets from the host':'']
