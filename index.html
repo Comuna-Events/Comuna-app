@@ -219,6 +219,9 @@ img{ max-width:100% }
 .pick .dist{ font-family:var(--display); font-weight:800; font-size:20px; color:var(--green); text-align:right; line-height:1 }
 .pick .dist small{ display:block; font-family:var(--sans); font-weight:500; font-size:10.5px; color:var(--muted) }
 .endnote{ text-align:center; margin:20px 0 4px; font-family:var(--hand); font-size:21px; color:var(--muted) }
+.listorder{ margin:12px 0 4px; color:var(--muted); font-size:12px; text-align:center }
+.listmore{ display:block; width:100%; margin:18px 0 4px; padding:14px; border:1.5px solid var(--line); border-radius:16px; background:var(--card); color:var(--green); font:inherit; font-weight:700 }
+.listmore:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
 .demo-tag{ text-align:center; font-size:11px; color:var(--muted); margin-top:4px }
 /* map mode: the map fills the screen; header, chips and a swipeable row of picks float over it */
 #homeScreen:not(.home-list) .homehead{ position:relative; z-index:6; padding-bottom:14px; background:linear-gradient(var(--paper) 84%, rgba(243,231,209,0)); pointer-events:none }
@@ -1418,6 +1421,44 @@ const CLUSTER_ZOOM=12, PIN_ZOOM=13.5, OPEN_ZOOM=14;
 function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
   return { t:head?head.offsetHeight:150, b:(nav.height? app.bottom-nav.top : 70)+104 }; }
 function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
+// List browsing is independent of the map viewport. Render in batches so a large
+// catalogue doesn't block the first screen; scrolling or the button reveals all matches.
+const EVENT_LIST_PAGE_SIZE=30;
+let eventList={key:'',results:[],shown:0}, eventListObserver=null;
+function isEventList(){ return document.getElementById('homeScreen').classList.contains('home-list'); }
+function eventListFooter(){
+  return eventList.shown<eventList.results.length
+    ? '<button class="listmore" id="loadMoreEvents">Show more events</button>'
+    : '<div class="endnote">You’ve seen all events matching your filters.</div>';
+}
+function loadMoreEventCards(){
+  if(current!=='home' || !isEventList() || eventList.shown>=eventList.results.length) return;
+  const tail=document.getElementById('eventListTail'); if(!tail) return;
+  const focusMore=document.activeElement?.id==='loadMoreEvents', firstNew=eventList.results[eventList.shown].id;
+  const next=Math.min(eventList.shown+EVENT_LIST_PAGE_SIZE,eventList.results.length);
+  tail.insertAdjacentHTML('beforebegin',eventList.results.slice(eventList.shown,next).map(cardHtml).join(''));
+  eventList.shown=next; tail.innerHTML=eventListFooter();
+  if(focusMore) document.querySelector(`#picks [data-ev="${firstNew}"]`)?.focus({preventScroll:true});
+  if(next===eventList.results.length && eventListObserver) eventListObserver.disconnect();
+}
+function renderEventList(results){
+  if(eventListObserver) eventListObserver.disconnect();
+  const row=document.getElementById('picks'), o=origin();
+  const ordered=results.slice().sort((a,b)=>mins(a.mi)-mins(b.mi) || a.mi-b.mi || a.id-b.id);
+  const key=JSON.stringify([when,filter,tier,searchQ,o.lat,o.lng,ordered.map(ev=>ev.id)]);
+  const reset=key!==eventList.key, top=reset?0:row.scrollTop;
+  eventList={key,results:ordered,shown:Math.min(ordered.length,reset?EVENT_LIST_PAGE_SIZE:Math.max(EVENT_LIST_PAGE_SIZE,eventList.shown))};
+  row.innerHTML='<div class="listorder">Closest to you · estimated drive times</div>'
+    +ordered.slice(0,eventList.shown).map(cardHtml).join('')
+    +'<div id="eventListTail">'+eventListFooter()+'</div>';
+  row.scrollLeft=0; row.scrollTop=top;
+  if(eventList.shown<ordered.length && typeof IntersectionObserver!=='undefined'){
+    eventListObserver=new IntersectionObserver(entries=>{
+      if(entries.some(entry=>entry.isIntersecting)) loadMoreEventCards();
+    },{root:row,rootMargin:'350px 0px'});
+    eventListObserver.observe(document.getElementById('eventListTail'));
+  }
+}
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
   const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
@@ -1425,7 +1466,9 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
     + (searchQ? `<button class="fbtn kw" data-clear-search aria-label="Clear search: ${escH(searchQ)}">“${escH(searchQ.length>24?searchQ.slice(0,23)+'…':searchQ)}”<i>✕</i></button>` : '');
   document.getElementById('homeScreen').classList.toggle('searching',!!searchQ);
   const P=picks();
-  document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
+  if(eventListObserver) eventListObserver.disconnect();
+  if(isEventList() && P.length) renderEventList(P);
+  else document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
     + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
       : eventsState==='error'? `<button class="pick" id="retryEvents" style="grid-template-columns:1fr"><div><div class="t">Couldn't load events</div><div class="m2" style="display:block">Check your connection, then tap to try again</div></div></button>`
       : searchQ? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches “${escH(searchQ)}”</div><div class="m2" style="display:block">Try fewer words, or Anytime / Everything</div></div></div>`
@@ -1512,9 +1555,9 @@ function centerOnLocation(){
     toast('Map centered on your location.');
   },failed,{enableHighAccuracy:true,timeout:15000,maximumAge:0}); }catch(error){ failed(error); }
 }
-document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadEvents(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
-document.getElementById('tMap').onclick=()=>{ document.getElementById('homeScreen').classList.remove('home-list'); tMap.classList.add('on'); tList.classList.remove('on'); setTimeout(()=>{ map?map.resize():drawPaper(); },20); };
-document.getElementById('tList').onclick=()=>{ document.getElementById('homeScreen').classList.add('home-list'); tList.classList.add('on'); tMap.classList.remove('on'); };
+document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#loadMoreEvents')){ loadMoreEventCards(); return; } if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadEvents(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
+document.getElementById('tMap').onclick=()=>{ if(eventListObserver) eventListObserver.disconnect(); document.getElementById('homeScreen').classList.remove('home-list'); tMap.classList.add('on'); tList.classList.remove('on'); renderHome(); cardsForView(); setTimeout(()=>{ map?map.resize():drawPaper(); },20); };
+document.getElementById('tList').onclick=()=>{ document.getElementById('homeScreen').classList.add('home-list'); tList.classList.add('on'); tMap.classList.remove('on'); cardSwipe=false; renderHome(); };
 const tMap=document.getElementById('tMap'), tList=document.getElementById('tList');
 
 /* ---------- search bar ---------- */
