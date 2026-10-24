@@ -286,6 +286,11 @@ img{ max-width:100% }
 .evwhen{ font-family:var(--display); font-weight:900; font-size:26px; line-height:1; text-transform:uppercase; color:var(--red); margin:12px 0 4px }
 .evwhere{ display:block; font-size:14px; color:var(--ink); text-decoration:none; line-height:1.4 } .evwhere span{ color:var(--muted) }
 .evrec{ font-size:12.5px; color:var(--muted); margin-top:2px }
+.evprice{ display:flex; align-items:center; gap:8px; margin:10px 0 0; font-size:13px; color:var(--muted) }
+.evprice b{ display:inline-flex; align-items:center; gap:5px; font-size:14px; font-weight:800; padding:5px 12px; border-radius:20px; background:var(--card); color:var(--ink); border:1.5px solid var(--line) }
+.evprice.free b{ background:var(--green); border-color:var(--green); color:#fff }
+.evprice.paid b{ border-color:var(--ink) }
+.evprice.unknown b{ font-weight:700; color:var(--muted) }
 .badges > span.tier{ background:var(--sun); border-color:var(--sun); color:var(--ink) }
 .evmeta{ font-size:13px; color:var(--muted); margin:-4px 0 10px } .evmeta a{ color:var(--green); font-weight:700; white-space:nowrap }
 .reportlink{ font-size:13px; color:var(--muted); text-decoration:underline; text-underline-offset:3px; padding:6px 0; margin:0 0 8px }
@@ -2082,10 +2087,21 @@ function nextWhen(ev){
 // blue "Verified by Comuna" check: events from cities, real businesses and established organizers (Verified column in the Sheet)
 const vCheck=(ev,sz=16)=>ev&&ev.verified?`<svg class="vcheck" width="${sz}" height="${sz}" viewBox="0 0 24 24" role="img" aria-label="Verified by Comuna"><path fill="#2F6FDB" d="M12 1.5l2.6 1.9 3.2-.1 1 3 2.6 1.9-1 3 1 3-2.6 1.9-1 3-3.2-.1L12 22.5l-2.6-1.9-3.2.1-1-3L2.6 15.8l1-3-1-3 2.6-1.9 1-3 3.2.1z"/><path d="M7.5 12.2l3 3 6-6.2" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`:'';
 function badges(ev){
-  const b=[]; if(ev.community) b.push('Community pick'); if(/free/i.test(ev.price)) b.push('Free'); else if(/donation|pay-what/i.test(ev.price)) b.push('Pay what you can'); else if(/paid/i.test(ev.price)) b.push('Paid');
+  const b=[]; if(ev.community) b.push('Community pick');   // price gets its own line on the sheet (priceLine)
   if(ev.age) b.push(ev.age); if(/indoor/i.test(ev.setting)) b.push('Indoor'); else if(/outdoor/i.test(ev.setting)) b.push('Outdoor'); else if(/both/i.test(ev.setting)) b.push('Indoor + outdoor');
   (ev.vibes||[]).forEach(v=>b.push(vibeLabel(v)));
   if(ev.rsvpReq) b.push('RSVP required'); return b;
+}
+// Free / paid stated on its own line under when + where, so it isn't lost among the tags
+function priceLine(ev){
+  const p=String(ev.price||''), hasLink=!!(okLink(ev.ticket)||okLink(ev.source));
+  const tag='<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>', dollar='<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>';
+  const ic=d=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const [cls,label,hint]= /free/i.test(p)? ['free',ic(tag)+'Free',ev.rsvpReq?'Registration required':'']
+    : /donation|pay-what/i.test(p)? ['paid',ic(tag)+'Pay what you can','Donations welcome']
+    : /paid/i.test(p)? ['paid',ic(dollar)+'Paid',hasLink?'Tickets from the host':'']
+    : ['unknown','Price not listed',hasLink?'Check the event page':''];
+  return `<div class="evprice ${cls}"><b>${label}</b>${hint?`<span>${hint}</span>`:''}</div>`;
 }
 function directionsUrl(ev){ const q=encodeURIComponent(ev.address||`${ev.venue}, Los Angeles, CA`);
   return /iPhone|iPad|Macintosh/.test(navigator.userAgent)? `https://maps.apple.com/?daddr=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`; }
@@ -2127,6 +2143,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     <div class="evwhen">${escH(ev.start?nextWhen(ev):(ev.time||'Soon'))}</div>
     <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span>· ${mins(ev.mi)} min away</span></a>
     ${recurs&&ev.recDetail?`<div class="evrec">${escLines(ev.recDetail)}</div>`:''}
+    ${priceLine(ev)}
     <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${SUBCATS[ev.sub]?`<span>${SUBCATS[ev.sub].short}</span>`:''}${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${escH(x)}</span>`).join('')}</div>
     ${ev.desc?`<p class="desc">${escLines(ev.desc)}</p>`:''}
     ${meta?`<div class="evmeta">${meta}</div>`:''}
