@@ -384,7 +384,7 @@ img{ max-width:100% }
 .stampgrid .slot{ text-align:center; font-size:11.5px; color:var(--muted) }
 .tabs{ display:flex; gap:6px; margin-top:14px; overflow-x:auto; scrollbar-width:none }
 .tabs::-webkit-scrollbar{ display:none }
-.tabs button{ flex:1 1 auto; padding:8px 10px; white-space:nowrap; border-radius:10px 10px 0 0; background:var(--paper-2); font-weight:700; font-size:13px; color:var(--muted) }
+.tabs button{ flex:1 1 auto; padding:8px 7px; white-space:nowrap; border-radius:10px 10px 0 0; background:var(--paper-2); font-weight:700; font-size:12.5px; color:var(--muted) }
 .tabs button.on{ background:var(--card); color:var(--green) }
 .page{ background:var(--card); border-radius:0 18px 18px 18px; padding:14px 12px 16px; position:relative; min-height:300px;
   background-image:repeating-linear-gradient(0deg, transparent 0 27px, rgba(107,103,90,.07) 27px 28px) }
@@ -403,6 +403,15 @@ img{ max-width:100% }
 .kinds b{ margin-left:auto; font-family:var(--hand); font-size:19px; color:var(--red); font-weight:700 }
 .unlocks{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:-8px 0 18px }
 .unlocks span{ background:rgba(243,231,209,.14); border:1px solid rgba(243,231,209,.35); border-radius:30px; padding:6px 12px; font-size:13px; font-weight:700 }
+.badgegrid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 8px; margin-bottom:6px }
+.badge{ display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding:4px 2px }
+.badge small{ font-size:11.5px; color:var(--muted); line-height:1.3; max-width:150px }
+.badge .ghost-stamp{ width:112px; height:112px; font-size:17px }
+.bprog{ width:96px; height:6px; border-radius:3px; background:var(--line) } .bprog i{ display:block; height:100%; border-radius:3px; background:var(--sun) }
+.wear{ font-size:12px; font-weight:700; padding:6px 12px; border-radius:20px; border:1.5px solid var(--green); color:var(--green); max-width:150px }
+.wear.on{ background:var(--green); color:var(--paper) }
+.bsec{ font-family:var(--display); font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:14px 4px 8px }
+.btitle{ font-size:13.5px; line-height:1.45; margin:0 4px 4px }
 .ghost-stamp{ width:122px; height:122px; border-radius:50%; border:2px dashed #CDBF9F; display:grid; place-items:center; font-family:var(--hand); font-size:19px; color:#A89C82; line-height:1; padding:12px }
 .lb{ background:var(--card); border-radius:18px; padding:4px 14px }
 .lbrow{ display:grid; grid-template-columns:28px 1fr auto; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px }
@@ -416,7 +425,7 @@ img{ max-width:100% }
 .lbrow.me{ font-weight:700 } .lbrow.me .r{ color:var(--red) }
 /* guests: progress lives on this phone until they make an account */
 .lbrow.guest{ border:2px dashed var(--red); border-radius:14px; padding:10px 12px; margin:6px -12px }
-.lbrow.guest small{ display:block; font-size:12px; color:var(--muted); font-weight:400 }
+.lbrow small{ display:block; font-size:12px; color:var(--muted); font-weight:400 }
 .lbcta{ font-size:14px; line-height:1.5; margin:12px 0 0 } .lbcta + .btn{ margin-top:12px }
 .keepcard{ width:100%; max-width:330px; background:var(--card); color:var(--ink); border-radius:22px; padding:18px; text-align:left; margin-bottom:6px }
 .keepcard b{ display:block; font-size:16px } .keepcard p{ color:var(--muted); font-size:13.5px; line-height:1.45; margin:3px 0 12px }
@@ -637,6 +646,7 @@ img{ max-width:100% }
         <div class="prof"><div class="avatar" id="pfAvatar"></div><div><div style="font-weight:700;font-size:19px" id="pfName"></div><div class="sub" id="pfHood"></div></div></div>
         <div class="stats3"><div><b id="pfStamps">0</b>stamps</div><div><b id="pfVisits">0</b>check-ins</div><div><b id="pfStreak">0</b>neighborhoods</div></div>
         <button class="linkrow" data-go="passport">Your passport <span>Stamps and points</span></button>
+        <button class="linkrow" id="pfBadges">Badges and titles <span id="pfBadgeN">Earn your first</span></button>
         <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
@@ -1059,13 +1069,13 @@ codeNext.onclick=async()=>{
   authed=data.user; S.email=codeEmail; save(); finishAuth();
 };
 let passportRestoreId=0, passportRevision=0;
-const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; return Object.assign(S,{ accountId:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
+const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; badgesAt=0; return Object.assign(S,{ accountId:null, badges:null, titleKey:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
 function applyAccountProfile(user,p){
   if(S.accountId!==user.id) freshPassport();
   S.accountId=user.id; S.email=user.email||''; S.name=p.name; S.points=p.points||0;
   if(p.neighborhood) S.nb=hoodByName(p.neighborhood).name;
   S.loc=(p.lat!=null && p.lng!=null)? {lat:p.lat,lng:p.lng} : null;
-  S.interests=fixInterests(p.interests);
+  S.interests=fixInterests(p.interests); S.titleKey=p.title_key||null;
   S.onboardingComplete=true; S.signedUp=true; S.kitSeen=true;
   S.joined=p.created_at ? p.created_at.slice(0,10) : (S.joined||new Date().toISOString().slice(0,10));
   save();
@@ -1133,7 +1143,7 @@ async function restorePassport(user){
 async function finishAuth(){
   const user=authed; if(!user) return;
   // an email that already has an account (a new phone, or signing up again by mistake): bring back their passport
-  const { data:p, error } = await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points,created_at').eq('id',user.id).maybeSingle();
+  const { data:p, error } = await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points,created_at,title_key').eq('id',user.id).maybeSingle();
   if(authed?.id!==user.id) return;
   if(error){ console.warn('Supabase profile load failed',error); toast('Could not load your account. Please reconnect and sign in again.'); return; }
   if(p && p.name){
@@ -1185,7 +1195,7 @@ document.getElementById('deleteAccount').onclick=async e=>{
   await wipePhone(); toast('Your account was deleted');
 };
 function shortName(){ const p=(S.name||'').split(' ').filter(Boolean); return p.length? p[0]+(p[1]?` ${p[p.length-1][0].toUpperCase()}.`:'') : 'You'; }
-function renderNames(){ const n=shortName(); document.getElementById('passName').textContent=`${n} · Los Angeles`; document.getElementById('pfName').textContent=n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
+function renderNames(){ const n=shortName(), t=myTitle(); document.getElementById('passName').textContent=`${n} · ${t||'Los Angeles'}`; document.getElementById('pfName').textContent=t? `${n} · ${t}` : n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
   document.getElementById('pfAuth').textContent=S.signedUp? 'Sign out' : 'Create account or sign in';
   document.getElementById('deleteAccount').hidden=!S.signedUp;
   document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : ''; document.getElementById('pfNb').textContent=S.nb||'Pick one'; }
@@ -2177,7 +2187,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     // signed in: Supabase measures the distance and checks the schedule itself, and the stamp waits for it
     const u=S.guest? null : await dbUser();
     if(u){ const r=await dbCheckin(ev,v.pos); if(!r.ok){ c.disabled=false; c.textContent=lab; toast(r.msg); return; } }
-    checkIn(ev,v.dist,v.pos); };
+    checkIn(ev,v.dist,v.pos); if(u) loadBadges(true).then(celebrateBadges); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
 }
 overlay.addEventListener('click',e=>{ if(e.target===overlay) overlay.classList.remove('on'); });
@@ -2297,6 +2307,68 @@ async function loadMyPoints(){
     const lab=document.getElementById('psPtsLab'); if(lab) lab.textContent='points this month';
   }catch(e){ console.warn('Supabase my points failed', e); }
 }
+/* ---------- badges and titles (supabase/achievements.sql) ---------- */
+// The database works out progress from verified check-ins and saves what you've earned; the phone keeps a copy to show offline.
+const BADGE_SECTIONS=[['everyday','Everyday regulars','sun',C.red],['habits','Habits','wave',C.blue],['explore','Exploring LA','peak',C.green],
+  ['kinds','Kinds of outing','star',C.sun],['contributing','Contributing','lotus',C.green],['seasonal','Seasonal','palm',C.red],['hidden','Hidden','ripple',C.ink]];
+const myTitle=()=>(S.badges||[]).find(b=>b.key===S.titleKey && b.earned_at)?.title||'';
+let badgesAt=0, badgesFailed=false;
+// returns the badges this call earned (is_new), once each
+async function loadBadges(force){
+  if(!sb || (!force && Date.now()-badgesAt<60000)) return []; badgesAt=Date.now();
+  try{ const u=(await sb.auth.getSession()).data.session?.user; if(!u) return [];
+    const { data, error } = await sb.rpc('my_achievements'); if(error) throw error;
+    const acct=S.accountId; if(acct && acct!==u.id) return [];
+    const had=(S.badges||[]).filter(b=>b.earned_at).length, first=!S.badges;
+    S.badges=data||[]; badgesFailed=false; save();
+    const changed=first || had!==S.badges.filter(b=>b.earned_at).length;
+    if(current==='passport' && (changed || passTab==='badges')) renderPassport(); else if(current==='profile') renderProfile();
+    renderNames();
+    return S.badges.filter(b=>b.is_new);
+  }catch(e){ console.warn('Supabase badges failed', e); badgesFailed=true; if(current==='passport' && passTab==='badges') renderPassport(); return []; }
+}
+// on the stamp screen if it's open, otherwise a toast
+function celebrateBadges(fresh){
+  if(!fresh || !fresh.length) return;
+  const m=document.getElementById('stampModal');
+  if(m.classList.contains('on')){
+    let box=m.querySelector('.unlocks'); if(!box){ box=document.createElement('div'); box.className='unlocks'; m.querySelector('h3 + p')?.after(box); }
+    fresh.forEach(b=>{ const s=document.createElement('span'); s.textContent=`Badge: ${b.name} · title "${b.title}"`; box.appendChild(s); });
+  } else toast(fresh.length===1? `New badge: ${fresh[0].name}. "${fresh[0].title}" is yours to wear.` : `${fresh.length} new badges: ${fresh.map(b=>b.name).join(', ')}`);
+}
+function badgePage(){
+  const head=`<div class="ph"><b>Badges</b><span>each one earns a title for your name</span></div>`;
+  if(!S.signedUp) return head+`<div class="empty"><span class="hand">earn a title</span>Badges come from check-ins at coffee events, farmers markets, trivia nights and more, and each one unlocks a title next to your name. Create an account to start earning them.</div><button class="btn primary" data-badge-signup>Create account</button>`;
+  if(!S.badges) return head+`<div class="empty">${badgesFailed? 'Couldn\'t load your badges. Check your connection and reopen the Passport.' : 'Loading your badges…'}</div>`;
+  const all=S.badges, earned=all.filter(b=>b.earned_at), t=myTitle(), rots=[-6,5,-3,7,-5,4];
+  const card=(b,i,look)=> b.earned_at
+    ? `<div class="badge on">${stampSVG(b.name.toUpperCase(),(b.title!==b.name? b.title : 'COMUNA · '+b.earned_at.slice(0,4)).toUpperCase(),look[2],look[3],112,rots[i%rots.length])}
+        <small>${escH(b.blurb)}</small><button class="wear ${b.key===S.titleKey?'on':''}" data-wear="${escH(b.key)}" aria-pressed="${b.key===S.titleKey}">${b.key===S.titleKey?'Wearing':'Wear title'}</button></div>`
+    : `<div class="badge"><div class="ghost-stamp">${escH(b.name)}</div><small>${escH(b.blurb)}</small>
+        <div class="bprog" role="progressbar" aria-valuenow="${b.progress}" aria-valuemax="${b.goal}" aria-label="${escH(b.name)} progress"><i style="width:${Math.round(b.progress/b.goal*100)}%"></i></div><small>${b.progress} of ${b.goal}</small></div>`;
+  let html=head+`<p class="btitle">${t? `You're wearing <b>${escH(t)}</b>. Tap another badge's button to switch, or "Wearing" to take it off.` : earned.length? 'Pick a title to show next to your name on your profile and the leaderboard.' : 'Check in to events to earn your first badge and title.'}</p>`;
+  for(const look of BADGE_SECTIONS){
+    // earned first, then the closest to done; hidden ones stay secret until earned
+    const list=all.filter(b=>b.section===look[0] && (b.earned_at || !b.hidden)).sort((a,b)=>(!!b.earned_at-!!a.earned_at) || (b.progress/b.goal-a.progress/a.goal));
+    const secret=all.filter(b=>b.section===look[0] && b.hidden && !b.earned_at).length;
+    if(!list.length && !secret) continue;
+    html+=`<div class="bsec">${look[1]}</div>`+(list.length? `<div class="badgegrid">${list.map((b,i)=>card(b,i,look)).join('')}</div>` : '')
+      +(secret? `<div class="pagenote">${secret} hidden badge${secret===1?'':'s'} left to find</div>` : '');
+  }
+  return html+`<div class="pagenote">${earned.length} of ${all.filter(b=>!b.hidden||b.earned_at).length} earned</div>`;
+}
+// only titles you've earned: the database refuses any other (check_title in supabase/achievements.sql)
+async function wearTitle(key,button){
+  const next=S.titleKey===key? null : key, b=(S.badges||[]).find(x=>x.key===key);
+  const u=await dbUser(); if(!u){ toast('Sign in to change your title.'); return; }
+  if(button) button.disabled=true;
+  const { error } = await sb.from('profiles').update({ title_key:next }).eq('id',u.id);
+  if(button) button.disabled=false;
+  if(error){ console.warn('Supabase title save failed', error); toast('Couldn\'t change your title. Check your connection and try again.'); return; }
+  S.titleKey=next; save(); renderNames(); renderPassport();
+  toast(next? `You're now "${b?.title||'titled'}"` : 'Title removed');
+}
+
 /* ---------- neighborhood leaderboard (real points this month, from Supabase) ---------- */
 async function loadLeaderboard(){
   const el=document.getElementById('lbList'), me=shortName();
@@ -2314,7 +2386,7 @@ async function loadLeaderboard(){
     // no one else's user id reaches the phone: the database marks your own row (supabase/security_hardening.sql)
     const { data, error } = await sb.rpc('leaderboard_top',{ p_board:S.nb||'', p_limit:5 }); if(error) throw error;
     const rows=(data||[]).map((r,i)=>{ const you=!!u&&r.is_me;
-      return `<div class="lbrow ${you?'me':''}"><div class="r">${i+1}</div><div>${escH(you?me:r.display_name||'Explorer')}${you?' (you)':''}</div><div>${(+r.points||0).toLocaleString()} pts</div></div>`; });
+      return `<div class="lbrow ${you?'me':''}"><div class="r">${i+1}</div><div>${escH(you?me:r.display_name||'Explorer')}${you?' (you)':''}${r.title?`<small>${escH(r.title)}</small>`:''}</div><div>${(+r.points||0).toLocaleString()} pts</div></div>`; });
     if(S.guest) guestBoard(rows,data||[]); else el.innerHTML=rows.length? rows.join('') : empty;
   }catch(e){ console.warn('Supabase leaderboard failed', e); if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; }
 }
@@ -2409,8 +2481,8 @@ function renderPassport(){
   document.getElementById('guestBarTxt').textContent=nP0||S.points? `Create an account to keep your ${nP0} stamp${nP0===1?'':'s'} and ${(S.points||0).toLocaleString()} points.` : 'Create an account so your stamps are safe if you switch phones.';
   document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
   document.getElementById('passSeal').innerHTML=omark(130,'#F3E7D1','#F3E7D1');
-  if(passTab!=='hoods' && passTab!=='cities') passTab='places';
-  const tabs=[['places','Places',nP],['hoods','Neighborhoods',nH],['cities','Cities',nC]];
+  if(!['hoods','cities','badges'].includes(passTab)) passTab='places';
+  const tabs=[['places','Places',nP],['hoods','Neighborhoods',nH],['cities','Cities',nC],['badges','Badges',(S.badges||[]).filter(b=>b.earned_at).length]];
   document.getElementById('passTabs').innerHTML=tabs.map(t=>`<button role="tab" aria-selected="${t[0]===passTab}" class="${t[0]===passTab?'on':''}" data-tab="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
   const rots=[-7,5,-3,8,-5,4,-9,6,-4,7];
   let html='';
@@ -2424,6 +2496,8 @@ function renderPassport(){
       list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,placeHood(p)?.name||'Location unavailable',p.cat,p.n,rots[i%rots.length])}</div>`).join('')+
       (untried.length? untried : ['next']).slice(0,list.length%2?1:2).map(k=>`<div class="slot"><div class="ghost-rect">${FIRST[k]||'your next spot?'}</div></div>`).join('')+
       `</div><div class="pagenote">${list.length} place${list.length===1?'':'s'} stamped</div>`;
+  } else if(passTab==='badges'){
+    html=badgePage();
   } else {
     // stamps you've earned, then the closest one or two you haven't, to fill the row
     const city=passTab==='cities', V=city?Cy:H, all=city?CITIES:NBHDS, n=city?nC:nH;
@@ -2436,13 +2510,16 @@ function renderPassport(){
   }
   document.getElementById('passPage').innerHTML=html;
   document.getElementById('lbTitle').textContent=`Top 5 explorers in ${S.nb||'your neighborhood'}`;
-  loadLeaderboard();
+  loadLeaderboard(); loadBadges().then(celebrateBadges);
 }
 document.getElementById('passTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(!b) return; passTab=b.dataset.tab; renderPassport(); });
+document.getElementById('passPage').addEventListener('click',e=>{ const w=e.target.closest('[data-wear]'); if(w) wearTitle(w.dataset.wear,w); if(e.target.closest('[data-badge-signup]')) openAuth('signup'); });
 
 
 /* ---------- profile / alerts ---------- */
-function renderProfile(){ document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up'; }
+function renderProfile(){ document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up';
+  const nb=(S.badges||[]).filter(b=>b.earned_at).length; document.getElementById('pfBadgeN').textContent=nb? `${nb} earned${myTitle()?' · '+myTitle():''}` : 'Earn your first'; }
+document.getElementById('pfBadges').onclick=()=>{ passTab='badges'; go('passport'); };
 // reminders for events you RSVP’d to happening in the next 7 days
 let ALERTS=[];
 function buildAlerts(){
@@ -2510,7 +2587,7 @@ async function checkAccount(){
     if(request!==passportRestoreId) return;
     if(ok){
       const user=session.user; authed=user;
-      const {data:p,error:profileError}=await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points,created_at').eq('id',user.id).maybeSingle();
+      const {data:p,error:profileError}=await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points,created_at,title_key').eq('id',user.id).maybeSingle();
       if(profileError || authed?.id!==user.id) return;
       if(p && p.name){
         const returnHome=!S.signedUp || S.accountId!==user.id;
