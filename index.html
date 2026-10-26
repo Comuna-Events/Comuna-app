@@ -374,7 +374,7 @@ img{ max-width:100% }
 /* ---------- passport ---------- */
 .passcover{ background:var(--green); color:var(--paper); border-radius:22px; padding:18px 18px 16px; margin-top:6px; position:relative; overflow:hidden }
 .passcover .k{ font-size:12px; color:var(--sun); font-weight:700; letter-spacing:.08em; text-transform:uppercase }
-.passcover .big{ font-family:var(--display); font-weight:900; font-size:40px; line-height:.95; text-transform:uppercase; margin:4px 0 10px }
+.passcover .big{ font-family:var(--display); font-weight:900; font-size:40px; line-height:.95; text-transform:uppercase; margin:14px 0 10px }
 #passCount{ white-space:pre }
 .passstats{ display:flex; gap:18px; margin-top:12px; font-size:12.5px; color:#DDD1B8 }
 .passstats b{ font-family:var(--display); font-size:22px; color:var(--paper); display:block; font-weight:800 }
@@ -404,11 +404,10 @@ img{ max-width:100% }
 .kinds b{ margin-left:auto; font-family:var(--hand); font-size:19px; color:var(--red); font-weight:700 }
 .unlocks{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:-8px 0 18px }
 .unlocks span{ background:rgba(243,231,209,.14); border:1px solid rgba(243,231,209,.35); border-radius:30px; padding:6px 12px; font-size:13px; font-weight:700 }
-.ptitle{ display:flex; flex-wrap:wrap; align-items:baseline; gap:0 8px; max-width:calc(100% - 100px); margin-top:3px; padding:4px 0; font-size:13px; color:#DDD1B8; text-align:left }
-.ptitle[hidden]{ display:none } .ptitle i{ font-style:normal; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#B9AE97 }
-.ptitle b{ font-family:var(--display); font-weight:900; font-size:21px; line-height:1; color:var(--paper); letter-spacing:.5px; text-transform:uppercase }
-.ptitle.none b{ font-family:inherit; font-weight:400; font-size:13px; color:#B9AE97; text-transform:none; letter-spacing:0 }
-.ptitle u{ text-decoration:none; color:var(--sun); font-weight:700; font-size:12.5px }
+.ptitle{ display:flex; align-items:center; gap:6px; max-width:calc(100% - 100px); margin-top:4px; padding:3px 0; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; line-height:1.3; color:#B9AE97; text-align:left }
+.ptitle[hidden]{ display:none } .ptitle i{ font-style:normal } .ptitle i::after{ content:'·'; margin-left:6px }
+.ptitle b{ color:var(--paper); white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .ptitle.none b{ color:var(--sun) }
+.ptitle svg{ flex:none; color:var(--sun) }
 .cpatch{ position:absolute; right:10px; top:10px; width:92px; height:92px; transform:rotate(6deg); z-index:1; filter:drop-shadow(0 4px 6px rgba(0,0,0,.35)) }
 .cpatch[hidden]{ display:none } .cpatch .patch{ width:100%; height:100% }
 .cpatch span{ display:grid; place-items:center; width:82px; height:82px; margin:5px; border-radius:50%; border:2px dashed rgba(243,231,209,.45); font:700 20px/1 var(--hand); color:#DDD1B8 }
@@ -647,7 +646,7 @@ img{ max-width:100% }
         <div class="guestbar" id="guestBar" hidden><div><b>Saved on this phone only</b><span id="guestBarTxt"></span></div><button class="btn primary" id="guestSave">Save</button></div>
         <div class="passcover">
           <div class="k" id="passName">Los Angeles</div>
-          <button class="ptitle" id="titlePill" hidden><i>Title</i><b id="titlePillTxt"></b><u id="titleAct">change</u></button>
+          <button class="ptitle" id="titlePill" hidden aria-label="Change your title"><i>Title</i><b id="titlePillTxt"></b><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></button>
           <button class="cpatch" id="coverPatch" hidden aria-label="Change your title"></button>
           <div class="big" id="passCount">0 places
 0 neighborhoods
@@ -1242,8 +1241,8 @@ function renderNames(){ const n=shortName(), t=myTitle(), earned=(S.badges||[]).
   document.getElementById('passName').textContent=S.signedUp && earned? n : `${n} · Los Angeles`;
   // the cover: your title labeled under your name, and the badge it comes from sewn on the corner (both open the picker)
   const show=S.signedUp && earned, worn=t && (S.badges||[]).find(b=>b.key===S.titleKey);
-  document.getElementById('titlePill').hidden=!show; document.getElementById('titlePillTxt').textContent=t||'none yet';
-  document.getElementById('titlePill').classList.toggle('none',!t); document.getElementById('titleAct').textContent=t? 'change' : 'pick one';
+  document.getElementById('titlePill').hidden=!show; document.getElementById('titlePillTxt').textContent=t||'Pick one';
+  document.getElementById('titlePill').classList.toggle('none',!t);
   const cp=document.getElementById('coverPatch'); cp.hidden=!show; cp.innerHTML=worn? badgeIcon(worn,92) : '<span>pick a<br>title</span>';
   document.getElementById('pfName').textContent=t? `${n} · ${t}` : n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
   document.getElementById('pfAuth').textContent=S.signedUp? 'Sign out' : 'Create account or sign in';
