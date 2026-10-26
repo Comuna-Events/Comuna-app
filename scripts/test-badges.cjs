@@ -9,8 +9,8 @@ const plain=x=>JSON.parse(JSON.stringify(x));
  const calls=[],toasts=[],updates=[],went=[];let reply={data:[],error:null},updateError=null,boards=0;
  const overlay={on:false,classList:{add(){overlay.on=true;},remove(){overlay.on=false;}}};
  const c={console:{warn(){}},C:{red:'#C9533D',blue:'#4B66A8',green:'#244D3A',sun:'#D6A638',ink:'#26251F',muted:'#6B675A'},S:{signedUp:true,accountId:'joe',badges:null,titleKey:null},
-  current:'badges',document:{getElementById:el},save(){},escH:s=>String(s),toast:m=>toasts.push(m),glyph:()=>'<g/>',
-  stampSVG:(top,bottom)=>`<svg>${top}|${bottom}</svg>`,renderNames(){},renderProfile(){},loadLeaderboard(){boards++;},go:id=>went.push(id),openAuth(){},
+  current:'badges',document:{getElementById:el},save(){},escH:s=>String(s),toast:m=>toasts.push(m),
+  renderNames(){},renderProfile(){},loadLeaderboard(){boards++;},go:id=>went.push(id),openAuth(){},
   overlay,sheet:{innerHTML:'',querySelector:()=>({})},kitModal:{classList:{contains:()=>false}},dbUser:async()=>({id:'joe'}),
   sb:{auth:{getSession:async()=>({data:{session:{user:{id:'joe'}}}})},rpc:async(name)=>{calls.push(name);return reply;},
    from:t=>({update:v=>({eq:async(col,id)=>{updates.push(plain({t,v,col,id}));return {error:updateError};}})})}};
@@ -29,6 +29,10 @@ const plain=x=>JSON.parse(JSON.stringify(x));
  assert.match(shelf,/2 badges/);assert.match(shelf,/Next: <b>Market Day<\/b>, 2 of 3/,'the shelf names the closest badge');
  assert.ok(shelf.indexOf('Bean Counter, earned')<shelf.indexOf('Double Booked, earned'),'newest badge first');
 
+ // keys that aren't safe file names go straight to the blank patch; locked badges are their shape's outline
+ assert.match(c.badgeIcon({key:'x/../y',section:'kinds',name:'X',earned_at:'2026-01-01',progress:1,goal:1},40),/src="badges\/section-kinds\.webp"/);
+ assert.match(c.badgeIcon(reply.data[2],80),/stroke-dasharray="67 100"/,'progress is stitched around the edge');
+
  // the Badges screen
  c.renderBadges();const page=el('badgeScreen').innerHTML;
  assert.match(page,/2 of 5 earned/,'the count leaves out hidden badges you have not found');
@@ -37,7 +41,7 @@ const plain=x=>JSON.parse(JSON.stringify(x));
 
  // a badge's sheet, and the next tier of the same rule
  c.openBadge('coffee_1');assert.ok(overlay.on);
- assert.match(c.sheet.innerHTML,/BEAN COUNTER\|COMUNA · 2026/,'an earned badge shows its stamp; a title matching the name is not repeated');
+ assert.match(c.sheet.innerHTML,/<img class="patch" src="badges\/coffee_1\.webp"[^>]*onerror="[^"]*badges\/section-everyday\.webp/,'an earned badge shows its patch, with its category\'s blank patch if the art is missing');
  assert.match(c.sheet.innerHTML,/Wear this title/);assert.match(c.sheet.innerHTML,/Next up: <b>Barista's Favorite<\/b>/,'the next tier comes from the same rule');
  c.openBadge('market_1');assert.match(c.sheet.innerHTML,/Earn it to wear the title <b>Market Regular<\/b>/);assert.doesNotMatch(c.sheet.innerHTML,/bWear/,'locked badges cannot be worn');
 

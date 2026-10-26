@@ -51,6 +51,11 @@ wear one badge's title after their name. The list lives in the `achievements` ta
 or switch one off (`active = false`), in Supabase > Table Editor and the app picks it up. Adding a new *kind* of rule needs a new
 metric in `achievement_progress()`; see the top of `supabase/achievements.sql`.
 
+Each badge is an embroidered patch image in `badges/` (`badges/<key>.webp`, the key from the `achievements` table). To add
+or redesign one, edit its entry in `badges/patches.json` (category, ribbon text, tier and icon) and run
+`node scripts/build-badges.mjs` (or `node scripts/build-badges.mjs <key>` for just that one). A badge without art yet shows
+its category's blank patch.
+
 ## Team checks
 
 - **Reported events**, daily: `select * from event_reports_review;` in the SQL Editor. How to restore, remove or
