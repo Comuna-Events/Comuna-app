@@ -14,6 +14,7 @@ const PALETTES={
  blue:{ fill:'#2F579F', edge:'#1D3A73', thread:'#2A4F93', hi:'#7C9EDB', line:'#162E5C', tatami:'#081633', tatamiHi:'#D6E3FF', text:'#1D3A73', textHi:'#2E5199', tail:'#6B4A2E' },
  green:{ fill:'#2C5E45', edge:'#1A3D2C', thread:'#28563F', hi:'#7FB394', line:'#11291D', tatami:'#05140C', tatamiHi:'#D5F0DE', text:'#1A3D2C', textHi:'#2B5A42', tail:'#6B4A2E' },
  gold:{ fill:'#D3A33B', edge:'#8F6618', thread:'#C4952F', hi:'#F6D684', line:'#5E420C', tatami:'#3A2805', tatamiHi:'#FFF1C8', text:'#2B2620', textHi:'#4A4236', tail:'#6B4A2E', dark:true, stitch:'#3B2F1C' },
+ coral:{ fill:'#D6745A', edge:'#9A4430', thread:'#C8664C', hi:'#F6B4A0', line:'#6A2819', tatami:'#3A1209', tatamiHi:'#FFE2D6', text:'#6E2617', textHi:'#8E3A27', tail:'#6B4A2E', dark:true, stitch:'#5A2214' },
  red:{ fill:'#B8432F', edge:'#8C2E20', thread:'#AE3E2B', hi:'#E7826B', line:'#6E2318', tatami:'#3A0E08', tatamiHi:'#FFD9C8', text:'#6E2318', textHi:'#8E3524', tail:'#5A2416' }
 };
 function patch({shape='circle', palette='red', icon, name}){

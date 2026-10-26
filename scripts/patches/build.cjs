@@ -8,7 +8,7 @@
 const fs = require('node:fs'), path = require('node:path'), { chromium } = require('playwright');
 const { patch } = require('./patch.cjs');
 const SIZE = 320; // drawn at 512 and scaled down: sharp at the largest place the app shows a badge (170px) on 2x screens
-const sets = Object.assign({}, ...['everyday', 'habits', 'explore', 'kinds'].map(n => require(`./icons-${n}.cjs`)));
+const sets = Object.assign({}, ...['everyday', 'habits', 'explore', 'kinds', 'contributing'].map(n => require(`./icons-${n}.cjs`)));
 const only = process.argv.slice(2), out = path.join(__dirname, '../../badges');
 for (const k of only) if (!sets[k]) throw new Error(`${k} is not in any icons-*.cjs set`);
 
