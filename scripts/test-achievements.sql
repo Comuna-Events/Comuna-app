@@ -43,6 +43,8 @@ insert into public.achievements (key, section, name, title, blurb, metric, goal,
   ('midweek',        'habits',       'Midweek Mischief',    'Midweek Menace',     '5 check-ins on a Tuesday or Wednesday',               'midweek',         5, false, 350),
   ('streak_4',       'habits',       'On a Roll',           'On a Roll',          'A check-in every week for 4 weeks in a row',          'week_streak',     4, false, 360),
   ('streak_12',      'habits',       'Creature of Habit',   'Creature of Habit',  'A check-in every week for 12 weeks in a row',         'week_streak',    12, false, 361),
+  ('welcome',        'explore',      'New in Town',         'Day One',            'Joined Comuna',                                       'joined',          1, false, 395),
+  ('first_checkin',  'explore',      'Fresh Ink',           'First Stamp',        'Check in to your first event',                        'checkins',        1, false, 396),
   ('explorer_1',     'explore',      'Explorer I',          'Wanderer',           'Events in 5 different neighborhoods or cities',       'neighborhoods',   5, false, 400),
   ('explorer_2',     'explore',      'Explorer II',         'Explorer',           'Events in 15 different neighborhoods or cities',      'neighborhoods',  15, false, 401),
   ('explorer_3',     'explore',      'Explorer III',        'Cartographer',       'Events in 30 different neighborhoods or cities',      'neighborhoods',  30, false, 402),
@@ -71,6 +73,7 @@ create table if not exists public.user_achievements (
 );
 
 alter table public.profiles add column if not exists title_key text;
+alter table public.profiles add column if not exists title_chosen boolean not null default false;   -- they picked a title, or none
 alter table public.profiles drop constraint if exists profiles_title_key_fkey;
 alter table public.profiles add constraint profiles_title_key_fkey
   foreign key (title_key) references public.achievements (key) on update cascade on delete set null;
@@ -131,6 +134,8 @@ language sql stable security definer set search_path = public as $$
     where c.user_id <> p_uid and c.distance_m <= 600
   )
   select m, coalesce(p, 0)::int from (values
+    ('joined',          (select count(*) from profiles where id = p_uid)),
+    ('checkins',        (select count(*) from k)),
     ('coffee',          (select count(*) from k where txt ~ '\mcoffee|café|\mcafe\M|espresso|latte|roaster')),
     ('farmers_market',  (select count(*) from k where is_market)),
     ('market_seasons',  (select count(distinct (extract(month from d)::int % 12) / 3) from k where is_market)),
@@ -177,11 +182,12 @@ $$;
 revoke execute on function public.achievement_progress(uuid) from public, anon, authenticated;
 
 -- The signed-in person's achievements: saves anything newly earned, then returns the catalogue with progress.
--- is_new marks ones earned by this call, so the app can celebrate them once; metric links tiers of one rule.
+-- is_new marks ones earned by this call, so the app can celebrate them once; metric links tiers of one rule;
+-- worn marks the title the person wears (it may have just been given as their default).
 drop function if exists public.my_achievements();
 create function public.my_achievements()
 returns table (key text, section text, name text, title text, blurb text, goal int, hidden boolean,
-               progress int, earned_at timestamptz, is_new boolean, metric text)
+               progress int, earned_at timestamptz, is_new boolean, metric text, worn boolean)
 language plpgsql security definer set search_path = public as $$
 #variable_conflict use_column
 declare uid uuid := auth.uid(); started timestamptz := clock_timestamp();
@@ -191,12 +197,19 @@ begin
   select uid, a.key, clock_timestamp() from achievements a join achievement_progress(uid) p on p.metric = a.metric
   where a.active and p.progress >= a.goal
   on conflict do nothing;
+  -- until someone picks a title (or none), founding locals wear OG and everyone else Day One
+  update profiles pr set title_key = coalesce(
+      (select u.key from user_achievements u where u.user_id = uid and u.key = 'founding'),
+      (select u.key from user_achievements u where u.user_id = uid and u.key = 'welcome'))
+    where pr.id = uid and pr.title_key is null and not pr.title_chosen;
   return query
     select a.key, a.section, a.name, a.title, a.blurb, a.goal, a.hidden,
-           least(coalesce(p.progress, 0), a.goal), u.earned_at, coalesce(u.earned_at >= started, false), a.metric
+           least(coalesce(p.progress, 0), a.goal), u.earned_at, coalesce(u.earned_at >= started, false), a.metric,
+           coalesce(a.key = pr.title_key, false)
     from achievements a
     left join achievement_progress(uid) p on p.metric = a.metric
     left join user_achievements u on u.user_id = uid and u.key = a.key
+    left join profiles pr on pr.id = uid
     where a.active or u.key is not null
     order by a.sort;
 end $$;
@@ -222,6 +235,7 @@ grant execute on function public.leaderboard_top(text, int) to anon, authenticat
 comment on table public.achievements is '[Team] The achievement catalogue. Edit name, title, blurb, goal, hidden or active here; the app picks it up.';
 comment on table public.user_achievements is '[App users] Achievements each person has earned. Written only by my_achievements().';
 comment on column public.profiles.title_key is 'The achievement whose title the person shows after their name. Must be one they earned.';
+comment on column public.profiles.title_chosen is 'True once the person picks a title (or none); until then my_achievements() gives them OG or Day One.';
 comment on function public.achievement_progress(uuid) is '[Internal] One person''s progress on every achievement metric, from verified check-ins.';
 comment on function public.my_achievements() is '[App users] The signed-in person''s achievements and progress; saves newly earned ones.';
 comment on function public.leaderboard_top(text, int) is '[App users] A neighborhood''s monthly top list with titles, without user ids.';
@@ -264,6 +278,7 @@ insert into results (name, outcome) select 'coffee_2 progress', progress || ' of
 insert into results (name, outcome) select 'early progress', progress || ' of ' || goal from first_call where key = 'early';
 insert into results (name, outcome) select 'streak_4 progress', progress || ' of ' || goal from first_call where key = 'streak_4';
 insert into results (name, outcome) select 'hidden rows listed', count(*)::text from first_call where hidden;
+insert into results (name, outcome) select 'default title', coalesce(title_key, 'none') || ' / worn: ' || (select string_agg(key, ' ') from first_call where worn) from profiles where id = '00000000-0000-4000-8000-0000000ac1e0';
 insert into results (name, outcome) select 'second call new', count(*)::text from public.my_achievements() where is_new;
 
 -- titles: only ones you've earned
@@ -275,6 +290,10 @@ do $$ begin
   exception when others then insert into results (name, outcome) values ('unearned title', 'refused: ' || sqlerrm); end;
 end $$;
 insert into results (name, outcome) select 'leaderboard title', coalesce(title, 'none') from public.leaderboard_top('Test Hood', 5) where is_me;
+
+-- someone who picked "No title" keeps it
+update profiles set title_key = null, title_chosen = true where id = '00000000-0000-4000-8000-0000000ac1e0';
+insert into results (name, outcome) select 'no title kept', coalesce((select key from public.my_achievements() where worn), 'none');
 
 -- a goal raised later keeps what was already earned
 update achievements set goal = 50 where key = 'coffee_1';
@@ -288,9 +307,10 @@ end $$;
 --  anon can call my_achievements: false · signed-in can call achievement_progress: false
 --  signed-in can read user_achievements: false · signed-in can write achievements: false
 --  signed out: refused: Sign in to see your achievements.
---  earned: comeback coffee_1 double founding (the far-away check-in on Oct 7 doesn't count)
+--  earned: comeback coffee_1 double first_checkin founding welcome (the far-away check-in on Oct 7 doesn't count)
+--  default title: founding / worn: founding
 --  all earned are new: true · coffee_2 progress: 3 of 10 · early progress: 3 of 5 · streak_4 progress: 2 of 4
 --  hidden rows listed: 3 (the app hides the unearned ones) · second call new: 0
 --  title set: coffee_1 · unearned title: refused: You haven't earned that title yet.
---  leaderboard title: Bean Counter · kept after goal raised: true
+--  leaderboard title: Bean Counter · no title kept: none · kept after goal raised: true
 rollback;

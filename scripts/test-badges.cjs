@@ -11,7 +11,7 @@ const plain=x=>JSON.parse(JSON.stringify(x));
  const c={console:{warn(){}},C:{red:'#C9533D',blue:'#4B66A8',green:'#244D3A',sun:'#D6A638',ink:'#26251F',muted:'#6B675A'},S:{signedUp:true,accountId:'joe',badges:null,titleKey:null},
   current:'badges',document:{getElementById:el},save(){},escH:s=>String(s),toast:m=>toasts.push(m),glyph:()=>'<g/>',
   stampSVG:(top,bottom)=>`<svg>${top}|${bottom}</svg>`,renderNames(){},renderProfile(){},loadLeaderboard(){boards++;},go:id=>went.push(id),openAuth(){},
-  overlay,sheet:{innerHTML:'',querySelector:()=>({})},dbUser:async()=>({id:'joe'}),
+  overlay,sheet:{innerHTML:'',querySelector:()=>({})},kitModal:{classList:{contains:()=>false}},dbUser:async()=>({id:'joe'}),
   sb:{auth:{getSession:async()=>({data:{session:{user:{id:'joe'}}}})},rpc:async(name)=>{calls.push(name);return reply;},
    from:t=>({update:v=>({eq:async(col,id)=>{updates.push(plain({t,v,col,id}));return {error:updateError};}})})}};
  vm.createContext(c);vm.runInContext(source.slice(start,end).replace(/^const |^let /gm,'var '),c);
@@ -44,10 +44,10 @@ const plain=x=>JSON.parse(JSON.stringify(x));
  // titles
  c.openTitlePicker();assert.match(c.sheet.innerHTML,/value="coffee_1"/);assert.match(c.sheet.innerHTML,/value="double"/);assert.doesNotMatch(c.sheet.innerHTML,/value="market_1"/,'only earned titles can be picked');
  assert.equal(await c.wearTitle('coffee_1'),true);
- assert.deepEqual(updates[0],{t:'profiles',v:{title_key:'coffee_1'},col:'id',id:'joe'});
+ assert.deepEqual(updates[0],{t:'profiles',v:{title_key:'coffee_1',title_chosen:true},col:'id',id:'joe'},'picking a title ends the default');
  assert.equal(c.myTitle(),'Bean Counter');assert.match(toasts.at(-1),/Bean Counter/);
  c.renderBadges();assert.match(el('badgeScreen').innerHTML,/<i>Wearing<\/i>/);
- assert.equal(await c.wearTitle(null),true);assert.deepEqual(updates[1].v,{title_key:null},'"No title" clears it');assert.equal(c.myTitle(),'');
+ assert.equal(await c.wearTitle(null),true);assert.deepEqual(updates[1].v,{title_key:null,title_chosen:true},'"No title" clears it and sticks');assert.equal(c.myTitle(),'');
  updateError={message:'You haven\'t earned that title yet.'};
  assert.equal(await c.wearTitle('coffee_2'),false);
  assert.equal(c.S.titleKey,null,'a refused title is not kept on the phone');assert.match(toasts.at(-1),/Couldn't change your title/);
@@ -55,9 +55,20 @@ const plain=x=>JSON.parse(JSON.stringify(x));
  // celebrating when the stamp screen is closed: a toast
  c.celebrateBadges([reply.data[2]]);assert.match(toasts.at(-1),/New badge: Market Day/);
 
+ // the first badge: the server's default title arrives as worn; a sheet explains it once, or the starter kit does
+ reply={data:[badge('founding','contributing','Founding Local','OG',1,1,'2026-10-26T10:00:00Z',{is_new:true,worn:true}),badge('welcome','explore','New in Town','Day One',1,1,'2026-10-26T10:00:00Z',{is_new:true}),
+  badge('first_checkin','explore','Fresh Ink','First Stamp',1,0,null,{blurb:'Check in to your first event'})],error:null};
+ c.S.titleKey=null;c.S.kitSeen=true;overlay.on=false;
+ const first=await c.loadBadges(true);assert.equal(c.S.titleKey,'founding','the default title the server gave is worn');
+ c.celebrateBadges(first);assert.ok(overlay.on,'the welcome sheet opens');
+ assert.match(c.sheet.innerHTML,/your first badge/);assert.match(c.sheet.innerHTML,/wearing the title <b>OG<\/b>/);
+ assert.match(c.sheet.innerHTML,/You also earned <b>New in Town<\/b>/);assert.match(c.sheet.innerHTML,/Next up: <b>Fresh Ink<\/b>, check in to your first event/);
+ c.S.kitSeen=false;overlay.on=false;c.celebrateBadges(first);assert.equal(overlay.on,false,'a new account sees it in the starter kit, not another sheet');
+ assert.match(el('kitBadge').innerHTML,/Your first badge: Founding Local/);assert.equal(el('kitBadge').hidden,false);
+
  // guests and failures
  c.S.signedUp=false;c.renderShelf();assert.match(el('badgeShelf').innerHTML,/Create an account/,'guests are asked to make an account');
  reply={data:null,error:{message:'Failed to fetch'}};c.S.signedUp=true;c.S.badges=null;
  assert.equal((await c.loadBadges(true)).length,0);assert.match(el('badgeScreen').innerHTML,/Couldn't load your badges/,'a failed load says so');
- console.log('Badge checks passed: loads once a minute, shelf, Badges screen, hidden stay secret, badge sheet and next tier, title picker, wear and remove, refusals, toasts, guests, offline.');
+ console.log('Badge checks passed: loads once a minute, shelf, Badges screen, hidden stay secret, badge sheet and next tier, title picker, wear and remove, refusals, toasts, guests, offline, first badge and default title.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -21,7 +21,7 @@ function setup(data=fixture()){
  }};
  const context={planDayKey:d=>d.toISOString().slice(0,10),today0:()=>new Date(2026,9,20),sb,console:{warn(){}},S:{accountId:'joe',places:{old:{n:1}},rsvp:[],checked:[],visits:0,points:665,monthPts:665},authed:user,myPtsAt:0,current:'passport',HOODS:[{name:'Santa Monica',city:'Santa Monica'}],HOOD_RENAMED:{},Date,Number,Map,Set,Promise,
  save(){calls.save++;},dbStatus(){},rebuildMap(){},renderNames(){},updateDot(){},renderPassport(){},renderProfile(){},renderPlans(){},renderHome(){},
- hoodByName:name=>({name}),fixInterests:x=>x,catKey:x=>x,tierKey:t=>t==='Hidden Gem'?'niche':'popup',toast(){},flushFeedback(){},myCats:()=>[],go(){},shortName:()=> 'Joe',dbProfile(){calls.profileWrite++;},history:[],authMode:'signin',filter:'All'};
+ hoodByName:name=>({name}),fixInterests:x=>x,catKey:x=>x,tierKey:t=>t==='Hidden Gem'?'niche':'popup',toast(){},flushFeedback(){},loadBadges:async()=>[],celebrateBadges(){},myCats:()=>[],go(){},shortName:()=> 'Joe',dbProfile(){calls.profileWrite++;},history:[],authMode:'signin',filter:'All'};
  vm.createContext(context);vm.runInContext(block+'\nthis.freshPassport=freshPassport;',context);
  for(const name of ['finishAuth','checkAccount','dbUser']){
   const start=source.indexOf(`async function ${name}(){`),end=source.indexOf('\n}',start)+2;

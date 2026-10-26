@@ -423,6 +423,8 @@ img{ max-width:100% }
 .tpick{ display:flex; flex-direction:column; gap:8px } .tpick label{ display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px; border:1.5px solid var(--line); background:var(--card) }
 .tpick label.on{ border:2px solid var(--green) } .tpick input{ width:20px; height:20px; margin:0; accent-color:var(--green) }
 .tpick span{ display:flex; flex-direction:column } .tpick b{ font-family:var(--display); font-weight:800; font-size:20px; text-transform:uppercase } .tpick small{ font-size:12px; color:var(--muted) }
+.kitbadge{ display:flex; gap:12px; align-items:center; background:var(--card); border-radius:16px; padding:10px 12px; margin-top:14px; text-align:left }
+.kitbadge[hidden]{ display:none } .kitbadge svg{ flex-shrink:0 } .kitbadge b{ display:block; font-size:14.5px } .kitbadge span{ font-size:12.5px; color:var(--muted); line-height:1.35 } .kitbadge span b{ display:inline; font-size:inherit; color:var(--ink) }
 .bunlock{ align-self:stretch; background:var(--paper); color:var(--ink); border-radius:22px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:8px; margin:0 0 16px }
 .bunlock .hand{ font-size:24px; color:var(--red); margin:0 } .bunlock p{ color:var(--ink); margin:0 } .bunlock .row{ display:flex; gap:8px; align-self:stretch } .bunlock .btn{ flex:1; padding:12px 10px }
 .ghost-stamp{ width:122px; height:122px; border-radius:50%; border:2px dashed #CDBF9F; display:grid; place-items:center; font-family:var(--hand); font-size:19px; color:#A89C82; line-height:1; padding:12px }
@@ -1172,7 +1174,7 @@ async function finishAuth(){
     if(guest){ S.feedbackQueue=guest.fb; S.points+=guest.pts; S.guest=false; save(); guestConverted(); await uploadGuest(user); dbProfile(); }
     await restorePassport(user);
     if(authed?.id!==user.id || S.accountId!==user.id) return;
-    rebuildMap(); renderNames(); flushFeedback();
+    rebuildMap(); renderNames(); flushFeedback(); loadBadges(true).then(celebrateBadges);
     history=[]; filter=myCats().length?'mine':'All'; go('home');
     toast(guest?.n? 'Signed in. Your stamps from this phone are on your account now.' : again? 'You already have an account, so we signed you in. Welcome back!' : 'Welcome back, '+shortName());
     return;
@@ -1182,7 +1184,7 @@ async function finishAuth(){
   const guest=S.guest; if(!guest) freshPassport();
   S.accountId=user.id; S.onboardingComplete=true; S.signedUp=true; S.guest=false; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=guest&&S.joined||new Date().toISOString().slice(0,10); save(); renderNames();
   // the profile first, so uploaded check-ins count toward this neighborhood's board; check-ins before reviews, which need them
-  dbProfile().then(()=>uploadGuest(user)).then(flushFeedback);
+  dbProfile().then(()=>uploadGuest(user)).then(flushFeedback).then(()=>loadBadges(true)).then(celebrateBadges);
   if(guest) guestConverted();
   history=[];
   if(guest){ filter=myCats().length?'mine':'All'; go('home'); toast('You\'re in. Your stamps are saved to your account.'); return; }
@@ -1294,7 +1296,7 @@ function kitHtml(){
       <li><div><b>Explore the map</b><span>Tap any pin. Tap <b style="display:inline">?</b> anytime for what the colors mean.</span></div></li>
       <li><div><b>Tap "RSVP"</b><span>It saves to your Plans.</span></div></li>
       <li><div><b>Check in when you're there</b><span>Collect the stamp and earn points.</span></div></li>
-     </ol>`;
+     </ol><div class="kitbadge" id="kitBadge" hidden></div>`;
 }
 // map key: every pin is a circle in its group's color with its icon; Headliners get a gold ring.
 // In onboarding only your picked interests show (and no cluster row); the map's "?" shows everything.
@@ -1313,7 +1315,7 @@ function openLegend(){
 function openKit(){
   document.getElementById('kitBody').innerHTML=kitHtml();
   document.getElementById('kitNext').textContent=(S.lastPicksDay!==new Date().toDateString() && dailyPicks().length)? 'See today\'s Top 4' : 'Start exploring';
-  kitModal.classList.add('on');
+  kitModal.classList.add('on'); renderKitBadge();
 }
 function closeKit(){ kitModal.classList.remove('on'); S.kitSeen=true; save(); maybeDailyPicks(); }
 document.getElementById('kitNext').onclick=closeKit;
@@ -2348,7 +2350,7 @@ async function loadBadges(force){
   try{ const u=(await sb.auth.getSession()).data.session?.user; if(!u) return [];
     const { data, error } = await sb.rpc('my_achievements'); if(error) throw error;
     const acct=S.accountId; if(acct && acct!==u.id) return [];
-    S.badges=data||[]; badgesFailed=false; save();
+    S.badges=data||[]; badgesFailed=false; if(S.badges.length) S.titleKey=S.badges.find(b=>b.worn)?.key||null; save();
     if(current==='passport') renderShelf(); else if(current==='badges') renderBadges(); else if(current==='profile') renderProfile();
     renderNames();
     return S.badges.filter(b=>b.is_new);
@@ -2420,9 +2422,15 @@ function openTitlePicker(){
   document.getElementById('tpMore').onclick=()=>{ overlay.classList.remove('on'); go('badges'); };
 }
 // a check-in that earns badges: the first gets a card on the stamp screen, any others a line; otherwise a toast
+const FIRST_BADGES=['founding','welcome'];
 function celebrateBadges(fresh){
   if(!fresh || !fresh.length) return;
   const m=document.getElementById('stampModal');
+  if(fresh.some(b=>FIRST_BADGES.includes(b.key)) && !m.classList.contains('on')){
+    // a new account sees it in the starter kit (open, or about to open); anyone else gets the sheet once
+    if(kitModal.classList.contains('on') || S.kitSeen===false) renderKitBadge(); else openWelcome(fresh);
+    return;
+  }
   if(!m.classList.contains('on')){ toast(fresh.length===1? `New badge: ${fresh[0].name}. "${fresh[0].title}" is yours to wear.` : `${fresh.length} new badges: ${fresh.map(b=>b.name).join(', ')}`); return; }
   const b=fresh[0], card=document.createElement('div'); card.className='bunlock';
   card.innerHTML=`<div class="hand">badge unlocked!</div>${bigStamp(b,108,7)}<p>${escH(b.blurb)}. You've earned the title <b>${escH(b.title)}</b>.</p>`
@@ -2432,12 +2440,34 @@ function celebrateBadges(fresh){
   document.getElementById('bunWear').onclick=async()=>{ if(await wearTitle(b.key)) card.remove(); };
   document.getElementById('bunKeep').onclick=()=>card.remove();
 }
+// the badge you start with: the title you're wearing (OG or Day One), what badges are, and the next one to earn
+function firstBadge(){ const got=earnedBadges(); return got.find(b=>b.key===S.titleKey) || got.find(b=>FIRST_BADGES.includes(b.key)); }
+const firstBadgeText=b=>`${b.key==='founding'? 'You joined Comuna in its first days.' : 'Welcome to Comuna.'} ${b.key===S.titleKey? `You're wearing the title <b>${escH(b.title)}</b> next to your name.` : `Its title is <b>${escH(b.title)}</b>.`}`;
+function renderKitBadge(){
+  const el=document.getElementById('kitBadge'), b=firstBadge(); if(!el || !b) return;
+  el.innerHTML=`${badgeIcon(b,56)}<div><b>Your first badge: ${escH(b.name)}</b><span>${firstBadgeText(b)} Go to things around LA to earn more.</span></div>`;
+  el.hidden=false;
+}
+function openWelcome(fresh){
+  const b=firstBadge(); if(!b) return;
+  const also=fresh.filter(x=>x.key!==b.key), next=(S.badges||[]).find(x=>x.key==='first_checkin' && !x.earned_at);
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="bdetail">
+    <div class="hand" style="font-size:24px;color:var(--red)">your first badge!</div>${bigStamp(b,150,-6)}
+    <h2>${escH(b.name)}</h2><p>${firstBadgeText(b)} It shows on your Passport and the leaderboard.</p>
+    ${also.length? `<p class="sub">You also earned ${also.map(x=>`<b>${escH(x.name)}</b>`).join(', ')}.</p>` : ''}
+    <p class="sub">Earn more by going to things around LA: coffee events, farmers markets, trivia nights. Each badge comes with a title.${next? ` Next up: <b>${escH(next.name)}</b>, ${escH(next.blurb.toLowerCase())}.` : ''}</p>
+    ${b.key===S.titleKey? '' : `<button class="btn primary" id="wWear">Wear "${escH(b.title)}"</button>`}
+    <button class="btn ${b.key===S.titleKey?'primary':'ghost'}" id="wSee">See all badges</button></div>`;
+  overlay.classList.add('on'); document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  document.getElementById('wSee').onclick=()=>{ overlay.classList.remove('on'); go('badges'); };
+  const w=document.getElementById('wWear'); if(w) w.onclick=async()=>{ if(await wearTitle(b.key,w)) overlay.classList.remove('on'); };
+}
 // only titles you've earned: the database refuses any other (check_title in supabase/achievements.sql). Returns true once saved.
 async function wearTitle(key,button){
   const next=key||null, b=(S.badges||[]).find(x=>x.key===next);
   const u=await dbUser(); if(!u){ toast('Sign in to change your title.'); return false; }
   if(button) button.disabled=true;
-  const { error } = await sb.from('profiles').update({ title_key:next }).eq('id',u.id);
+  const { error } = await sb.from('profiles').update({ title_key:next, title_chosen:true }).eq('id',u.id);
   if(button) button.disabled=false;
   if(error){ console.warn('Supabase title save failed', error); toast('Couldn\'t change your title. Check your connection and try again.'); return false; }
   S.titleKey=next; save(); renderNames();
@@ -2664,7 +2694,7 @@ async function checkAccount(){
       if(profileError || authed?.id!==user.id) return;
       if(p && p.name){
         const returnHome=!S.signedUp || S.accountId!==user.id;
-        applyAccountProfile(user,p); await uploadGuest(user); await restorePassport(user);
+        applyAccountProfile(user,p); await uploadGuest(user); await restorePassport(user); loadBadges().then(celebrateBadges);
         if(authed?.id!==user.id || S.accountId!==user.id) return;
         renderNames(); if(returnHome){ history=[]; filter=myCats().length?'mine':'All'; go('home',false); }
       }
