@@ -376,8 +376,6 @@ img{ max-width:100% }
 .passcover .k{ font-size:12px; color:var(--sun); font-weight:700; letter-spacing:.08em; text-transform:uppercase }
 .passcover .big{ font-family:var(--display); font-weight:900; font-size:40px; line-height:.95; text-transform:uppercase; margin:4px 0 10px }
 #passCount{ white-space:pre }
-.bar{ height:8px; border-radius:4px; background:rgba(243,231,209,.2) }
-.bar i{ display:block; height:100%; border-radius:4px; background:var(--sun) }
 .passstats{ display:flex; gap:18px; margin-top:12px; font-size:12.5px; color:#DDD1B8 }
 .passstats b{ font-family:var(--display); font-size:22px; color:var(--paper); display:block; font-weight:800 }
 .stampgrid{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px 4px; background:var(--card); border-radius:22px; padding:14px 6px; margin-top:12px; justify-items:center }
@@ -403,15 +401,30 @@ img{ max-width:100% }
 .kinds b{ margin-left:auto; font-family:var(--hand); font-size:19px; color:var(--red); font-weight:700 }
 .unlocks{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:-8px 0 18px }
 .unlocks span{ background:rgba(243,231,209,.14); border:1px solid rgba(243,231,209,.35); border-radius:30px; padding:6px 12px; font-size:13px; font-weight:700 }
-.badgegrid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 8px; margin-bottom:6px }
-.badge{ display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding:4px 2px }
-.badge small{ font-size:11.5px; color:var(--muted); line-height:1.3; max-width:150px }
-.badge .ghost-stamp{ width:112px; height:112px; font-size:17px }
-.bprog{ width:96px; height:6px; border-radius:3px; background:var(--line) } .bprog i{ display:block; height:100%; border-radius:3px; background:var(--sun) }
-.wear{ font-size:12px; font-weight:700; padding:6px 12px; border-radius:20px; border:1.5px solid var(--green); color:var(--green); max-width:150px }
-.wear.on{ background:var(--green); color:var(--paper) }
-.bsec{ font-family:var(--display); font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:14px 4px 8px }
-.btitle{ font-size:13.5px; line-height:1.45; margin:0 4px 4px }
+.pnrow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+.titlepill{ display:inline-flex; align-items:center; gap:4px; background:var(--sun); color:var(--ink); border-radius:20px; padding:3px 8px 3px 10px; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; min-height:24px }
+.titlepill[hidden]{ display:none } .titlepill{ position:relative } .titlepill::after{ content:''; position:absolute; inset:-10px -4px }
+.bshelf{ display:flex; align-items:center; gap:12px; width:100%; margin-top:12px; background:var(--card); border-radius:18px; padding:12px 14px; text-align:left }
+.bstack{ display:flex; flex-shrink:0 } .bstack svg{ background:var(--card); border-radius:50% } .bstack svg + svg{ margin-left:-14px }
+.bstack svg:nth-child(1){ transform:rotate(-8deg) } .bstack svg:nth-child(2){ transform:rotate(6deg) } .bstack svg:nth-child(3){ transform:rotate(-4deg) }
+.bsx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px } .bsx > b{ font-size:15px } .bsx span{ font-size:12.5px; color:var(--muted); line-height:1.3 } .bsx span b{ color:var(--ink) }
+.bprog{ height:5px; border-radius:3px; background:var(--line); margin-top:3px } .bprog i{ display:block; height:100%; border-radius:3px; background:var(--sun) }
+.bhead{ display:flex; align-items:baseline; justify-content:space-between } .bhead .hand{ font-size:22px; color:var(--red) }
+.bsec{ font-family:var(--display); font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:16px 4px 8px }
+.bclose{ display:flex; gap:10px } .bclose button{ flex:1; min-width:0; background:var(--card); border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:5px; text-align:left }
+.bclose b{ font-size:14.5px } .bclose span{ font-size:12px; color:var(--muted); line-height:1.3 }
+.bbook{ background:var(--card); border-radius:20px; padding:2px 10px 16px; margin:14px 0 24px }
+.bgrid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 6px }
+.bgrid button{ display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center; padding:2px }
+.bgrid b{ font-size:12.5px; color:var(--muted); line-height:1.2 } .bgrid button.on b{ color:var(--ink) }
+.bgrid button.on:nth-child(3n+1) svg{ transform:rotate(-7deg) } .bgrid button.on:nth-child(3n+2) svg{ transform:rotate(5deg) } .bgrid button.on:nth-child(3n) svg{ transform:rotate(-3deg) }
+.bgrid i{ font-style:normal; font-size:10.5px; font-weight:700; color:var(--paper); background:var(--green); border-radius:10px; padding:2px 8px }
+.bdetail{ display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; padding-top:6px } .bdetail h2{ margin:4px 0 0 } .bdetail p{ margin:0; font-size:14px; line-height:1.45 } .bdetail .btn{ align-self:stretch }
+.tpick{ display:flex; flex-direction:column; gap:8px } .tpick label{ display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px; border:1.5px solid var(--line); background:var(--card) }
+.tpick label.on{ border:2px solid var(--green) } .tpick input{ width:20px; height:20px; margin:0; accent-color:var(--green) }
+.tpick span{ display:flex; flex-direction:column } .tpick b{ font-family:var(--display); font-weight:800; font-size:20px; text-transform:uppercase } .tpick small{ font-size:12px; color:var(--muted) }
+.bunlock{ align-self:stretch; background:var(--paper); color:var(--ink); border-radius:22px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:8px; margin:0 0 16px }
+.bunlock .hand{ font-size:24px; color:var(--red); margin:0 } .bunlock p{ color:var(--ink); margin:0 } .bunlock .row{ display:flex; gap:8px; align-self:stretch } .bunlock .btn{ flex:1; padding:12px 10px }
 .ghost-stamp{ width:122px; height:122px; border-radius:50%; border:2px dashed #CDBF9F; display:grid; place-items:center; font-family:var(--hand); font-size:19px; color:#A89C82; line-height:1; padding:12px }
 .lb{ background:var(--card); border-radius:18px; padding:4px 14px }
 .lbrow{ display:grid; grid-template-columns:28px 1fr auto; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px }
@@ -624,14 +637,14 @@ img{ max-width:100% }
       <div class="scroll">
         <div class="guestbar" id="guestBar" hidden><div><b>Saved on this phone only</b><span id="guestBarTxt"></span></div><button class="btn primary" id="guestSave">Save</button></div>
         <div class="passcover">
-          <div class="k" id="passName">Los Angeles</div>
+          <div class="pnrow"><div class="k" id="passName">Los Angeles</div><button class="titlepill" id="titlePill" hidden aria-label="Change your title"><span id="titlePillTxt"></span><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div>
           <div class="big" id="passCount">0 places
 0 neighborhoods
 0 cities</div>
-          <div class="bar"><i id="passBar" style="width:37%"></i></div>
           <div class="passstats"><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
           <div id="passSeal" style="position:absolute;right:-18px;top:-18px;opacity:.25"></div>
         </div>
+        <button class="bshelf" id="badgeShelf"></button>
         <div class="tabs" id="passTabs" role="tablist"></div>
         <div class="page" id="passPage"></div>
         <div class="h2" id="lbTitle">Top 5 explorers</div>
@@ -657,6 +670,11 @@ img{ max-width:100% }
     </section>
 
     <!-- ALERTS -->
+    <section class="screen" data-s="badges">
+      <div class="topbar"><button class="back" data-back><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button></div>
+      <div class="scroll" id="badgeScreen"></div>
+    </section>
+
     <section class="screen" data-s="alerts">
       <div class="topbar"><button class="back" data-back><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button></div>
       <div class="scroll">
@@ -934,12 +952,13 @@ function go(id, push=true){
   if(push) history.push(current);
   current=id;
   screens.forEach(s=>s.classList.toggle('on', s.dataset.s===id));
-  nav.classList.toggle('hide', ['onb1','onb2','onb3','onb4','onb5','alerts'].includes(id));
+  nav.classList.toggle('hide', ['onb1','onb2','onb3','onb4','onb5','alerts','badges'].includes(id));
   nav.querySelectorAll('button').forEach(b=>{ const on=b.dataset.nav===id; b.classList.toggle('on',on); b.querySelector('svg').setAttribute('stroke', on?C.green:C.muted); });
   if(id==='onb1') document.getElementById('signinLink').style.display=S.signedUp?'none':'';
   if(id==='home'){ renderHome(); maybeDailyPicks(); setTimeout(()=>{ if(map) map.resize(); else drawPaper(); },30); }
   if(id==='plans') renderPlans();
   if(id==='passport') renderPassport();
+  if(id==='badges') renderBadges();
   if(id==='profile') renderProfile();
   if(id==='alerts'){ renderAlerts(); S.alertsSeen=[...new Set([...(S.alertsSeen||[]),...ALERTS.map(a=>a.key)])].slice(-200); save(); updateDot(); }
   if(id==='onb2'){ drawMini(); locNext.disabled=!S.loc; }
@@ -1195,7 +1214,10 @@ document.getElementById('deleteAccount').onclick=async e=>{
   await wipePhone(); toast('Your account was deleted');
 };
 function shortName(){ const p=(S.name||'').split(' ').filter(Boolean); return p.length? p[0]+(p[1]?` ${p[p.length-1][0].toUpperCase()}.`:'') : 'You'; }
-function renderNames(){ const n=shortName(), t=myTitle(); document.getElementById('passName').textContent=`${n} · ${t||'Los Angeles'}`; document.getElementById('pfName').textContent=t? `${n} · ${t}` : n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
+function renderNames(){ const n=shortName(), t=myTitle(), earned=(S.badges||[]).some(b=>b.earned_at);
+  document.getElementById('passName').textContent=S.signedUp && earned? n : `${n} · Los Angeles`;
+  const pill=document.getElementById('titlePill'); pill.hidden=!(S.signedUp && earned); document.getElementById('titlePillTxt').textContent=t||'Pick a title';
+  document.getElementById('pfName').textContent=t? `${n} · ${t}` : n; document.getElementById('pfAvatar').textContent=n[0]; document.getElementById('pfHood').textContent=`${S.nb} · exploring since ${new Date(S.joined||Date.now()).toLocaleString('en-US',{month:'long'})}`;
   document.getElementById('pfAuth').textContent=S.signedUp? 'Sign out' : 'Create account or sign in';
   document.getElementById('deleteAccount').hidden=!S.signedUp;
   document.getElementById('pfEmail').textContent=S.signedUp? (S.email||'') : ''; document.getElementById('pfNb').textContent=S.nb||'Pick one'; }
@@ -2309,9 +2331,16 @@ async function loadMyPoints(){
 }
 /* ---------- badges and titles (supabase/achievements.sql) ---------- */
 // The database works out progress from verified check-ins and saves what you've earned; the phone keeps a copy to show offline.
+// On the Passport: your title as a pill on the cover, and a shelf with your newest badges and the next one to earn.
+// The shelf opens the Badges screen; a badge opens its sheet, where you wear its title.
 const BADGE_SECTIONS=[['everyday','Everyday regulars','sun',C.red],['habits','Habits','wave',C.blue],['explore','Exploring LA','peak',C.green],
   ['kinds','Kinds of outing','star',C.sun],['contributing','Contributing','lotus',C.green],['seasonal','Seasonal','palm',C.red],['hidden','Hidden','ripple',C.ink]];
+const badgeLook=b=>BADGE_SECTIONS.find(x=>x[0]===b.section)||BADGE_SECTIONS[0];
 const myTitle=()=>(S.badges||[]).find(b=>b.key===S.titleKey && b.earned_at)?.title||'';
+const earnedBadges=()=>(S.badges||[]).filter(b=>b.earned_at).sort((a,b)=>b.earned_at.localeCompare(a.earned_at));
+// the closest badges you haven't earned (hidden ones stay secret)
+const nextBadges=()=>(S.badges||[]).filter(b=>!b.earned_at && !b.hidden).sort((a,b)=>b.progress/b.goal-a.progress/a.goal);
+const shownCount=()=>(S.badges||[]).filter(b=>!b.hidden||b.earned_at).length;
 let badgesAt=0, badgesFailed=false;
 // returns the badges this call earned (is_new), once each
 async function loadBadges(force){
@@ -2319,54 +2348,102 @@ async function loadBadges(force){
   try{ const u=(await sb.auth.getSession()).data.session?.user; if(!u) return [];
     const { data, error } = await sb.rpc('my_achievements'); if(error) throw error;
     const acct=S.accountId; if(acct && acct!==u.id) return [];
-    const had=(S.badges||[]).filter(b=>b.earned_at).length, first=!S.badges;
     S.badges=data||[]; badgesFailed=false; save();
-    const changed=first || had!==S.badges.filter(b=>b.earned_at).length;
-    if(current==='passport' && (changed || passTab==='badges')) renderPassport(); else if(current==='profile') renderProfile();
+    if(current==='passport') renderShelf(); else if(current==='badges') renderBadges(); else if(current==='profile') renderProfile();
     renderNames();
     return S.badges.filter(b=>b.is_new);
-  }catch(e){ console.warn('Supabase badges failed', e); badgesFailed=true; if(current==='passport' && passTab==='badges') renderPassport(); return []; }
+  }catch(e){ console.warn('Supabase badges failed', e); badgesFailed=true; if(current==='badges') renderBadges(); return []; }
 }
-// on the stamp screen if it's open, otherwise a toast
+// a badge's mark: its stamp once earned, otherwise a ring that fills as you go
+function badgeIcon(b,size){
+  const look=badgeLook(b), c=look[3];
+  if(b.earned_at) return `<svg width="${size}" height="${size}" viewBox="-48 -48 96 96" role="img" aria-label="${escH(b.name)}, earned"><circle r="44" fill="none" stroke="${c}" stroke-width="4"/><circle r="31" fill="none" stroke="${c}" stroke-width="2"/><g transform="scale(.62)">${glyph(look[2],c)}</g></svg>`;
+  const len=276.5, done=Math.round(b.progress/b.goal*len);
+  return `<svg width="${size}" height="${size}" viewBox="-48 -48 96 96" role="img" aria-label="${escH(b.name)}, ${b.progress} of ${b.goal}"><circle r="44" fill="none" stroke="#E2D5BC" stroke-width="4" stroke-dasharray="6 5"/>${done?`<circle r="44" fill="none" stroke="${C.sun}" stroke-width="4" stroke-dasharray="${done} ${len}" transform="rotate(-90)" stroke-linecap="round"/>`:''}<text y="7" text-anchor="middle" font-family="Caveat" font-weight="700" font-size="22" fill="${C.muted}">${b.progress} of ${b.goal}</text></svg>`;
+}
+const bigStamp=(b,size,rot)=>{ const look=badgeLook(b); return stampSVG(b.name.toUpperCase(),(b.title!==b.name? b.title : 'COMUNA · '+b.earned_at.slice(0,4)).toUpperCase(),look[2],look[3],size,rot); };
+const bar=(b,w)=>`<div class="bprog" style="width:${w}"><i style="width:${Math.round(b.progress/b.goal*100)}%"></i></div>`;
+function renderShelf(){
+  const el=document.getElementById('badgeShelf'), got=earnedBadges(), next=nextBadges()[0];
+  if(!S.signedUp){ el.innerHTML=`<div class="bsx"><b>Badges and titles</b><span>Create an account to earn badges and a title for your name.</span></div>${CHEV}`; return; }
+  if(!S.badges){ el.innerHTML=`<div class="bsx"><b>Badges</b><span>${badgesFailed?'Couldn\'t load your badges.':'Loading your badges…'}</span></div>${CHEV}`; return; }
+  el.innerHTML=(got.length? `<div class="bstack">${got.slice(0,3).map(b=>badgeIcon(b,46)).join('')}</div>` : '')
+    +`<div class="bsx"><b>${got.length? `${got.length} badge${got.length===1?'':'s'}` : 'Badges'}</b>`
+    +(next? `<span>Next: <b>${escH(next.name)}</b>, ${next.progress} of ${next.goal}</span>${bar(next,'100%')}` : `<span>You've earned every badge. Nice.</span>`)+`</div>${CHEV}`;
+}
+const CHEV=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${C.muted}" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>`;
+document.getElementById('badgeShelf').onclick=()=>{ if(!S.signedUp) openAuth('signup'); else go('badges'); };
+document.getElementById('titlePill').onclick=openTitlePicker;
+function renderBadges(){
+  const el=document.getElementById('badgeScreen'), got=earnedBadges();
+  let html=`<div class="bhead"><div class="h1" style="color:var(--green)">Badges</div>${S.badges?`<span class="hand">${got.length} of ${shownCount()} earned</span>`:''}</div>`;
+  if(!S.badges){ el.innerHTML=html+`<div class="empty">${badgesFailed? 'Couldn\'t load your badges. Check your connection and try again.' : 'Loading your badges…'}</div>`; loadBadges(); return; }
+  const close=nextBadges().filter(b=>b.progress>0).slice(0,2);
+  if(close.length) html+=`<div class="bsec">Almost there</div><div class="bclose">${close.map(b=>`<button data-badge="${escH(b.key)}"><b>${escH(b.name)}</b><span>${escH(b.blurb)}</span>${bar(b,'100%')}</button>`).join('')}</div>`;
+  html+=`<div class="bbook">`;
+  for(const look of BADGE_SECTIONS){
+    // earned first (newest first), then the closest to done
+    const list=(S.badges||[]).filter(b=>b.section===look[0] && (b.earned_at || !b.hidden))
+      .sort((a,b)=>(!!b.earned_at-!!a.earned_at) || (a.earned_at&&b.earned_at? b.earned_at.localeCompare(a.earned_at) : b.progress/b.goal-a.progress/a.goal));
+    const secret=(S.badges||[]).filter(b=>b.section===look[0] && b.hidden && !b.earned_at).length;
+    if(!list.length && !secret) continue;
+    html+=`<div class="bsec">${look[1]}</div>`
+      +(list.length? `<div class="bgrid">${list.map(b=>`<button class="${b.earned_at?'on':''}" data-badge="${escH(b.key)}">${badgeIcon(b,80)}<b>${escH(b.name)}</b>${b.key===S.titleKey?'<i>Wearing</i>':''}</button>`).join('')}</div>` : '')
+      +(secret? `<div class="pagenote">${secret} hidden badge${secret===1?'':'s'} left to find</div>` : '');
+  }
+  el.innerHTML=html+`</div>`;
+}
+document.getElementById('badgeScreen').addEventListener('click',e=>{ const b=e.target.closest('[data-badge]'); if(b) openBadge(b.dataset.badge); });
+// a badge's sheet: the big stamp, how it's earned, and its title
+function openBadge(key){
+  const b=(S.badges||[]).find(x=>x.key===key); if(!b) return;
+  const wearing=b.key===S.titleKey, up=(S.badges||[]).filter(x=>x.metric===b.metric && !x.earned_at && !x.hidden && x.goal>b.goal).sort((x,y)=>x.goal-y.goal)[0];
+  const when=b.earned_at? new Date(b.earned_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:new Date(b.earned_at).getFullYear()!==new Date().getFullYear()?'numeric':undefined}) : '';
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="bdetail">
+    ${b.earned_at? bigStamp(b,170,-6) : badgeIcon(b,150)}
+    <h2>${escH(b.name)}</h2><p>${escH(b.blurb)}${b.earned_at? ` · earned ${when}` : ''}</p>
+    ${b.earned_at? `<p class="sub">Title: <b>${escH(b.title)}</b></p><button class="btn ${wearing?'primary':'ghost'}" id="bWear" aria-pressed="${wearing}">${wearing?'Wearing this title':'Wear this title'}</button>`
+      : `${bar(b,'70%')}<p class="sub">${b.progress} of ${b.goal}. Earn it to wear the title <b>${escH(b.title)}</b>.</p>`}
+    ${up? `<p class="sub">Next up: <b>${escH(up.title)}</b>, ${escH(up.blurb.toLowerCase())} (${up.progress} of ${up.goal})</p>` : ''}</div>`;
+  overlay.classList.add('on'); document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  const w=document.getElementById('bWear'); if(w) w.onclick=async()=>{ if(await wearTitle(wearing? null : b.key,w)) openBadge(key); };
+}
+// the cover's pill: every title you've earned, or none
+function openTitlePicker(){
+  const got=earnedBadges();
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><h2>Your title</h2><p class="sub" style="margin:0 0 12px">Shows after your name on your Passport and the leaderboard.</p>
+    <div class="tpick">${got.map(b=>`<label class="${b.key===S.titleKey?'on':''}"><input type="radio" name="title" value="${escH(b.key)}" ${b.key===S.titleKey?'checked':''}><span><b>${escH(b.title)}</b><small>${escH(b.blurb)}</small></span></label>`).join('')}
+    <label class="${S.titleKey?'':'on'}"><input type="radio" name="title" value="" ${S.titleKey?'':'checked'}><span>No title</span></label></div>
+    <button class="btn ghost" id="tpMore" style="margin-top:12px">Earn more titles in Badges</button>`;
+  overlay.classList.add('on'); document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  sheet.querySelector('.tpick').onchange=async e=>{ if(await wearTitle(e.target.value||null)) openTitlePicker(); };
+  document.getElementById('tpMore').onclick=()=>{ overlay.classList.remove('on'); go('badges'); };
+}
+// a check-in that earns badges: the first gets a card on the stamp screen, any others a line; otherwise a toast
 function celebrateBadges(fresh){
   if(!fresh || !fresh.length) return;
   const m=document.getElementById('stampModal');
-  if(m.classList.contains('on')){
-    let box=m.querySelector('.unlocks'); if(!box){ box=document.createElement('div'); box.className='unlocks'; m.querySelector('h3 + p')?.after(box); }
-    fresh.forEach(b=>{ const s=document.createElement('span'); s.textContent=`Badge: ${b.name} · title "${b.title}"`; box.appendChild(s); });
-  } else toast(fresh.length===1? `New badge: ${fresh[0].name}. "${fresh[0].title}" is yours to wear.` : `${fresh.length} new badges: ${fresh.map(b=>b.name).join(', ')}`);
+  if(!m.classList.contains('on')){ toast(fresh.length===1? `New badge: ${fresh[0].name}. "${fresh[0].title}" is yours to wear.` : `${fresh.length} new badges: ${fresh.map(b=>b.name).join(', ')}`); return; }
+  const b=fresh[0], card=document.createElement('div'); card.className='bunlock';
+  card.innerHTML=`<div class="hand">badge unlocked!</div>${bigStamp(b,108,7)}<p>${escH(b.blurb)}. You've earned the title <b>${escH(b.title)}</b>.</p>`
+    +(fresh.length>1? `<p class="sub">Also: ${fresh.slice(1).map(x=>escH(x.name)).join(', ')}</p>` : '')
+    +`<div class="row"><button class="btn primary" id="bunWear">Wear it</button><button class="btn ghost" id="bunKeep">Not now</button></div>`;
+  (m.querySelector('#closeStamp')||m.lastElementChild).before(card);
+  document.getElementById('bunWear').onclick=async()=>{ if(await wearTitle(b.key)) card.remove(); };
+  document.getElementById('bunKeep').onclick=()=>card.remove();
 }
-function badgePage(){
-  const head=`<div class="ph"><b>Badges</b><span>each one earns a title for your name</span></div>`;
-  if(!S.signedUp) return head+`<div class="empty"><span class="hand">earn a title</span>Badges come from check-ins at coffee events, farmers markets, trivia nights and more, and each one unlocks a title next to your name. Create an account to start earning them.</div><button class="btn primary" data-badge-signup>Create account</button>`;
-  if(!S.badges) return head+`<div class="empty">${badgesFailed? 'Couldn\'t load your badges. Check your connection and reopen the Passport.' : 'Loading your badges…'}</div>`;
-  const all=S.badges, earned=all.filter(b=>b.earned_at), t=myTitle(), rots=[-6,5,-3,7,-5,4];
-  const card=(b,i,look)=> b.earned_at
-    ? `<div class="badge on">${stampSVG(b.name.toUpperCase(),(b.title!==b.name? b.title : 'COMUNA · '+b.earned_at.slice(0,4)).toUpperCase(),look[2],look[3],112,rots[i%rots.length])}
-        <small>${escH(b.blurb)}</small><button class="wear ${b.key===S.titleKey?'on':''}" data-wear="${escH(b.key)}" aria-pressed="${b.key===S.titleKey}">${b.key===S.titleKey?'Wearing':'Wear title'}</button></div>`
-    : `<div class="badge"><div class="ghost-stamp">${escH(b.name)}</div><small>${escH(b.blurb)}</small>
-        <div class="bprog" role="progressbar" aria-valuenow="${b.progress}" aria-valuemax="${b.goal}" aria-label="${escH(b.name)} progress"><i style="width:${Math.round(b.progress/b.goal*100)}%"></i></div><small>${b.progress} of ${b.goal}</small></div>`;
-  let html=head+`<p class="btitle">${t? `You're wearing <b>${escH(t)}</b>. Tap another badge's button to switch, or "Wearing" to take it off.` : earned.length? 'Pick a title to show next to your name on your profile and the leaderboard.' : 'Check in to events to earn your first badge and title.'}</p>`;
-  for(const look of BADGE_SECTIONS){
-    // earned first, then the closest to done; hidden ones stay secret until earned
-    const list=all.filter(b=>b.section===look[0] && (b.earned_at || !b.hidden)).sort((a,b)=>(!!b.earned_at-!!a.earned_at) || (b.progress/b.goal-a.progress/a.goal));
-    const secret=all.filter(b=>b.section===look[0] && b.hidden && !b.earned_at).length;
-    if(!list.length && !secret) continue;
-    html+=`<div class="bsec">${look[1]}</div>`+(list.length? `<div class="badgegrid">${list.map((b,i)=>card(b,i,look)).join('')}</div>` : '')
-      +(secret? `<div class="pagenote">${secret} hidden badge${secret===1?'':'s'} left to find</div>` : '');
-  }
-  return html+`<div class="pagenote">${earned.length} of ${all.filter(b=>!b.hidden||b.earned_at).length} earned</div>`;
-}
-// only titles you've earned: the database refuses any other (check_title in supabase/achievements.sql)
+// only titles you've earned: the database refuses any other (check_title in supabase/achievements.sql). Returns true once saved.
 async function wearTitle(key,button){
-  const next=S.titleKey===key? null : key, b=(S.badges||[]).find(x=>x.key===key);
-  const u=await dbUser(); if(!u){ toast('Sign in to change your title.'); return; }
+  const next=key||null, b=(S.badges||[]).find(x=>x.key===next);
+  const u=await dbUser(); if(!u){ toast('Sign in to change your title.'); return false; }
   if(button) button.disabled=true;
   const { error } = await sb.from('profiles').update({ title_key:next }).eq('id',u.id);
   if(button) button.disabled=false;
-  if(error){ console.warn('Supabase title save failed', error); toast('Couldn\'t change your title. Check your connection and try again.'); return; }
-  S.titleKey=next; save(); renderNames(); renderPassport();
+  if(error){ console.warn('Supabase title save failed', error); toast('Couldn\'t change your title. Check your connection and try again.'); return false; }
+  S.titleKey=next; save(); renderNames();
+  if(current==='passport') loadLeaderboard(); else if(current==='badges') renderBadges();
   toast(next? `You're now "${b?.title||'titled'}"` : 'Title removed');
+  return true;
 }
 
 /* ---------- neighborhood leaderboard (real points this month, from Supabase) ---------- */
@@ -2476,13 +2553,12 @@ function renderPassport(){
   const nP=Object.keys(places).length, nH=Object.keys(H).length, nC=Object.keys(Cy).length;
   document.getElementById('passCount').textContent=`${nP} place${nP===1?'':'s'}\n${nH} neighborhood${nH===1?'':'s'}\n${nC} cit${nC===1?'y':'ies'}`;
   fitLine(document.getElementById('passCount'));
-  document.getElementById('passBar').style.width=Math.min(100,(nH+nC)/(NBHDS.length+CITIES.length)*100)+'%';
   const nP0=Object.keys(S.places).length; document.getElementById('guestBar').hidden=!(S.guest && !S.signedUp && !S.accountId);
   document.getElementById('guestBarTxt').textContent=nP0||S.points? `Create an account to keep your ${nP0} stamp${nP0===1?'':'s'} and ${(S.points||0).toLocaleString()} points.` : 'Create an account so your stamps are safe if you switch phones.';
   document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
   document.getElementById('passSeal').innerHTML=omark(130,'#F3E7D1','#F3E7D1');
-  if(!['hoods','cities','badges'].includes(passTab)) passTab='places';
-  const tabs=[['places','Places',nP],['hoods','Neighborhoods',nH],['cities','Cities',nC],['badges','Badges',(S.badges||[]).filter(b=>b.earned_at).length]];
+  if(passTab!=='hoods' && passTab!=='cities') passTab='places';
+  const tabs=[['places','Places',nP],['hoods','Neighborhoods',nH],['cities','Cities',nC]];
   document.getElementById('passTabs').innerHTML=tabs.map(t=>`<button role="tab" aria-selected="${t[0]===passTab}" class="${t[0]===passTab?'on':''}" data-tab="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
   const rots=[-7,5,-3,8,-5,4,-9,6,-4,7];
   let html='';
@@ -2496,8 +2572,6 @@ function renderPassport(){
       list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,placeHood(p)?.name||'Location unavailable',p.cat,p.n,rots[i%rots.length])}</div>`).join('')+
       (untried.length? untried : ['next']).slice(0,list.length%2?1:2).map(k=>`<div class="slot"><div class="ghost-rect">${FIRST[k]||'your next spot?'}</div></div>`).join('')+
       `</div><div class="pagenote">${list.length} place${list.length===1?'':'s'} stamped</div>`;
-  } else if(passTab==='badges'){
-    html=badgePage();
   } else {
     // stamps you've earned, then the closest one or two you haven't, to fill the row
     const city=passTab==='cities', V=city?Cy:H, all=city?CITIES:NBHDS, n=city?nC:nH;
@@ -2508,18 +2582,17 @@ function renderPassport(){
       all.filter(h=>!V[h.name]).sort((a,b)=>miles(origin(),a)-miles(origin(),b)).slice(0,n%2?1:2).map(h=>`<div class="slot"><div class="ghost-stamp">${escH(h.name)}?</div></div>`).join('')+
       `</div><div class="pagenote">${n} of ${all.length} ${city?'cities':'neighborhoods'}</div>`;
   }
-  document.getElementById('passPage').innerHTML=html;
+  document.getElementById('passPage').innerHTML=html; renderShelf();
   document.getElementById('lbTitle').textContent=`Top 5 explorers in ${S.nb||'your neighborhood'}`;
   loadLeaderboard(); loadBadges().then(celebrateBadges);
 }
 document.getElementById('passTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(!b) return; passTab=b.dataset.tab; renderPassport(); });
-document.getElementById('passPage').addEventListener('click',e=>{ const w=e.target.closest('[data-wear]'); if(w) wearTitle(w.dataset.wear,w); if(e.target.closest('[data-badge-signup]')) openAuth('signup'); });
 
 
 /* ---------- profile / alerts ---------- */
 function renderProfile(){ document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up';
   const nb=(S.badges||[]).filter(b=>b.earned_at).length; document.getElementById('pfBadgeN').textContent=nb? `${nb} earned${myTitle()?' · '+myTitle():''}` : 'Earn your first'; }
-document.getElementById('pfBadges').onclick=()=>{ passTab='badges'; go('passport'); };
+document.getElementById('pfBadges').onclick=()=>go('badges');
 // reminders for events you RSVP’d to happening in the next 7 days
 let ALERTS=[];
 function buildAlerts(){

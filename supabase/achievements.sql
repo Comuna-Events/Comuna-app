@@ -190,10 +190,11 @@ $$;
 revoke execute on function public.achievement_progress(uuid) from public, anon, authenticated;
 
 -- The signed-in person's achievements: saves anything newly earned, then returns the catalogue with progress.
--- is_new marks ones earned by this call, so the app can celebrate them once.
-create or replace function public.my_achievements()
+-- is_new marks ones earned by this call, so the app can celebrate them once; metric links tiers of one rule.
+drop function if exists public.my_achievements();
+create function public.my_achievements()
 returns table (key text, section text, name text, title text, blurb text, goal int, hidden boolean,
-               progress int, earned_at timestamptz, is_new boolean)
+               progress int, earned_at timestamptz, is_new boolean, metric text)
 language plpgsql security definer set search_path = public as $$
 #variable_conflict use_column
 declare uid uuid := auth.uid(); started timestamptz := clock_timestamp();
@@ -205,7 +206,7 @@ begin
   on conflict do nothing;
   return query
     select a.key, a.section, a.name, a.title, a.blurb, a.goal, a.hidden,
-           least(coalesce(p.progress, 0), a.goal), u.earned_at, coalesce(u.earned_at >= started, false)
+           least(coalesce(p.progress, 0), a.goal), u.earned_at, coalesce(u.earned_at >= started, false), a.metric
     from achievements a
     left join achievement_progress(uid) p on p.metric = a.metric
     left join user_achievements u on u.user_id = uid and u.key = a.key
