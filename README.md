@@ -51,9 +51,10 @@ wear one badge's title after their name. The list lives in the `achievements` ta
 or switch one off (`active = false`), in Supabase > Table Editor and the app picks it up. Adding a new *kind* of rule needs a new
 metric in `achievement_progress()`; see the top of `supabase/achievements.sql`.
 
-Each badge is an embroidered patch image in `badges/` (`badges/<key>.webp`, the key from the `achievements` table). To add
-or redesign one, edit its entry in `badges/patches.json` (category, ribbon text, tier and icon) and run
-`node scripts/build-badges.mjs` (or `node scripts/build-badges.mjs <key>` for just that one). A badge without art yet shows
+Each badge is an embroidered patch image in `badges/` (`badges/<key>.webp`, the key from the `achievements` table). The
+current set is illustrated art; to replace one, save the new image over `badges/<key>.webp` (square, transparent background).
+A new badge can start as a drawn patch: add it to `badges/patches.json` (category, ribbon text, tier and icon) and run
+`node scripts/build-badges.mjs`, which only draws badges that don't have illustrated art. A badge with no image at all shows
 its category's blank patch.
 
 ## Team checks
