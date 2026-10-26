@@ -3,7 +3,7 @@
 // offline data strategy, just enough for a demo/beta build to qualify
 // as an installable PWA on iOS and Android.
 
-const CACHE_NAME = "third-space-demo-v106-worn-place-stamps";
+const CACHE_NAME = "third-space-demo-v107-illustrated-place-stamps";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -38,6 +38,12 @@ const APP_SHELL = [
   "./stamps/sherman-oaks.png",
   "./stamps/leimert-park.png",
   "./stamps/griffith-park.png",
+  "./stamps/place-food.webp",
+  "./stamps/place-arts.webp",
+  "./stamps/place-classes.webp",
+  "./stamps/place-active.webp",
+  "./stamps/place-markets.webp",
+  "./stamps/place-community.webp",
   "./stamps/north-hollywood.png",
   "./stamps/exposition-park.png",
   "./stamps/east-hollywood.png",
