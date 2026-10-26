@@ -705,6 +705,17 @@ img{ max-width:100% }
       <button class="btn primary" id="kitNext" style="margin-top:18px">Let's go</button>
     </div></div>
     <div class="stampmodal" id="stampModal" role="dialog" aria-modal="true"></div>
+    <!-- worn rubber-stamp ink, shared by the drawn stamps: speckles where the ink didn't take, faded patches, rough edges -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="inkWear" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="3" result="fine"/>
+      <feColorMatrix in="fine" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -3.2 0 0 0 2.65" result="speck"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" result="coarse"/>
+      <feColorMatrix in="coarse" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.5 0 0 0 1.85" result="blot"/>
+      <feComposite in="speck" in2="blot" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="mask"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="1" seed="5" result="dn"/>
+      <feDisplacementMap in="SourceGraphic" in2="dn" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <feComposite in="rough" in2="mask" operator="in"/>
+    </filter></defs></svg>
     <div class="toast" id="toast"></div>
   </div></div>
 </div>
@@ -898,14 +909,14 @@ function hoodStamp(name,size,rot,light){
 }
 function stampSVG(top,bottom,kind,c,size,rot,fill){
   const r=size/2, a='sa'+(++sid), b='sb'+sid, Rt=r-27*size/170, Rb=r-15*size/170, s=size/170;
-  return `<svg width="${size}" height="${size}" viewBox="${-r} ${-r} ${size} ${size}" style="transform:rotate(${rot||0}deg);overflow:visible;display:block" aria-hidden="true">
+  return `<svg width="${size}" height="${size}" viewBox="${-r} ${-r} ${size} ${size}" style="transform:rotate(${rot||0}deg);overflow:visible;display:block" aria-hidden="true"><g filter="url(#inkWear)">
   <circle r="${r-3}" fill="${fill||'none'}" stroke="${c}" stroke-width="${3.2*Math.max(s,.7)}"/>
   <circle r="${r-31*s}" fill="none" stroke="${c}" stroke-width="${1.6*Math.max(s,.7)}"/>
   <path id="${a}" d="M${-Rt} 0 A${Rt} ${Rt} 0 0 1 ${Rt} 0" fill="none"/><path id="${b}" d="M${-Rb} 0 A${Rb} ${Rb} 0 0 0 ${Rb} 0" fill="none"/>
   <text font-family="Big Shoulders Display" font-weight="800" font-size="${(size*.11).toFixed(1)}" letter-spacing="1.2" fill="${c}"><textPath href="#${a}" startOffset="50%" text-anchor="middle">${escH(top)}</textPath></text>
   <text font-family="Big Shoulders Display" font-weight="700" font-size="${(size*.08).toFixed(1)}" letter-spacing="1.5" fill="${c}"><textPath href="#${b}" startOffset="50%" text-anchor="middle">${escH(bottom)}</textPath></text>
   <circle cx="${-(r-21*s)}" r="${2.4*s}" fill="${c}"/><circle cx="${r-21*s}" r="${2.4*s}" fill="${c}"/>
-  <g transform="scale(${s})">${glyph(kind,c)}</g></svg>`;
+  <g transform="scale(${s})">${glyph(kind,c)}</g></g></svg>`;
 }
 // "RSVP'D" ticket stamp shown when you RSVP: same look as the check-in stamp, Sun ink
 function rsvpStamp(ev,w=240,h=160){
@@ -919,17 +930,29 @@ function rsvpStamp(ev,w=240,h=160){
   <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
   <circle cx="75" cy="18" r="3.2" fill="${C.red}"/></svg>`;
 }
+// Place stamps: rectangular passport entry stamps in the same worn inks as the neighborhood stamps, with a little scene
+// for the kind of place (a food truck, a theater, a market stall...). ink overrides the color (pale ink on dark screens).
+const PLACE_INK={ food:'#B8483A', markets:'#B8483A', arts:'#3F5E9E', active:'#3F5E9E', classes:'#34332E', community:'#34332E' };
+const PLACE_SCENE={
+  food:`<g fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M44 62 V44 H92 L104 52 V62 Z"/><path d="M52 44 V38 H84 V44"/><path d="M50 48 H70 V56 H50 Z"/><path d="M92 46 L100 52 H92 Z"/><path d="M38 64 H112"/></g><circle cx="56" cy="64" r="4.5"/><circle cx="92" cy="64" r="4.5"/><path d="M52 38 q4 -5 8 0 q4 -5 8 0 q4 -5 8 0 q4 -5 8 0" fill="none" stroke-width="1.6"/><path d="M110 64 V40 M110 40 q-6 -3 -10 2 M110 40 q6 -3 10 2 M110 40 q-3 -5 -9 -5 M110 40 q3 -5 9 -5" fill="none" stroke-width="1.6" stroke-linecap="round"/>`,
+  arts:`<g fill="none" stroke-width="1.8" stroke-linejoin="round"><path d="M50 66 V46 H100 V66"/><path d="M46 46 H104 V35 H46 Z"/><path d="M68 66 V55 H82 V66"/><path d="M56 52 H64 V60 H56 Z M86 52 H94 V60 H86 Z"/></g>${[50,56,62,68,74,80,86,92,98].map(x=>`<circle cx="${x}" cy="40.5" r="1.3"/>`).join('')}<path d="M38 66 H112" fill="none" stroke-width="1.8"/><path d="M40 66 V48 M40 48 q-5 -2 -8 2 M40 48 q5 -2 8 2 M40 48 q-2 -5 -7 -5 M40 48 q2 -5 7 -5" fill="none" stroke-width="1.5" stroke-linecap="round"/>`,
+  classes:`<g fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M56 30 H96 V56 H56 Z"/><path d="M62 56 L56 68 M90 56 L96 68 M76 30 V26"/><path d="M62 38 H78 M62 44 H86 M62 50 H74"/></g><path d="M100 66 L112 46 L115 48 L103 68 Z"/><path d="M38 68 H112" fill="none" stroke-width="1.8"/><path d="M42 68 V58 H50 V68" fill="none" stroke-width="1.6"/>`,
+  active:`<path d="M36 66 L58 40 L70 52 L84 34 L114 66 Z" fill="none" stroke-width="1.8" stroke-linejoin="round"/><path d="M58 40 L54 46 L60 44 L63 47 Z M84 34 L79 41 L85 39 L89 43 Z"/><path d="M76 66 C72 60 80 58 76 52 C73 48 78 46 76 42" fill="none" stroke-width="1.5" stroke-dasharray="2.5 2"/><circle cx="104" cy="34" r="5.5"/><path d="M42 40 l3 -2 l3 2 M48 34 l3 -2 l3 2" fill="none" stroke-width="1.3"/>`,
+  markets:`<g fill="none" stroke-width="1.8" stroke-linejoin="round"><path d="M46 66 V46 M104 66 V46 M42 46 H108 L104 34 H46 Z"/><path d="M52 66 V58 H72 V66 M78 66 V58 H98 V66"/></g><path d="M46 34 L42 46 H52 L54 34 Z M62 34 L62 46 H72 L70 34 Z M78 34 L80 46 H90 L86 34 Z M94 34 L98 46 H108 L104 34 Z"/>${[[56,55],[62,54],[68,55],[82,55],[88,54],[94,55]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.6"/>`).join('')}<path d="M36 66 H114" fill="none" stroke-width="1.8"/>`,
+  community:`<path d="M38 32 Q75 46 112 32" fill="none" stroke-width="1.2"/>${[[46,35.5],[56,38.5],[66,40.2],[76,40.6],[86,39.8],[96,37.8],[106,34.5]].map(([x,y])=>`<path d="M${x} ${y} v2" fill="none"/><ellipse cx="${x}" cy="${y+4.5}" rx="2.2" ry="2.8"/>`).join('')}<path d="M56 66 L62 56 H88 L94 66 M58 56 H92 M64 56 L60 66 M86 56 L90 66" fill="none" stroke-width="1.8" stroke-linecap="round"/><circle cx="46" cy="52" r="3.2"/><path d="M42 66 V58 Q46 55 50 58 V66 Z"/><circle cx="104" cy="52" r="3.2"/><path d="M100 66 V58 Q104 55 108 58 V66 Z"/><path d="M36 66 H114" fill="none" stroke-width="1.8"/>`
+};
 function placeStamp(name,hood,cat,n,rot,w=150,h=100,ink){
-  const bg=CATS[catKey(cat)].bg, c=ink||bg, reg=n>=5, k=w/150;
-  const nm=name.toUpperCase(), fit=nm.length*9.2*k>w-26*k;
+  const k=catKey(cat), c=ink||PLACE_INK[k]||PLACE_INK.community, nm=name.toUpperCase(), sub=`${hood.toUpperCase()} · ${n} VISIT${n>1?'S':''}${n>=5?' · REGULAR':''}`;
   return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${escH(name)} stamp">
-  <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
-  <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
-  <circle cx="75" cy="30" r="7" fill="${bg}" stroke="${ink?c:'none'}" stroke-width="2"/>
-  <text x="75" y="64" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="17" letter-spacing="1" fill="${c}" ${nm.length*9.2>124?'textLength="124" lengthAdjust="spacingAndGlyphs"':''}>${escH(nm)}</text>
-  <text x="75" y="79" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="8" letter-spacing="1.4" fill="${c}">${escH(hood.toUpperCase())} · ${n} VISIT${n>1?'S':''}</text>
-  ${reg?`<g transform="translate(112 4) rotate(12)"><rect x="0" y="0" width="44" height="15" fill="${C.sun}"/><text x="22" y="11" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="10" letter-spacing="1" fill="${C.ink}">REGULAR</text></g>`:''}
-  </svg>`;
+  <g filter="url(#inkWear)" fill="${c}" stroke="${c}">
+  <rect x="3" y="3" width="144" height="94" rx="7" fill="none" stroke-width="3.2"/>
+  <rect x="8.5" y="8.5" width="133" height="83" rx="4" fill="none" stroke-width="1.3"/>
+  <text x="75" y="24" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="15" letter-spacing="1.5" stroke="none" ${nm.length*8.6>118?'textLength="118" lengthAdjust="spacingAndGlyphs"':''}>${escH(nm)}</text>
+  <circle cx="20" cy="50" r="2" stroke="none"/><circle cx="130" cy="50" r="2" stroke="none"/>
+  ${PLACE_SCENE[k]||PLACE_SCENE.community}
+  <path d="M24 74 H126" fill="none" stroke-width="1"/>
+  <text x="75" y="86" text-anchor="middle" font-family="Big Shoulders Display" font-weight="700" font-size="9.5" letter-spacing="1.6" stroke="none" ${sub.length*6>110?'textLength="110" lengthAdjust="spacingAndGlyphs"':''}>${escH(sub)}</text>
+  </g></svg>`;
 }
 function cityLabel(title,sub,bg,fg,w=160,h=106,rot=0){
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${escH(title)} stamp">
