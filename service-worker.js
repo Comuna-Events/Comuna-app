@@ -3,7 +3,7 @@
 // offline data strategy, just enough for a demo/beta build to qualify
 // as an installable PWA on iOS and Android.
 
-const CACHE_NAME = "third-space-demo-v103-badges";
+const CACHE_NAME = "third-space-demo-v104-first-badge";
 const APP_SHELL = [
   "./",
   "./index.html",
