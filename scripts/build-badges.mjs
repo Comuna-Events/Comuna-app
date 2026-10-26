@@ -1,6 +1,9 @@
 // Builds the badge patches (badges/<key>.webp) from badges/patches.json.
-//   node scripts/build-badges.mjs            every badge, plus a blank patch per category (badges/section-<name>.webp)
-//   node scripts/build-badges.mjs coffee_1   just the badges named
+//   node scripts/build-badges.mjs                     every drawn badge, plus a blank patch per category (badges/section-<name>.webp)
+//   node scripts/build-badges.mjs coffee_1            just the badges named
+//   node scripts/build-badges.mjs --redraw coffee_1   replace a badge's illustrated art with a drawn patch
+// Badges marked "art": "illustrated" have hand-made images in badges/ and are never redrawn unless named with --redraw.
+// To add illustrated art, save it as badges/<key>.webp (a square, transparent background) and mark the badge illustrated.
 // Each badge's key matches its row in the achievements table (supabase/achievements.sql). A badge the team adds in
 // Supabase before it has art here shows its category's blank patch in the app.
 // patches.json: "sections" set each category's shape and colors; "tiers" 2 and 3 swap the edge for silver or gold and
@@ -90,10 +93,11 @@ ${ribbon ? `<text y="${y + 14.5}" text-anchor="middle" font-family="Big Shoulder
 </svg>`;
 }
 
-const only = process.argv.slice(2);
+const redraw = process.argv.includes('--redraw'), only = process.argv.slice(2).filter(a => a !== '--redraw');
 const jobs = [];
 for (const [key, b] of Object.entries(data.badges)) {
   if (only.length && !only.includes(key)) continue;
+  if (b.art === 'illustrated' && !(redraw && only.includes(key))) { if (only.length) console.log(`${key} has illustrated art; add --redraw to replace it.`); continue; }
   if (!data.sections[b.section]) throw new Error(`${key}: unknown section "${b.section}"`);
   jobs.push([key, patchSVG({ ...data.sections[b.section], ...(data.tiers[b.tier] || {}) }, b, b.ribbon)]);
 }

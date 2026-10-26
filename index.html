@@ -391,7 +391,10 @@ img{ max-width:100% }
 .page .ph span{ font-size:11.5px; color:var(--muted); text-align:right }
 .pagegrid{ display:grid; grid-template-columns:1fr 1fr; gap:4px 2px; justify-items:center; align-items:center }
 .pagegrid .slot{ text-align:center; padding:4px 0 }
-.ghost-rect{ width:140px; height:92px; border-radius:10px; border:2px dashed #CDBF9F; display:grid; place-items:center; font-family:var(--hand); font-size:18px; color:#A89C82; margin:4px 0; padding:8px; line-height:1 }
+.pstamp{ position:relative; aspect-ratio:100/92; margin:4px auto }
+.pstamp .pink{ position:absolute; inset:0; -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat }
+.pstamp svg{ position:absolute; inset:0; width:100%; height:100%; overflow:visible }
+.ghost-rect{ width:140px; height:128px; border-radius:10px; border:2px dashed #CDBF9F; display:grid; place-items:center; font-family:var(--hand); font-size:18px; color:#A89C82; margin:4px 0; padding:8px; line-height:1 }
 .pagenote{ font-family:var(--hand); font-size:18px; color:var(--red); text-align:center; margin-top:10px }
 /* passport: the six kinds of outing, lit once you have a stamp in each */
 .kinds{ display:flex; align-items:center; gap:6px; padding:2px 4px 12px }
@@ -705,6 +708,17 @@ img{ max-width:100% }
       <button class="btn primary" id="kitNext" style="margin-top:18px">Let's go</button>
     </div></div>
     <div class="stampmodal" id="stampModal" role="dialog" aria-modal="true"></div>
+    <!-- worn rubber-stamp ink, shared by the drawn stamps: speckles where the ink didn't take, faded patches, rough edges -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="inkWear" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="3" result="fine"/>
+      <feColorMatrix in="fine" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -3.2 0 0 0 2.65" result="speck"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" result="coarse"/>
+      <feColorMatrix in="coarse" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.5 0 0 0 1.85" result="blot"/>
+      <feComposite in="speck" in2="blot" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="mask"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="1" seed="5" result="dn"/>
+      <feDisplacementMap in="SourceGraphic" in2="dn" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <feComposite in="rough" in2="mask" operator="in"/>
+    </filter></defs></svg>
     <div class="toast" id="toast"></div>
   </div></div>
 </div>
@@ -898,14 +912,14 @@ function hoodStamp(name,size,rot,light){
 }
 function stampSVG(top,bottom,kind,c,size,rot,fill){
   const r=size/2, a='sa'+(++sid), b='sb'+sid, Rt=r-27*size/170, Rb=r-15*size/170, s=size/170;
-  return `<svg width="${size}" height="${size}" viewBox="${-r} ${-r} ${size} ${size}" style="transform:rotate(${rot||0}deg);overflow:visible;display:block" aria-hidden="true">
+  return `<svg width="${size}" height="${size}" viewBox="${-r} ${-r} ${size} ${size}" style="transform:rotate(${rot||0}deg);overflow:visible;display:block" aria-hidden="true"><g filter="url(#inkWear)">
   <circle r="${r-3}" fill="${fill||'none'}" stroke="${c}" stroke-width="${3.2*Math.max(s,.7)}"/>
   <circle r="${r-31*s}" fill="none" stroke="${c}" stroke-width="${1.6*Math.max(s,.7)}"/>
   <path id="${a}" d="M${-Rt} 0 A${Rt} ${Rt} 0 0 1 ${Rt} 0" fill="none"/><path id="${b}" d="M${-Rb} 0 A${Rb} ${Rb} 0 0 0 ${Rb} 0" fill="none"/>
   <text font-family="Big Shoulders Display" font-weight="800" font-size="${(size*.11).toFixed(1)}" letter-spacing="1.2" fill="${c}"><textPath href="#${a}" startOffset="50%" text-anchor="middle">${escH(top)}</textPath></text>
   <text font-family="Big Shoulders Display" font-weight="700" font-size="${(size*.08).toFixed(1)}" letter-spacing="1.5" fill="${c}"><textPath href="#${b}" startOffset="50%" text-anchor="middle">${escH(bottom)}</textPath></text>
   <circle cx="${-(r-21*s)}" r="${2.4*s}" fill="${c}"/><circle cx="${r-21*s}" r="${2.4*s}" fill="${c}"/>
-  <g transform="scale(${s})">${glyph(kind,c)}</g></svg>`;
+  <g transform="scale(${s})">${glyph(kind,c)}</g></g></svg>`;
 }
 // "RSVP'D" ticket stamp shown when you RSVP: same look as the check-in stamp, Sun ink
 function rsvpStamp(ev,w=240,h=160){
@@ -919,17 +933,19 @@ function rsvpStamp(ev,w=240,h=160){
   <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
   <circle cx="75" cy="18" r="3.2" fill="${C.red}"/></svg>`;
 }
-function placeStamp(name,hood,cat,n,rot,w=150,h=100,ink){
-  const bg=CATS[catKey(cat)].bg, c=ink||bg, reg=n>=5, k=w/150;
-  const nm=name.toUpperCase(), fit=nm.length*9.2*k>w-26*k;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${escH(name)} stamp">
-  <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
-  <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
-  <circle cx="75" cy="30" r="7" fill="${bg}" stroke="${ink?c:'none'}" stroke-width="2"/>
-  <text x="75" y="64" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="17" letter-spacing="1" fill="${c}" ${nm.length*9.2>124?'textLength="124" lengthAdjust="spacingAndGlyphs"':''}>${escH(nm)}</text>
-  <text x="75" y="79" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="8" letter-spacing="1.4" fill="${c}">${escH(hood.toUpperCase())} · ${n} VISIT${n>1?'S':''}</text>
-  ${reg?`<g transform="translate(112 4) rotate(12)"><rect x="0" y="0" width="44" height="15" fill="${C.sun}"/><text x="22" y="11" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="10" letter-spacing="1" fill="${C.ink}">REGULAR</text></g>`:''}
-  </svg>`;
+// Place stamps: illustrated passport entry stamps, one per kind of place (stamps/place-<category>.webp, ink only).
+// The art is used as a mask, so it prints in any ink: its own color, or pale ink on dark screens. The venue goes in the
+// top band and its neighborhood or city in the bottom band, in the same worn ink.
+const PLACE_INK={ food:'#325A93', arts:'#B35042', classes:'#4A4640', active:'#B45647', markets:'#4D4942', community:'#2F67A4' };
+function placeStamp(name,hood,cat,n,rot,w=150,h,ink){
+  const k=PLACE_INK[catKey(cat)]? catKey(cat) : 'community', c=ink||PLACE_INK[k], nm=name.toUpperCase(), sub=`• ${hood.toUpperCase()} •`;
+  const fit=(t,per,max)=>t.length*per>max? `textLength="${max}" lengthAdjust="spacingAndGlyphs"` : '';
+  return `<div class="pstamp" style="width:${w}px;transform:rotate(${rot}deg)" role="img" aria-label="${escH(name)} stamp, ${escH(hood)}">
+  <div class="pink" style="background:${c};-webkit-mask-image:url(stamps/place-${k}.webp);mask-image:url(stamps/place-${k}.webp)"></div>
+  <svg viewBox="0 0 100 92" aria-hidden="true"><g filter="url(#inkWear)" fill="${c}">
+  <text x="50" y="18.3" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="9.6" letter-spacing=".9" ${fit(nm,5.6,76)}>${escH(nm)}</text>
+  <text x="50" y="81.3" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="7.6" letter-spacing="1.2" ${fit(sub,4.7,78)}>${escH(sub)}</text>
+  </g></svg></div>`;
 }
 function cityLabel(title,sub,bg,fg,w=160,h=106,rot=0){
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${escH(title)} stamp">
@@ -2334,9 +2350,9 @@ async function loadMyPoints(){
 // The database works out progress from verified check-ins and saves what you've earned; the phone keeps a copy to show offline.
 // On the Passport: your title as a pill on the cover, and a shelf with your newest badges and the next one to earn.
 // The shelf opens the Badges screen; a badge opens its sheet, where you wear its title.
-// Earned badges are embroidered patches drawn by scripts/build-badges.mjs (badges/<key>.webp); each category has its own
+// Earned badges are embroidered patch images (badges/<key>.webp, see scripts/build-badges.mjs); each category has its own
 // shape and a blank patch for badges that don't have art yet. Locked ones are the shape's outline, stitched in as you go.
-const BADGE_SECTIONS=[['everyday','Everyday regulars','circle',C.red],['habits','Habits','shield',C.blue],['explore','Exploring LA','peak',C.green],
+const BADGE_SECTIONS=[['everyday','Everyday regulars','circle',C.red],['habits','Habits','circle',C.blue],['explore','Exploring LA','hex',C.green],
   ['kinds','Kinds of outing','diamond',C.sun],['contributing','Contributing','hex','#E08A6E'],['seasonal','Seasonal','scallop','#A67C1E'],['hidden','Hidden','circle',C.ink]];
 const BADGE_SHAPES={ circle:'M0 -56 A56 56 0 1 1 0 56 A56 56 0 1 1 0 -56 Z', shield:'M0 -58 L50 -44 L50 4 C50 34 27 50 0 60 C-27 50 -50 34 -50 4 L-50 -44 Z',
   peak:'M0 -60 L56 -14 L56 54 L-56 54 L-56 -14 Z', diamond:'M0 -62 L62 0 L0 62 L-62 0 Z', hex:'M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z',
@@ -2603,7 +2619,7 @@ function renderPassport(){
     html=`<div class="ph"><b>Places</b><span>a stamp for every spot you check in</span></div>
       <div class="kinds">${Object.keys(CATS).map(k=>`<span class="${tried.has(k)?'on':''}" title="${CATS[k].label}">${catDot(k,30)}<small>${CATS[k].short}</small></span>`).join('')}<b>${tried.size} of ${Object.keys(CATS).length}</b></div>
       <div class="pagegrid">`+
-      list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,placeHood(p)?.name||'Location unavailable',p.cat,p.n,rots[i%rots.length])}</div>`).join('')+
+      list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,placeHood(p)?.name||'Location unavailable',p.cat,p.n,rots[i%rots.length])}<div class="pagenote" style="margin-top:4px">${p.n} visit${p.n>1?'s':''}${p.n>=5?' · regular':''}</div></div>`).join('')+
       (untried.length? untried : ['next']).slice(0,list.length%2?1:2).map(k=>`<div class="slot"><div class="ghost-rect">${FIRST[k]||'your next spot?'}</div></div>`).join('')+
       `</div><div class="pagenote">${list.length} place${list.length===1?'':'s'} stamped</div>`;
   } else {
