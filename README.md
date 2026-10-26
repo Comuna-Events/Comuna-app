@@ -44,6 +44,13 @@ Everyone else sees the plain app.
 Events are added straight to the `events` table. Every event needs a map location, or nobody can check in:
 read `supabase/ADDING_EVENTS.md` before adding or importing any.
 
+## Badges and titles
+
+People earn badges from verified check-ins (coffee events, farmers markets, trivia nights, streaks, new neighborhoods…) and can
+wear one badge's title after their name. The list lives in the `achievements` table: change a name, title, rule text or goal,
+or switch one off (`active = false`), in Supabase > Table Editor and the app picks it up. Adding a new *kind* of rule needs a new
+metric in `achievement_progress()`; see the top of `supabase/achievements.sql`.
+
 ## Team checks
 
 - **Reported events**, daily: `select * from event_reports_review;` in the SQL Editor. How to restore, remove or
