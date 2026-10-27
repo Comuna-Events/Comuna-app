@@ -2360,7 +2360,7 @@ async function loadMyPoints(){
 // The database works out progress from verified check-ins and saves what you've earned; the phone keeps a copy to show offline.
 // On the Passport: your title as a pill on the cover, and a shelf with your newest badges and the next one to earn.
 // The shelf opens the Badges screen; a badge opens its sheet, where you wear its title.
-// Earned badges are embroidered patch images (badges/<key>.webp, see scripts/build-badges.mjs); each category has its own
+// Earned badges are embroidered patch images (badges/<key>.webp, see scripts/patches); each category has its own
 // shape and a blank patch for badges that don't have art yet. Locked ones are the shape's outline, stitched in as you go.
 const BADGE_SECTIONS=[['everyday','Everyday regulars','circle',C.red],['habits','Habits','circle',C.blue],['explore','Exploring LA','hex',C.green],
   ['kinds','Kinds of outing','diamond',C.sun],['contributing','Contributing','hex','#E08A6E'],['seasonal','Seasonal','scallop','#A67C1E'],['hidden','Hidden','circle',C.ink]];
@@ -2388,9 +2388,11 @@ async function loadBadges(force){
 }
 // a badge's mark: its stamp once earned, otherwise a ring that fills as you go
 // a badge's mark: its patch once earned, otherwise its shape's outline with progress stitched around the edge
+// Bump BADGE_ART whenever badges/*.webp change: phones keep the old image under the same URL otherwise.
+const BADGE_ART='2026-10-27';
 function badgeIcon(b,size){
-  const look=badgeLook(b), blank=`badges/section-${look[0]}.webp`;
-  if(b.earned_at) return `<img class="patch" src="${/^[a-z0-9_-]+$/i.test(b.key)? `badges/${b.key}.webp` : blank}" width="${size}" height="${size}" alt="${escH(b.name)}, earned" onerror="this.onerror=null;this.src='${blank}'">`;
+  const look=badgeLook(b), blank=`badges/section-${look[0]}.webp?v=${BADGE_ART}`;
+  if(b.earned_at) return `<img class="patch" src="${/^[a-z0-9_-]+$/i.test(b.key)? `badges/${b.key}.webp?v=${BADGE_ART}` : blank}" width="${size}" height="${size}" alt="${escH(b.name)}, earned" onerror="this.onerror=null;this.src='${blank}'">`;
   const d=BADGE_SHAPES[look[2]], pct=Math.round(b.progress/b.goal*100);
   return `<svg width="${size}" height="${size}" viewBox="-72 -72 144 144" role="img" aria-label="${escH(b.name)}, ${b.progress} of ${b.goal}"><path d="${d}" fill="#EFE2C8" stroke="#CDBF9F" stroke-width="3" stroke-dasharray="6 5"/>${pct?`<path d="${d}" fill="none" stroke="${look[3]}" stroke-width="8" pathLength="100" stroke-dasharray="${pct} 100"/>`:''}<text y="8" text-anchor="middle" font-family="Caveat" font-weight="700" font-size="24" fill="${C.muted}">${b.progress} of ${b.goal}</text></svg>`;
 }

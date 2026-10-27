@@ -30,7 +30,7 @@ const plain=x=>JSON.parse(JSON.stringify(x));
  assert.ok(shelf.indexOf('Bean Counter, earned')<shelf.indexOf('Double Booked, earned'),'newest badge first');
 
  // keys that aren't safe file names go straight to the blank patch; locked badges are their shape's outline
- assert.match(c.badgeIcon({key:'x/../y',section:'kinds',name:'X',earned_at:'2026-01-01',progress:1,goal:1},40),/src="badges\/section-kinds\.webp"/);
+ assert.match(c.badgeIcon({key:'x/../y',section:'kinds',name:'X',earned_at:'2026-01-01',progress:1,goal:1},40),/src="badges\/section-kinds\.webp\?v=[\w-]+"/);
  assert.match(c.badgeIcon(reply.data[2],80),/stroke-dasharray="67 100"/,'progress is stitched around the edge');
 
  // the Badges screen
@@ -41,7 +41,7 @@ const plain=x=>JSON.parse(JSON.stringify(x));
 
  // a badge's sheet, and the next tier of the same rule
  c.openBadge('coffee_1');assert.ok(overlay.on);
- assert.match(c.sheet.innerHTML,/<img class="patch" src="badges\/coffee_1\.webp"[^>]*onerror="[^"]*badges\/section-everyday\.webp/,'an earned badge shows its patch, with its category\'s blank patch if the art is missing');
+ assert.match(c.sheet.innerHTML,/<img class="patch" src="badges\/coffee_1\.webp\?v=[\w-]+"[^>]*onerror="[^"]*badges\/section-everyday\.webp\?v=/,'an earned badge shows its patch, with its category\'s blank patch if the art is missing');
  assert.match(c.sheet.innerHTML,/Wear this title/);assert.match(c.sheet.innerHTML,/Next up: <b>Barista's Favorite<\/b>/,'the next tier comes from the same rule');
  c.openBadge('market_1');assert.match(c.sheet.innerHTML,/Earn it to wear the title <b>Market Regular<\/b>/);assert.doesNotMatch(c.sheet.innerHTML,/bWear/,'locked badges cannot be worn');
 
