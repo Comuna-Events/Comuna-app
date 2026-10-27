@@ -1,0 +1,16 @@
+{
+  "appId": "com.wearecomuna.app",
+  "appName": "Comuna",
+  "webDir": "ios-web",
+  "ios": {
+    "contentInset": "never",
+    "scheme": "Comuna"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#244D3A",
+      "showSpinner": false
+    }
+  }
+}
