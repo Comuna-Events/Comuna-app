@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 // The web token only works on the team's site (Mapbox > Tokens > URL restrictions), and the app's pages come from
 // capacitor://localhost, so the app has its own public token with no URL restrictions.
-const MAPBOX_IOS_TOKEN = '';
+const MAPBOX_IOS_TOKEN = 'pk.eyJ1IjoiY3BpY2tlMjEiLCJhIjoiY212cjhjMTViMDZ4OTM1b3N0YnZuODB1ZyJ9.U5boDNR9DKaoEzK4IwP1Cg';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'ios-web');
