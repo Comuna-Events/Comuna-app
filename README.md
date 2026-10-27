@@ -52,10 +52,10 @@ or switch one off (`active = false`), in Supabase > Table Editor and the app pic
 metric in `achievement_progress()`; see the top of `supabase/achievements.sql`.
 
 Each badge is an embroidered patch image in `badges/` (`badges/<key>.webp`, the key from the `achievements` table). The
-current set is illustrated art; to replace one, save the new image over `badges/<key>.webp` (square, transparent background).
-A new badge can start as a drawn patch: add it to `badges/patches.json` (category, ribbon text, tier and icon) and run
-`node scripts/build-badges.mjs`, which only draws badges that don't have illustrated art. A badge with no image at all shows
-its category's blank patch.
+patches are drawn in code in `scripts/patches/`: `patch.cjs` is the patch itself (fabric, rim, stitching, ribbon) with a
+shape and colors per category, and `icons-<category>.cjs` hold each badge's ribbon text and icon. To add or change one,
+edit its icon set and run `node scripts/patches/build.cjs <key>`, then bump `BADGE_ART` in `index.html` so phones load
+the new image. A badge with no image yet shows its category's blank patch (`badges/section-<category>.webp`).
 
 ## Team checks
 
