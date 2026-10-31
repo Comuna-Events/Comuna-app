@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const source=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
 let now=new Date(2026,9,20,12), storedICS;
 const els=new Map(),el=id=>{if(!els.has(id))els.set(id,{innerHTML:'',textContent:'',hidden:false});return els.get(id);};
-const c={Date,Math,Intl,Set,Object,console,S:{rsvp:[],rsvpDates:{},checked:[]},events:[],eventNow:()=>new Date(now),save(){},enrich(){},document:{getElementById:el,body:{appendChild(){}},createElement:()=>({click(){},remove(){}})},Blob,URL:{createObjectURL(blob){storedICS=blob;return 'test:';},revokeObjectURL(){}},setTimeout(){},toast(){},catDot:()=>'',escH:s=>s||'',vCheck:()=>'',mins:()=>1,needsRsvp:()=>false,FULL_WD:['sunday','monday','tuesday','wednesday','thursday','friday','saturday']};
+const c={Date,Math,Intl,Set,Object,console,S:{rsvp:[],rsvpDates:{},checked:[]},events:[],eventNow:()=>new Date(now),save(){},enrich(){},document:{getElementById:el,body:{appendChild(){}},createElement:()=>({click(){},remove(){}})},Blob,URL:{createObjectURL(blob){storedICS=blob;return 'test:';},revokeObjectURL(){}},setTimeout(){},toast(){},catDot:()=>'',escH:s=>s||'',vCheck:()=>'',mins:()=>1,goingText:()=>'',needsRsvp:()=>false,FULL_WD:['sunday','monday','tuesday','wednesday','thursday','friday','saturday']};
 vm.createContext(c);
 for(const name of ['hm','occurrenceEnd','occursOn','nextDate','fmtTime','ordinal','addToCalendar']){
  const start=source.indexOf('function '+name+'('),end=['hm','ordinal'].includes(name)?source.indexOf('\n',start):source.indexOf('\n}',start)+2;
