@@ -1298,12 +1298,12 @@ function flyToPlans(from){
 let tt; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),Math.max(2200,msg.length*55)); }   // longer messages stay up long enough to read
 
 /* ---------- onboarding ---------- */
-// The welcome screen's three stamps: a hand-picked spread across LA (three area codes, three days, short names),
+// The welcome screen's three stamps: a hand-picked spread across LA (three area codes, three kinds, short names),
 // shown before anyone has picked a neighborhood, so they don't depend on where the map starts
 const WELCOME_STAMPS=[
   {venue:'Hollywood Farmers Market',hood:'Hollywood',category:'markets',days:'SUNDAYS',zip:'90028'},
   {venue:'Pasadena Run Club',hood:'Pasadena',category:'active',days:'WEDNESDAYS',zip:'91105'},
-  {venue:'Glendale Night Market',hood:'Glendale',category:'markets',days:'SATURDAYS',zip:'91206'}];
+  {venue:'Drum Circle',hood:'Venice Beach',category:'arts',days:'SAT & SUN',zip:'90291'}];
 function buildOnb(){
   const f=document.getElementById('stampfield'), rots=[-6,7,3];
   const size=k=>k==='community'? 138 : k==='active'? 150 : k==='food'? 162 : 172;
