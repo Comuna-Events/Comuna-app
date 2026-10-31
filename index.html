@@ -70,6 +70,9 @@ img{ max-width:100% }
   .aside{ display:none }
   .phone{ width:100%; height:100%; max-height:none; border-radius:0; padding:0; box-shadow:none; background:var(--paper) }
   .app{ border-radius:0 }
+  /* the strip behind the clock and battery is the page itself: match the screen under it */
+  body{ background:var(--paper) }
+  body:has(.screen.on.darkscr){ background:var(--ink) }
 }
 
 /* ---------- shared ---------- */
@@ -120,7 +123,8 @@ img{ max-width:100% }
 .onbtop .back{ font-size:14px; font-weight:700; color:var(--muted) }
 .steps{ display:flex; gap:6px } .steps[hidden]{ display:none } .steps i{ width:22px; height:5px; border-radius:3px; background:var(--line) } .steps i.on{ background:var(--green) }
 .or{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px; margin:16px 0 10px } .or::before,.or::after{ content:''; flex:1; height:1px; background:var(--line) }
-.field{ display:block; width:100%; font:inherit; font-size:15px; color:var(--ink); background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:14px; margin-top:8px }
+/* text boxes are 16px: iPhones zoom the page in on a smaller one when you tap it, and it stays zoomed */
+.field{ display:block; width:100%; font:inherit; font-size:16px; color:var(--ink); background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:14px; margin-top:8px }
 .field:focus{ outline:none; border-color:var(--green) }
 .flabel{ font-size:13px; font-weight:700; color:var(--muted); margin-top:16px; display:block }
 .field.code{ font-size:28px; font-weight:700; letter-spacing:10px; text-align:center }
@@ -211,7 +215,7 @@ img{ max-width:100% }
 .picklist{ display:flex; flex-direction:column; margin-top:8px } .popt{ display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px dashed #DCCDAE; font-size:15px; text-align:left }
 .betapill{ font-size:12px; font-weight:600; color:var(--muted); padding:5px 4px; background:none; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
 .moods{ display:flex; gap:8px; margin:12px 0 4px } .moods button{ flex:1; font-size:26px; padding:10px 0; border-radius:14px; background:var(--card); border:2px solid transparent } .moods button.on{ border-color:var(--green); background:#E4ECDF }
-.fbtext{ width:100%; min-height:96px; border:1.5px solid #DCCDAE; border-radius:14px; padding:12px; font:inherit; font-size:15px; background:var(--card); resize:vertical; margin-top:10px }
+.fbtext{ width:100%; min-height:96px; border:1.5px solid #DCCDAE; border-radius:14px; padding:12px; font:inherit; font-size:16px; background:var(--card); resize:vertical; margin-top:10px }
 .tagpick{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px } .tagpick button{ font-size:13px; font-weight:500; padding:7px 12px; border-radius:20px; border:1.5px solid var(--ink) } .tagpick button.on{ background:var(--ink); color:var(--paper) }
 .subform label{ display:block; font-size:13px; font-weight:700; margin-top:12px } .subform label small{ display:block; font-weight:400; color:var(--muted); margin-top:2px }
 .subform .row2 label{ margin-top:12px } .subform label.chk{ display:flex; align-items:center; gap:8px; margin-top:34px; font-weight:500 }

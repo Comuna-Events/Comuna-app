@@ -24,6 +24,13 @@ const hook = '<meta name="mobile-web-app-capable" content="yes" />';
 if (!html.includes(hook)) throw new Error(`index.html no longer has ${hook}; update scripts/build-ios.mjs to add the scripts elsewhere in <head>`);
 html = html.replace(hook, `${hook}\n<script src="capacitor.js"></script>\n<script src="native.js"></script>`);
 
+// An app doesn't zoom or rubber-band like a web page: no pinch or double-tap zoom, and the page itself doesn't slide
+// when dragged (lists and the map still scroll). The website keeps zoom for people who need it.
+const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">';
+if (!html.includes(viewport)) throw new Error('index.html no longer has its viewport meta tag; update scripts/build-ios.mjs to match');
+html = html.replace(viewport, '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">\n'
+  + '<style>html, body { overscroll-behavior: none }</style>');
+
 const token = /^const MAPBOX_TOKEN = ".*";$/m;
 if (!token.test(html)) throw new Error('index.html no longer has its MAPBOX_TOKEN line; update scripts/build-ios.mjs to match');
 if (MAPBOX_IOS_TOKEN) html = html.replace(token, `const MAPBOX_TOKEN = "${MAPBOX_IOS_TOKEN}";`);
