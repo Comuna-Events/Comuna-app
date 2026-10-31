@@ -532,6 +532,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 /* Mapbox requires its logo + attribution to stay visible: side by side bottom-left, level with the Map / List switch */
 #homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left{ bottom:calc(var(--navh) + 96px); height:var(--toggle-h,34px); display:flex; align-items:center; gap:6px; padding-left:10px }
 #homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl{ float:none; clear:none; margin:0 }
+/* Mapbox inserts bottom controls first-in-front, which would put the (i) before the logo: keep it to the logo's right */
+#homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib{ order:1 }
 #homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib.mapboxgl-compact-show{ max-width:calc(100vw - 150px) }
 </style>
 </head>
