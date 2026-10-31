@@ -121,8 +121,6 @@ img{ max-width:100% }
 .field.code{ font-size:28px; font-weight:700; letter-spacing:10px; text-align:center }
 .resend{ display:block; margin:16px auto 0; font-size:14px; font-weight:700; color:var(--green) } .resend:disabled{ color:var(--muted) }
 .onb .signin{ display:block; width:100%; margin-top:12px; font-size:13.5px; color:#CFC3AB; text-align:center }
-.onb .onbsrc{ display:block; margin-top:6px; font-size:13px; color:#CFC3AB }
-.onb .onbnote{ margin:8px 0 0; font-size:13px; color:#CFC3AB; text-align:center }
 /* what happens to what you share, said right where you're asked for it */
 .privnote{ margin:10px 2px 0; font-size:12.5px; line-height:1.45; color:var(--muted) }
 .privnote a{ color:var(--green); font-weight:700 }
@@ -541,9 +539,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <div class="wm" id="onbMark" style="font-size:40px;color:var(--paper)"></div>
         <div class="stampfield" id="stampfield"></div>
         <h1 class="big">Your neighborhood has plans.</h1>
-        <p class="lede">Explore local events, experiences and pop-ups near you.<span class="onbsrc">Free and paid plans from LA venues, organizers and neighbors, with new ones added every night.</span></p>
+        <p class="lede">Explore local events, experiences and pop-ups near you.</p>
         <button class="btn primary" id="startGuest" style="margin-top:auto">Start exploring</button>
-        <p class="onbnote" id="onbNote">No account needed. Just tell us where you are.</p>
         <button class="btn ghost" id="startSignup">Create account</button>
         <button class="signin" id="signinLink">Already have an account? <u>Sign in</u></button>
       </div>
@@ -556,7 +553,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <div class="h1" style="color:var(--green);font-size:44px">Something good is happening nearby.</div>
         <div class="mini-map" id="miniMap" style="height:230px"></div>
         <button class="btn green" id="allowLoc" style="margin-top:14px">Use my location</button>
-        <p class="privnote">Your location is only used to recommend events near you and to confirm check-ins. It's kept safe: we never track you in the background, never sell it, and never save your exact location. <a href="https://www.wearecomuna.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
+        <p class="privnote">Only used to recommend events near you. Kept safe and never sold. <a href="https://www.wearecomuna.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
         <label class="flabel" for="locQ" style="margin-top:16px">Or search for your neighborhood or city</label>
         <input class="field" id="locQ" type="search" autocomplete="off" autocorrect="off" spellcheck="false" aria-controls="locList">
         <div class="picklist" id="locList"></div>
@@ -996,7 +993,7 @@ function go(id, push=true){
   nav.classList.toggle('hide', ['onb1','onb2','onb3','onb4','onb5','alerts','badges'].includes(id));
   nav.querySelectorAll('button').forEach(b=>{ const on=b.dataset.nav===id; b.classList.toggle('on',on); b.querySelector('svg').setAttribute('stroke', on?C.green:C.muted); });
   if(id==='onb1'){ document.getElementById('signinLink').style.display=S.signedUp?'none':'';
-    document.getElementById('startGuest').textContent=S.guest? 'Keep exploring' : 'Start exploring'; document.getElementById('onbNote').hidden=!!S.guest; }
+    document.getElementById('startGuest').textContent=S.guest? 'Keep exploring' : 'Start exploring'; }
   if(id==='home'){ renderHome(); maybeDailyPicks(); setTimeout(()=>{ if(map) map.resize(); else drawPaper(); },30); }
   if(id==='plans') renderPlans();
   if(id==='passport') renderPassport();
