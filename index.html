@@ -507,10 +507,8 @@ img{ max-width:100% }
 .lbrow:last-child{ border-bottom:0 }
 .lbrow .r{ font-family:var(--display); font-weight:900; font-size:20px; color:var(--muted) }
 .youmk{ position:relative; z-index:20; display:grid; place-items:center; pointer-events:none }
-/* on the map the mark has no chip and green rings, so it reads on the cream map; a soft paper halo keeps it clear of roads */
-.youmk .cloader{ position:relative; animation:none; background:none; filter:drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 1px 1px rgba(0,0,0,.18)) }
-.youmk .cloader svg{ width:100%; height:100% }
-.youmk .cloader .seg{ stroke:var(--green) }
+.youmk .cloader{ position:relative; animation:none; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:width .2s ease, height .2s ease }
+.youmk.dots .cloader{ width:20px !important; height:20px !important }   /* YOU_DOT_SIZE */
 /* the pin rests as full rings; youSpin() plays the loading loop and stops it as the rings close up again */
 .youmk .cloader *{ animation-delay:0s !important }
 .youmk:not(.locating) .cloader *{ animation:none !important }
@@ -1145,7 +1143,8 @@ function cityLabel(title,sub,bg,fg,w=160,h=106,rot=0){
 }
 
 // "you are here": the Comuna mark with a soft pulse behind it, always above event pins
-const YOU_SIZE=20;   // "you are here" stays only a little bigger than the event dots (12px) at every zoom
+// "you are here" is a little bigger than what the events show as: 28px pins up close, 12px dots at neighborhood zoom
+const YOU_SIZE=32, YOU_DOT_SIZE=20;
 function youEl(size){ const y=document.createElement('div'); y.className='youmk'; y.setAttribute('aria-label','You are here'); y.innerHTML=`<span class="pulse"></span>${loaderHtml('you',size)}`;
   // each loop ends with the rings whole, so stopping at a loop's end never jumps
   y.addEventListener('animationiteration',e=>{ if(e.target.classList.contains('dot') && y.dataset.stop) y.classList.remove('locating'); });
@@ -2027,6 +2026,7 @@ let lastPins=[]; const CLUSTER_PX=44, FAN_PX=14, VENUE_MIN=2;
 function drawClusters(){
   if(!map) return; const you=markers.you; markers.forEach(m=>m.remove()); markers=[]; markers.you=you;
   const z=map.getZoom(), all=lastPins, sel=all.find(e=>e.id===selId);
+  markers.you?.getElement().classList.toggle('dots', z>=CLUSTER_ZOOM && z<PIN_ZOOM);
   if(sel){ const el=pinEl(sel); el.classList.add('sel'); markers.push(new mapboxgl.Marker({element:el}).setLngLat([sel.lng,sel.lat]).addTo(map)); }
   const rest=sel? all.filter(e=>e!==sel) : all;
   if(z>=CLUSTER_ZOOM && z<PIN_ZOOM){ setDots(rest); return; }   // neighborhood: every event is a dot
@@ -2127,7 +2127,7 @@ function placePins(P){
   if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you;
     if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); if(fromCards){ fromCards=false; return; } cardsForView(); });
       ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent){ userMoved=true; fromCards=false; if(t==='dragstart' && selId!==null){ selId=null; } } })); }
-    if(!markers.you){ const y=youEl(YOU_SIZE); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
+    if(!markers.you){ const y=youEl(YOU_SIZE), z=map.getZoom(); y.classList.toggle('dots', z>=CLUSTER_ZOOM && z<PIN_ZOOM); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
     if(!map._opened){ map._opened=true; openCamera(false); }
   } else drawPaper();
 }
@@ -2259,7 +2259,7 @@ function drawMini(){
   }catch(e){ mini=null; paintMini(el); }
 }
 let miniYouMk=null;
-function miniYou(){ if(!mini || !S.loc) return; if(!miniYouMk){ const y=youEl(YOU_SIZE); miniYouMk=new mapboxgl.Marker({element:y}).setLngLat([S.loc.lng,S.loc.lat]).addTo(mini); } else miniYouMk.setLngLat([S.loc.lng,S.loc.lat]); }
+function miniYou(){ if(!mini || !S.loc) return; if(!miniYouMk){ const y=youEl(YOU_DOT_SIZE); miniYouMk=new mapboxgl.Marker({element:y}).setLngLat([S.loc.lng,S.loc.lat]).addTo(mini); } else miniYouMk.setLngLat([S.loc.lng,S.loc.lat]); }
 function paintMini(el){ setTimeout(()=>{ if(mini) return; enrich(); paintPaper(el,el.clientWidth,el.clientHeight,picks()); },20); }
 window.addEventListener('resize',()=>{ if(current==='home') drawPaper(); if(current==='passport') fitLine(document.getElementById('passCount')); });
 
