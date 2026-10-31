@@ -113,7 +113,7 @@ img{ max-width:100% }
 
 .onbtop{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px }
 .onbtop .back{ font-size:14px; font-weight:700; color:var(--muted) }
-.steps{ display:flex; gap:6px } .steps i{ width:22px; height:5px; border-radius:3px; background:var(--line) } .steps i.on{ background:var(--green) }
+.steps{ display:flex; gap:6px } .steps[hidden]{ display:none } .steps i{ width:22px; height:5px; border-radius:3px; background:var(--line) } .steps i.on{ background:var(--green) }
 .or{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px; margin:16px 0 10px } .or::before,.or::after{ content:''; flex:1; height:1px; background:var(--line) }
 .field{ display:block; width:100%; font:inherit; font-size:15px; color:var(--ink); background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:14px; margin-top:8px }
 .field:focus{ outline:none; border-color:var(--green) }
@@ -543,7 +543,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <h1 class="big">Your neighborhood has plans.</h1>
         <p class="lede">Explore local events, experiences and pop-ups near you.<span class="onbsrc">Free and paid plans from LA venues, organizers and neighbors, with new ones added every night.</span></p>
         <button class="btn primary" id="startGuest" style="margin-top:auto">Start exploring</button>
-        <p class="onbnote" id="onbNote">No account needed to look around.</p>
+        <p class="onbnote" id="onbNote">No account needed. Just tell us where you are.</p>
         <button class="btn ghost" id="startSignup">Create account</button>
         <button class="signin" id="signinLink">Already have an account? <u>Sign in</u></button>
       </div>
@@ -556,7 +556,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <div class="h1" style="color:var(--green);font-size:44px">Something good is happening nearby.</div>
         <div class="mini-map" id="miniMap" style="height:230px"></div>
         <button class="btn green" id="allowLoc" style="margin-top:14px">Use my location</button>
-        <p class="privnote">Only used to show what's near you and to confirm check-ins. We never track you in the background or save your exact location.</p>
+        <p class="privnote">Your location is only used to recommend events near you and to confirm check-ins. It's kept safe: we never track you in the background, never sell it, and never save your exact location. <a href="https://www.wearecomuna.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
         <label class="flabel" for="locQ" style="margin-top:16px">Or search for your neighborhood or city</label>
         <input class="field" id="locQ" type="search" autocomplete="off" autocorrect="off" spellcheck="false" aria-controls="locList">
         <div class="picklist" id="locList"></div>
@@ -1023,11 +1023,18 @@ function buildOnb(){
   <div style="right:0;top:14px">${hoodStamp('Silver Lake',136,8,true)}</div>`;
 }
 const locNext=document.getElementById('locNext');
-function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.nbPicked=true; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
-locNext.onclick=()=>go('onb3');
-// "Start exploring" goes straight to the events: no location, interests, name or email. "Create account" asks for all of them.
-document.getElementById('startSignup').onclick=()=>go('onb2');
-document.getElementById('startGuest').onclick=()=>S.guest? go('home') : startGuest();   // a guest back here from Profile keeps their phone's progress
+function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
+// after the location step: people making an account go on to interests; guests go straight to the events
+let guestFlow=false;
+const afterLocation=()=>guestFlow? startGuest() : go('onb3');
+locNext.onclick=afterLocation;
+// Everything is ranked by distance, so everyone starts with where they are: their location, or a neighborhood they search
+// for (a website can't ask again once someone says no). "Start exploring" then goes straight to the events; "Create
+// account" goes on to interests, name and email.
+const onbSteps=document.querySelector('[data-s="onb2"] .steps');
+document.getElementById('startSignup').onclick=()=>{ guestFlow=false; onbSteps.hidden=false; go('onb2'); };
+document.getElementById('startGuest').onclick=()=>{ if(S.guest) return go('home');   // a guest back here from Profile keeps their phone's progress
+  guestFlow=true; onbSteps.hidden=true; go('onb2'); };
 // no location sharing needed: search the same neighborhoods and cities as "Your neighborhood" in Profile
 const locQ=document.getElementById('locQ'), locList=document.getElementById('locList');
 locQ.placeholder='Search within LA County';
@@ -1036,10 +1043,10 @@ locQ.oninput=()=>{ const t=locQ.value.trim().toLowerCase();
   locList.innerHTML= !t? '' : hits.length? hits.map(h=>`<button class="popt ${h.name===S.nb?'on':''}" data-hood="${escH(h.name)}"><span>${escH(h.name)}<small>${h.city?'City':'Los Angeles'}</small></span>${h.name===S.nb?'<em>✓</em>':''}</button>`).join('')
     : `<div class="empty">No neighborhood or city called "${escH(locQ.value.trim())}" in LA County yet.</div>`; };
 locList.onclick=e=>{ const b=e.target.closest('[data-hood]'); if(!b) return;
-  setHood(b.dataset.hood); locQ.value=''; locList.innerHTML=''; toast('Got it. Home base is '+S.nb); go('onb3'); };
+  setHood(b.dataset.hood); locQ.value=''; locList.innerHTML=''; toast('Got it. Home base is '+S.nb); afterLocation(); };
 document.getElementById('allowLoc').addEventListener('click',()=>{
   if(!navigator.geolocation){ toast('Location isn\'t available on this device. Try another browser or phone.'); return; }
-  navigator.geolocation.getCurrentPosition(p=>{ const loc={lat:p.coords.latitude,lng:p.coords.longitude}; setHood(hoodOf(loc).name,loc); toast('Got it. You\'re near '+S.nb); go('onb3'); },
+  navigator.geolocation.getCurrentPosition(p=>{ const loc={lat:p.coords.latitude,lng:p.coords.longitude}; setHood(hoodOf(loc).name,loc); toast('Got it. You\'re near '+S.nb); afterLocation(); },
     ()=>{ toast('No problem. Search for your neighborhood or city instead.'); locQ.focus(); }, {timeout:6000});
 });
 
@@ -1049,12 +1056,9 @@ const intNext=document.getElementById('intNext');
 function renderInterests(){ const mine=S.interests||[]; document.getElementById('interestList').innerHTML=INTERESTS.map(t=>`<button aria-pressed="${mine.includes(t)}" data-int="${t}">${t}<small>${INT_EX[t]}</small></button>`).join(''); intNext.disabled=!mine.length; intNext.textContent=mine.length?`Continue with ${mine.length}`:'Pick at least one'; }
 document.getElementById('interestList').addEventListener('click',e=>{ const b=e.target.closest('[data-int]'); if(!b) return; const t=b.dataset.int, m=S.interests=S.interests||[]; m.includes(t)? m.splice(m.indexOf(t),1) : m.push(t); save(); renderInterests(); });
 intNext.onclick=()=>openAuth('signup');
-// making an account: a guest who went straight to the events picks a home base and interests first
-function signUp(){ if(S.guest && S.nbPicked===false) go('onb2'); else openAuth('signup'); }
 // guests use the app without an account; they can create one later from Profile
 function startGuest(){
   S.guest=true; S.joined=S.joined||new Date().toISOString().slice(0,10);
-  if(!S.loc) S.nbPicked=false;   // no home base yet: events are measured from Silver Lake until they share a location or pick one
   history=[]; S.kitSeen=false; save(); renderNames(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
   guestSeen();
 }
@@ -1336,11 +1340,9 @@ const kitModal=document.getElementById('kitModal');
 function kitHtml(){
   enrich();
   const drive20=events.filter(ev=>mins(ev.mi)<=20).length, all=events.length, first=(S.name||'').split(' ')[0], hood=S.nb||'your neighborhood';
-  const somewhere=S.nbPicked===false && !S.loc;   // a guest who went straight to the events: nothing says where they are yet
-  return `<div class="k">${somewhere?'Welcome':'Neighborhood starter kit'}</div><div class="h1" id="kitTitle">${somewhere?'Welcome to Comuna.':`Welcome to ${escH(hood)}${first?`, ${escH(first)}`:''}.`}</div>
-     <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive${somewhere?` of ${escH(hood)}`:''}</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
+  return `<div class="k">Neighborhood starter kit</div><div class="h1" id="kitTitle">Welcome to ${escH(hood)}${first?`, ${escH(first)}`:''}.</div>
+     <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
      <ol class="kitsteps">
-      ${somewhere?`<li><div><b>See what's closest</b><span>Tap <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-label="the locate button" style="vertical-align:-2px"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg> on the map. Your location is only used for distances and check-ins.</span></div></li>`:''}
       <li><div><b>Explore the map</b><span>Tap any pin. Tap <b style="display:inline">?</b> anytime for what the colors mean.</span></div></li>
       <li><div><b>Tap "RSVP"</b><span>It saves to your Plans.</span></div></li>
       <li><div><b>Check in when you're there</b><span>Collect the stamp and earn points.</span></div></li>
@@ -1599,14 +1601,14 @@ function editHood(){
     document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
     sheet.querySelector('.picklist').onclick=e=>{ const b=e.target.closest('[data-hood]'); if(!b) return;
       const h=hoodByName(b.dataset.hood); overlay.classList.remove('on'); if(h.name===S.nb) return;
-      S.nb=h.name; S.nbPicked=true; if(!S.loc){ S.loc={lat:h.lat,lng:h.lng}; rebuildMap(); }
+      S.nb=h.name; if(!S.loc){ S.loc={lat:h.lat,lng:h.lng}; rebuildMap(); }
       save(); dbProfile(); renderNames(); toast(`Home base is now ${h.name}`); };
   };
   draw(); overlay.classList.add('on');
 }
 document.getElementById('pfNbBtn').onclick=editHood;
 document.getElementById('pfSources').onclick=()=>openSources();
-document.getElementById('guestSave').onclick=signUp;
+document.getElementById('guestSave').onclick=()=>openAuth('signup');
 function openPicker(kind){
   const row=(attr,k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" ${attr}="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   let body;
@@ -2369,7 +2371,7 @@ function checkIn(ev,dist,pos){
     : '<button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>'}`;
   m.classList.add('on');
   document.getElementById('closeStamp').onclick=()=>{ m.classList.remove('on'); renderHome(); setTimeout(()=>askHowWasIt(ev),300); };
-  if(nudge) document.getElementById('keepSave').onclick=()=>{ m.classList.remove('on'); signUp(); };
+  if(nudge) document.getElementById('keepSave').onclick=()=>{ m.classList.remove('on'); openAuth('signup'); };
 }
 
 // Every RSVP saves one occurrence. Only paid ticket requirements open the host page from the RSVP button.
@@ -2454,7 +2456,7 @@ function renderShelf(){
     +(next? `<span>Next: <b>${escH(next.name)}</b>, ${next.progress} of ${next.goal}</span>${bar(next,'100%')}` : `<span>You've earned every badge. Nice.</span>`)+`</div>${CHEV}`;
 }
 const CHEV=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${C.muted}" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>`;
-document.getElementById('badgeShelf').onclick=()=>{ if(!S.signedUp) signUp(); else go('badges'); };
+document.getElementById('badgeShelf').onclick=()=>{ if(!S.signedUp) openAuth('signup'); else go('badges'); };
 document.getElementById('titlePill').onclick=openTitlePicker; document.getElementById('coverPatch').onclick=openTitlePicker;
 function renderBadges(){
   const el=document.getElementById('badgeScreen'), got=earnedBadges();
@@ -2565,7 +2567,7 @@ async function loadLeaderboard(){
     const mine=S.points||0, rank=data.filter(r=>(+r.points||0)>mine).length+1;
     if(mine && known) rows.splice(Math.min(rank-1,rows.length),0,`<div class="lbrow guest"><div class="r">${rank<=5?rank:''}</div><div>You'd be ${rank<=5?ordinal(rank):'on the board'}<small>with your ${mine.toLocaleString()} points</small></div><div></div></div>`);
     el.innerHTML=(rows.length? rows.join('') : empty)+`<p class="lbcta">Guests aren't on the board. Create an account to ${mine?'claim your spot':'join in'} and compete for ${escH(S.nb||'your neighborhood')} this month.</p><button class="btn primary" id="lbClaim">${mine?'Claim my spot':'Create account'}</button>`;
-    document.getElementById('lbClaim').onclick=signUp;
+    document.getElementById('lbClaim').onclick=()=>openAuth('signup');
   };
   if(!sb){ if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; return; }
   try{
@@ -2851,7 +2853,7 @@ async function uploadGuest(user){
 // guests: counted per install (supabase/guests.sql), with where they are and what they're into. Sent quietly.
 async function guestSeen(){
   if(!sb || !S.guest) return;
-  const { error } = await sb.rpc('guest_seen', { p_device:S.deviceId, p_neighborhood:S.nbPicked===false? null : S.nb||null, p_interests:S.interests||[] });
+  const { error } = await sb.rpc('guest_seen', { p_device:S.deviceId, p_neighborhood:S.nb||null, p_interests:S.interests||[] });
   if(error) console.warn('Supabase guest save failed', error);
 }
 // a guest made an account (or signed in to one): link this install's guest activity to it

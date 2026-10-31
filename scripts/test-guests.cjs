@@ -50,28 +50,29 @@ const server=http.createServer((req,res)=>{
   assert.match(device,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   assert.equal(rpcs().length,0,'not counted before choosing to look around');
 
-  // Start exploring -> straight to the events: no location, interests, name or email
+  // Start exploring -> where you are (location or a neighborhood) -> straight to the events, no interests, name or email
   await page.click('#startGuest');
+  assert.equal(await run(()=>current),'onb2','everyone starts with where they are');
+  assert.equal(await page.isVisible('[data-s="onb2"] .steps'),false,'no sign-up step dots for guests');
+  await run(()=>setHood('Echo Park'));
+  await page.click('#locNext');
   await page.waitForFunction(()=>window.__comunaTestEval('S.guest'));
   await page.waitForTimeout(300);
   assert.equal(await run(()=>current),'home','guests land on the events');
   assert.equal(rpcs().length,1,'guest counted when they start');
-  assert.deepEqual(rpcs()[0].body,{p_device:device,p_neighborhood:null,p_interests:[]},'no made-up neighborhood for a guest who picked none');
+  assert.deepEqual(rpcs()[0].body,{p_device:device,p_neighborhood:'Echo Park',p_interests:[]});
 
-  // making an account from there asks for a home base and interests first, then name and email
+  // Create account still goes location -> interests -> name and email
   await page.waitForSelector('#kitModal.on');   // the welcome card opens just after landing
-  await run(()=>closeKit());
-  await run(()=>signUp());
-  assert.equal(await run(()=>current),'onb2');
-  await run(()=>setHood('Echo Park'));
+  await run(()=>{ closeKit(); S.guest=false; go('onb1'); });
+  await page.click('#startSignup');
+  assert.equal(await page.isVisible('[data-s="onb2"] .steps'),true);
   await page.click('#locNext');
+  assert.equal(await run(()=>current),'onb3');
   await page.click('#interestList [data-int]');
   await page.click('#intNext');
   assert.equal(await run(()=>current),'onb4');
-  await run(()=>guestSeen());
-  const interests=await run(()=>S.interests);
-  assert.deepEqual(rpcs()[1].body,{p_device:device,p_neighborhood:'Echo Park',p_interests:interests});
-  await run(()=>{ go('home'); });
+  await run(()=>{ S.guest=true; save(); go('home'); });
   writes.length=0;
 
   // views and searches are saved with the device_id and no user_id
