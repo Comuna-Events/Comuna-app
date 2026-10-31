@@ -857,6 +857,10 @@ let eventsState = 'loading';   // 'loading' | 'live' | 'error'
 // "N RSVP'd" (from going_counts) shows from this many people up: a lone "1 RSVP'd" reads as nobody going
 const SOCIAL_MIN=3;
 const goingText=ev=>ev.going>=SOCIAL_MIN? `${ev.going} RSVP’d` : '';
+// verified check-ins in the last 30 days (checkin_counts()), same minimum
+const checkedText=ev=>ev.checkedIn>=SOCIAL_MIN? `${ev.checkedIn} checked in this month` : '';
+// one line on a card: people who went beat people who plan to
+const crowdText=ev=>ev.checkedIn>=SOCIAL_MIN? `${ev.checkedIn} checked in` : goingText(ev);
 
 
 /* ---------- state ---------- */
@@ -1321,7 +1325,7 @@ function maybeDailyPicks(){
 }
 function showPicks(picks){
   const row=ev=>`<div class="pickhd">${KINDS[kindOf(ev)].label}</div><button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
-    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}${goingText(ev)?' · '+goingText(ev):''}</div></div>
+    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}${crowdText(ev)?' · '+crowdText(ev):''}</div></div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
   const first=(S.name||'').split(' ')[0];
   document.getElementById('recTitle').textContent=first?`${first}, your Top 4 today`:'Your Top 4 today';
@@ -1461,7 +1465,7 @@ function cardTitle(ev){
 function cardHtml(ev){
     const done=S.checked.includes(ev.id), inn=hasPlan(ev);
     return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?'<span class="chk">&check;</span>':''}</div>
-      <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${inn&&!done?' · Saved':goingText(ev)?' · '+goingText(ev):''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</b> · ${escH(ev.venue)}${inn&&!done?' · Saved':goingText(ev)?' · '+goingText(ev):''}</div></div>
+      <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${inn&&!done?' · Saved':crowdText(ev)?' · '+crowdText(ev):''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</b> · ${escH(ev.venue)}${inn&&!done?' · Saved':crowdText(ev)?' · '+crowdText(ev):''}</div></div>
       <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
 // after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
 let userMoved=false;
@@ -2235,7 +2239,8 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the RSVP button already opens it
     return `<a class="evlink" href="${escH(u)}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
   const showHost=ev.host && ev.host!==ev.venue;
-  const meta=[showHost?`Hosted by ${escH(ev.host)}`:'', goingText(ev)?goingText(ev)+' on Comuna':'', link].filter(Boolean).join(' · ');
+  const crowd=[goingText(ev),checkedText(ev)].filter(Boolean).join(' · ');
+  const meta=[showHost?`Hosted by ${escH(ev.host)}`:'', crowd?crowd+' on Comuna':'', link].filter(Boolean).join(' · ');
   const icon=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
@@ -2868,6 +2873,17 @@ async function loadGoing(){
     let changed=false; events.forEach(ev=>{ if(!ev.eid) return; const g=m[ev.eid]||0; if(ev.going!==g){ ev.going=g; changed=true; } });
     if(changed && current==='home') renderHome();
   }catch(e){ console.warn('Supabase going counts failed', e); }
+  loadCheckedIn();
+}
+// "N checked in" from verified check-ins (supabase/checkin_counts.sql); until that's run, cards keep the RSVP counts
+async function loadCheckedIn(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.rpc('checkin_counts'); if(error) throw error;
+    const m=Object.fromEntries((data||[]).map(r=>[r.event_id,r.checked_in]));
+    let changed=false; events.forEach(ev=>{ if(!ev.eid) return; const n=m[ev.eid]||0; if(ev.checkedIn!==n){ ev.checkedIn=n; changed=true; } });
+    if(changed && current==='home') renderHome();
+  }catch(e){ console.warn('Supabase check-in counts failed', e); }
 }
 
 document.getElementById('dbCheck').onclick=async()=>{ dbStatus('checking…'); const u=await dbUser(); if(!u) return dbStatus('not signed in (finish sign-up first)'); dbStatus('signed in, saving profile…'); await dbProfile(); };
