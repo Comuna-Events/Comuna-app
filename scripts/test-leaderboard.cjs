@@ -17,6 +17,14 @@ const els=new Map(),el=id=>{if(!els.has(id))els.set(id,{innerHTML:'',textContent
  assert.deepEqual(calls.find(x=>x.name==='leaderboard_top').args,{p_board:'Santa Monica',p_limit:5});
  assert.match(el('lbList').innerHTML,/class="lbrow "><div class="r">1<\/div><div>Ana R\./);
  assert.match(el('lbList').innerHTML,/class="lbrow me"><div class="r">2<\/div><div>Joe P\. \(you\)/,'your own row is marked by the database, not by matching user ids');
+ // with the leaderboard setting (leaderboard_privacy.sql): your row shows what everyone else sees, and hidden says so
+ c.S.lbShow='nickname'; replies.leaderboard_top=[{display_name:'Golden Coyote 27',points:420,is_me:true}];
+ await c.loadLeaderboard();
+ assert.match(el('lbList').innerHTML,/<div>Golden Coyote 27 \(you\)/,'your own row shows your nickname, as others see it');
+ c.S.lbShow='hidden'; c.editLeaderboard=()=>{}; replies.leaderboard_top=[{display_name:'Ana R.',points:420,is_me:false}];
+ await c.loadLeaderboard();
+ assert.match(el('lbList').innerHTML,/You're hidden from this board/,'hidden people are told they are hidden');
+ c.S.lbShow=undefined;
  await c.loadGoing();
  assert.deepEqual(c.events.map(e=>e.going),[3,0],'"N interested" counts come from going_counts');
  await new Promise(r=>setImmediate(r));
@@ -27,5 +35,5 @@ const els=new Map(),el=id=>{if(!els.has(id))els.set(id,{innerHTML:'',textContent
  await c.loadGoing(); await new Promise(r=>setImmediate(r));
  assert.deepEqual(c.events.map(e=>[e.going,e.checkedIn]),[[3,0],[0,4]],'a missing checkin_counts() changes nothing');
  assert.equal(c.events[0].rev.pct,80,'nor does a missing review_summary()');
- console.log('Leaderboard checks passed: points total across boards, top list marks you without user ids, interested and checked-in counts, review summaries.');
+ console.log('Leaderboard checks passed: points total across boards, top list marks you without user ids, nickname and hidden rows, interested and checked-in counts, review summaries.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

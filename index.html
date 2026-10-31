@@ -300,6 +300,11 @@ img{ max-width:100% }
 .srclink{ font-size:12.5px; color:var(--green); font-weight:700; text-decoration:underline; text-underline-offset:3px; padding:2px 0 }
 .srclist{ list-style:none; padding:0; margin:12px 0 14px } .srclist li{ padding:10px 0; border-bottom:1px solid var(--line) }
 .srclist b{ display:flex; align-items:center; gap:5px; font-size:14.5px } .srclist span{ display:block; font-size:13px; color:var(--muted); line-height:1.45; margin-top:2px }
+.passhow{ font-size:13px; color:var(--muted); line-height:1.45; margin:10px 2px 0 }
+.challenge{ background:var(--card); border-radius:16px; padding:12px 14px; margin:10px 0 0 }
+.challenge .k{ font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red) }
+.challenge b{ display:block; font-size:15px; margin:2px 0 8px } .challenge span{ display:block; font-size:12px; color:var(--muted); margin-top:6px }
+.cbar{ height:8px; border-radius:6px; background:var(--line); overflow:hidden } .cbar i{ display:block; height:100%; background:var(--green); border-radius:6px }
 .evphoto{ margin:4px 0 14px } .evphoto img{ display:block; width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:16px; background:var(--line) }
 .evphoto figcaption{ font-size:11.5px; color:var(--muted); margin-top:5px } .evphoto figcaption a{ color:inherit; text-decoration:underline; text-underline-offset:2px }
 .evrev{ font-size:13px; color:var(--muted); margin:-2px 0 8px } .evrev b{ color:var(--green) }
@@ -583,7 +588,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <div class="h1" id="suTitle" style="color:var(--green);font-size:44px">Put your name on your passport.</div>
         <div class="carry" id="suCarry" hidden></div>
         <div id="suNameWrap"><label class="flabel" for="suName">Your name</label>
-        <input class="field" id="suName" autocomplete="name" placeholder="First and last name"></div>
+        <input class="field" id="suName" autocomplete="name" placeholder="First and last name">
+        <p class="privnote">On leaderboards you show up as a nickname, not your name. You can change that in Profile.</p></div>
         <div id="suEmailWrap"><label class="flabel" for="suEmail">Your email</label>
         <input class="field" id="suEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
         <p class="privnote">We'll email you a sign-in code, so there's no password to remember. We never sell your information or use it for ads. <a href="https://www.wearecomuna.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p></div>
@@ -667,6 +673,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
           <div class="passstats"><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
           <div id="passSeal" style="position:absolute;right:-26px;bottom:-26px;opacity:.18"></div>
         </div>
+        <p class="passhow">Check in at events to collect a stamp for every place and neighborhood you explore. Points put you on your neighborhood's monthly board.</p>
+        <div class="challenge" id="challenge"></div>
         <button class="bshelf" id="badgeShelf"></button>
         <div class="tabs" id="passTabs" role="tablist"></div>
         <div class="page" id="passPage"></div>
@@ -684,6 +692,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <button class="linkrow" data-go="passport">Your passport <span>Stamps and points</span></button>
         <button class="linkrow" id="pfBadges">Badges and titles <span id="pfBadgeN">Earn your first</span></button>
         <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
+        <button class="linkrow" id="pfLbBtn" hidden>Leaderboard name <span id="pfLb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
         <button class="linkrow" id="pfSources">How we find events <span>Where they come from</span></button>
@@ -1151,13 +1160,21 @@ codeNext.onclick=async()=>{
   authed=data.user; S.email=codeEmail; save(); finishAuth();
 };
 let passportRestoreId=0, passportRevision=0;
-const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; badgesAt=0; return Object.assign(S,{ accountId:null, badges:null, titleKey:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
+const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; badgesAt=0; return Object.assign(S,{ accountId:null, badges:null, titleKey:null, nickname:'', lbShow:'', monthLog:null, monthDb:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
+// your profile row; until supabase/leaderboard_privacy.sql adds nickname and lb_show, read it without them
+const PROFILE_COLS='name,neighborhood,interests,lat,lng,points,created_at,title_key';
+async function readProfile(id){
+  let r=await sb.from('profiles').select(PROFILE_COLS+',nickname,lb_show').eq('id',id).maybeSingle();
+  if(r.error && /nickname|lb_show/.test(r.error.message||'')) r=await sb.from('profiles').select(PROFILE_COLS).eq('id',id).maybeSingle();
+  return r;
+}
 function applyAccountProfile(user,p){
   if(S.accountId!==user.id) freshPassport();
   S.accountId=user.id; S.email=user.email||''; S.name=p.name; S.points=p.points||0;
   if(p.neighborhood) S.nb=hoodByName(p.neighborhood).name;
   S.loc=(p.lat!=null && p.lng!=null)? {lat:p.lat,lng:p.lng} : null;
   S.interests=fixInterests(p.interests); S.titleKey=p.title_key||null;
+  S.nickname=p.nickname||''; S.lbShow=p.lb_show||(p.nickname? 'nickname' : '');   // '' = the database doesn't have the setting yet
   S.onboardingComplete=true; S.signedUp=true; S.kitSeen=true;
   S.joined=p.created_at ? p.created_at.slice(0,10) : (S.joined||new Date().toISOString().slice(0,10));
   save();
@@ -1225,7 +1242,7 @@ async function restorePassport(user){
 async function finishAuth(){
   const user=authed; if(!user) return;
   // an email that already has an account (a new phone, or signing up again by mistake): bring back their passport
-  const { data:p, error } = await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points,created_at,title_key').eq('id',user.id).maybeSingle();
+  const { data:p, error } = await readProfile(user.id);
   if(authed?.id!==user.id) return;
   if(error){ console.warn('Supabase profile load failed',error); toast('Could not load your account. Please reconnect and sign in again.'); return; }
   if(p && p.name){
@@ -1622,6 +1639,32 @@ function editHood(){
   draw(); overlay.classList.add('on');
 }
 document.getElementById('pfNbBtn').onclick=editHood;
+// how you appear on the monthly leaderboard (supabase/leaderboard_privacy.sql): a nickname by default, your name, or hidden
+const lbLabel=()=>S.lbShow==='name'? shortName() : S.lbShow==='hidden'? 'Hidden' : S.nickname||'Nickname';
+function editLeaderboard(){
+  let show=S.lbShow||'nickname', nick=S.nickname||'';
+  const opts=[['nickname','A nickname','Recommended'],['name','Your name',shortName()],['hidden','Hidden','You still earn points']];
+  const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Leaderboard</div>
+    <h2 style="font-size:28px">How you appear</h2><p class="sub">On ${escH(S.nb||'your neighborhood')}'s monthly Top 5.</p>
+    <div class="picklist" id="lbOpts">${opts.map(([k,l,sub])=>`<button class="popt ${k===show?'on':''}" data-show="${k}" aria-pressed="${k===show}"><span>${l}<small>${escH(sub)}</small></span>${k===show?'<em>✓</em>':''}</button>`).join('')}</div>
+    <div ${show==='nickname'?'':'hidden'}><label class="flabel" for="nickQ">Your nickname</label><input class="field" id="nickQ" maxlength="24" autocomplete="off" value="${escH(nick)}"></div>
+    <button class="btn primary" id="lbSave" style="margin-top:16px">Save</button>`;
+    document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+    const q=document.getElementById('nickQ'); q.oninput=()=>{ nick=q.value; };
+    document.getElementById('lbOpts').onclick=e=>{ const b=e.target.closest('[data-show]'); if(b){ show=b.dataset.show; draw(); } };
+    document.getElementById('lbSave').onclick=async()=>{
+      const n=nick.trim().replace(/\s+/g,' ');
+      if(show==='nickname' && (n.length<2 || n.length>24)) return toast('Pick a nickname of 2 to 24 characters.');
+      const u=await dbUser(); if(!u) return toast('Sign in to change this.');
+      const { error } = await sb.from('profiles').update({ lb_show:show, ...(n? { nickname:n } : {}) }).eq('id',u.id);
+      if(error){ console.warn('Supabase leaderboard setting failed', error); return toast('Couldn\'t save that. Check your connection and try again.'); }
+      S.lbShow=show; if(n) S.nickname=n; save(); overlay.classList.remove('on'); renderProfile(); if(current==='passport') loadLeaderboard();
+      toast(show==='hidden'? 'You\'re hidden from the leaderboard' : `You'll show as ${lbLabel()}`);
+    };
+  };
+  draw(); overlay.classList.add('on');
+}
+document.getElementById('pfLbBtn').onclick=editLeaderboard;
 document.getElementById('pfSources').onclick=()=>openSources();
 document.getElementById('guestSave').onclick=()=>openAuth('signup');
 function openPicker(kind){
@@ -2382,7 +2425,7 @@ function checkIn(ev,dist,pos){
   const firstPlace=pl.n===0; pl.n++;
   const earned=[[PTS.checkin,'checked in']];
   const total=earned.reduce((a,x)=>a+x[0],0);
-  track(ev,'checkin'); S.checked.push(ev.id); S.visits++; S.points+=total; save();
+  track(ev,'checkin'); S.checked.push(ev.id); S.visits++; S.points+=total; logMonth(hood.name); save();
   logGuest('checkin',{ event_id:eidOf(ev), event_title:ev.title, venue:ev.venue||null, neighborhood:ev.area||ev.hood||null, category:ev.category||null, distance_m:dist??null,
     lat:pos?.lat??null, lng:pos?.lng??null, accuracy:pos?.accuracy??null, at:pos?.at??null });
   const nudge=S.guest && !S.keepNudged; if(nudge){ S.keepNudged=true; save(); }
@@ -2602,8 +2645,10 @@ async function loadLeaderboard(){
     // no one else's user id reaches the phone: the database marks your own row (supabase/security_hardening.sql)
     const { data, error } = await sb.rpc('leaderboard_top',{ p_board:S.nb||'', p_limit:5 }); if(error) throw error;
     const rows=(data||[]).map((r,i)=>{ const you=!!u&&r.is_me;
-      return `<div class="lbrow ${you?'me':''}"><div class="r">${i+1}</div><div>${escH(you?me:r.display_name||'Explorer')}${you?' (you)':''}${r.title?`<small>${escH(r.title)}</small>`:''}</div><div>${(+r.points||0).toLocaleString()} pts</div></div>`; });
-    if(S.guest) guestBoard(rows,data||[]); else el.innerHTML=rows.length? rows.join('') : empty;
+      return `<div class="lbrow ${you?'me':''}"><div class="r">${i+1}</div><div>${escH(you&&!S.lbShow? me : r.display_name||'Explorer')}${you?' (you)':''}${r.title?`<small>${escH(r.title)}</small>`:''}</div><div>${(+r.points||0).toLocaleString()} pts</div></div>`; });
+    if(S.guest) guestBoard(rows,data||[]); else el.innerHTML=(rows.length? rows.join('') : empty)
+      +(S.lbShow==='hidden'? `<p class="lbcta">You're hidden from this board. You still earn points. <button class="srclink" id="lbUnhide">Change</button></p>` : '');
+    if(S.lbShow==='hidden' && !S.guest) document.getElementById('lbUnhide').onclick=editLeaderboard;
   }catch(e){ console.warn('Supabase leaderboard failed', e); if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; }
 }
 
@@ -2687,7 +2732,31 @@ document.getElementById('calToday').onclick=()=>{ calSel=today0(); calView=new D
 
 /* ---------- passport: places, neighborhoods and cities ---------- */
 let passTab='places';
+/* ---------- monthly challenge: alternates between exploring neighborhoods and going out, no reward yet ---------- */
+const monthKey=()=>{ const d=eventNow(); return `${d.getFullYear()}-${d.getMonth()+1}`; };
+function logMonth(hood){ const m=monthKey(); if(!S.monthLog||S.monthLog.m!==m) S.monthLog={m,n:0,hoods:[]};
+  S.monthLog.n++; if(hood && !S.monthLog.hoods.includes(hood)) S.monthLog.hoods.push(hood); }
+function monthChallenge(){
+  const d=eventNow(), month=d.toLocaleDateString('en-US',{month:'long'}), last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  const hoods=d.getMonth()%2===0;   // November (10): neighborhoods; December: events; and so on
+  const local=S.monthLog&&S.monthLog.m===monthKey()? S.monthLog : {n:0,hoods:[]}, db=S.monthDb&&S.monthDb.m===monthKey()? S.monthDb : {n:0,hoods:0};
+  return hoods? { month, last, goal:3, title:'Explore 3 neighborhoods', unit:'neighborhoods', done:Math.max(local.hoods.length,db.hoods) }
+              : { month, last, goal:4, title:'Go to 4 events', unit:'check-ins', done:Math.max(local.n,db.n) };
+}
+function renderChallenge(){
+  const c=monthChallenge(), n=Math.min(c.done,c.goal), won=c.done>=c.goal, el=document.getElementById('challenge');
+  el.innerHTML=`<div class="k">${escH(c.month)} challenge</div><b>${won?'Done! ':''}${escH(c.title)}</b>
+    <div class="cbar" role="progressbar" aria-label="${escH(c.title)}" aria-valuemin="0" aria-valuemax="${c.goal}" aria-valuenow="${n}"><i style="width:${n/c.goal*100}%"></i></div>
+    <span>${n} of ${c.goal} ${c.unit} · ends ${escH(c.month.slice(0,3))} ${c.last}</span>`;
+}
+// signed in: count check-ins from every device (my_month_progress(), supabase/leaderboard_privacy.sql)
+async function loadMonthProgress(){
+  if(!sb || !S.signedUp) return; const u=await dbUser(); if(!u) return;
+  const { data, error } = await sb.rpc('my_month_progress'); if(error || !data || !data[0]) return;
+  S.monthDb={ m:monthKey(), n:data[0].checkins||0, hoods:data[0].neighborhoods||0 }; save(); if(current==='passport') renderChallenge();
+}
 function renderPassport(){
+  renderChallenge(); loadMonthProgress();
   const places=S.places, H=visitedNbhds(), Cy=visitedCities();
   const nP=Object.keys(places).length, nH=Object.keys(H).length, nC=Object.keys(Cy).length;
   document.getElementById('passCount').textContent=`${nP} place${nP===1?'':'s'}\n${nH} neighborhood${nH===1?'':'s'}\n${nC} cit${nC===1?'y':'ies'}`;
@@ -2729,7 +2798,7 @@ document.getElementById('passTabs').addEventListener('click',e=>{ const b=e.targ
 
 
 /* ---------- profile / alerts ---------- */
-function renderProfile(){ document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up';
+function renderProfile(){ const lb=document.getElementById('pfLbBtn'); lb.hidden=!(S.signedUp && S.lbShow); document.getElementById('pfLb').textContent=lbLabel(); document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up';
   const nb=(S.badges||[]).filter(b=>b.earned_at).length; document.getElementById('pfBadgeN').textContent=nb? `${nb} earned${myTitle()?' · '+myTitle():''}` : 'Earn your first'; }
 document.getElementById('pfBadges').onclick=()=>go('badges');
 // reminders for events you RSVP’d to happening in the next 7 days
@@ -2799,7 +2868,7 @@ async function checkAccount(){
     if(request!==passportRestoreId) return;
     if(ok){
       const user=session.user; authed=user;
-      const {data:p,error:profileError}=await sb.from('profiles').select('name,neighborhood,interests,lat,lng,points,created_at,title_key').eq('id',user.id).maybeSingle();
+      const {data:p,error:profileError}=await readProfile(user.id);
       if(profileError || authed?.id!==user.id) return;
       if(p && p.name){
         const returnHome=!S.signedUp || S.accountId!==user.id;
