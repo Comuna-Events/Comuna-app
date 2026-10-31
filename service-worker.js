@@ -3,10 +3,13 @@
 // offline data strategy, just enough for a demo/beta build to qualify
 // as an installable PWA on iOS and Android.
 
-const CACHE_NAME = "third-space-demo-v115-passport-stamps";
+const CACHE_NAME = "third-space-demo-v116-heritage-palette";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./stamps/paper-grain.svg",
+  "./stamps/passport-waves.svg",
+  "./stamps/passport-emblem.svg",
   "./manifest.json",
   "./places.js",
   "./icons/icon-192.png",

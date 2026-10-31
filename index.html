@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#244D3A">
+<meta name="theme-color" content="#315C49">
 <title>Comuna — Explore where you live</title>
 
 <!-- installable app / PWA metadata -->
@@ -31,9 +31,12 @@
 <script src="places.js"></script>
 <style>
 :root{
-  --paper:#F3E7D1; --paper-2:#EFE2C8; --card:#FBF6EA; --ink:#26251F; --muted:#6B675A; --line:#E2D5BC;
-  --green:#244D3A; --red:#A43726; --red-action:#B43F2C; --focus:#244D3A; --sun:#D6A638; --blue:#4B66A8;
-  --stage:#E9DDC6; --stage-ink:#26251F; --stage-muted:#6B675A;
+  /* green is the signature, cream the canvas, terracotta the personality; ochre and dusty blue support them.
+     --red is terracotta deep enough for small text on cream; --red-action is the main button (white text). */
+  --paper:#F3EBDD; --paper-2:#EAE0CE; --card:#FAF6EE; --ink:#353A32; --muted:#6B6E64; --line:#E2D8C6;
+  --green:#315C49; --red:#A64B2C; --red-action:#B85A38; --focus:#315C49; --sun:#D5AE64; --blue:#7895A0;
+  --grain:url(stamps/paper-grain.svg); --waves:url(stamps/passport-waves.svg); --emblem:url(stamps/passport-emblem.svg);
+  --stage:#E9DDC6; --stage-ink:#353A32; --stage-muted:#6B6E64;
   --display:'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
   --sans:'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --hand:'Caveat', 'Comic Sans MS', cursive;
@@ -71,6 +74,7 @@ img{ max-width:100% }
 
 /* ---------- shared ---------- */
 .screen{ position:absolute; inset:0; display:none; flex-direction:column; background:var(--paper); padding-bottom:env(safe-area-inset-bottom,0px) }
+.screen{ background-image:var(--grain); background-size:200px }   /* paper grain under everything */
 .screen.on{ display:flex }
 .scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 20px 110px }
 .topbar{ display:flex; align-items:center; justify-content:space-between; padding:20px 20px 8px }
@@ -90,14 +94,15 @@ img{ max-width:100% }
 .pill{ display:inline-flex; align-items:center; gap:6px; background:var(--card); border-radius:30px; padding:7px 12px; font-size:13px; font-weight:500 }
 
 /* ---------- onboarding ---------- */
-.onb{ --focus:var(--paper); background:var(--green); color:var(--paper) }
+.onb{ --focus:var(--green); color:var(--ink);
+  background:var(--emblem) center 150px/300px no-repeat, var(--waves) 0 0/100% auto repeat-y, var(--grain) 0 0/200px, var(--paper) }
 .onb .inner{ flex:1; display:flex; flex-direction:column; padding:44px 26px 34px; position:relative; overflow-y:auto; min-height:0 }
-.onb .btn.ghost{ border-color:#CFC3AB; color:var(--paper); margin-top:10px }
-.onb .big{ font-family:var(--display); font-weight:900; font-size:60px; line-height:.9; text-transform:uppercase; margin:0 }
-.onb .lede{ color:#DDD1B8; font-size:15px; line-height:1.5; margin:14px 0 22px }
+.onb .btn.ghost{ border-color:var(--green); color:var(--green); margin-top:10px }
+.onb .big{ color:var(--green); font-family:var(--display); font-weight:900; font-size:60px; line-height:.9; text-transform:uppercase; margin:0 }
+.onb .lede{ color:var(--muted); font-size:15px; line-height:1.5; margin:14px 0 22px }
 .stampfield{ position:relative; height:300px; margin:24px -6px 10px }
 .stampfield > *{ position:absolute }
-.onb2{ background:var(--paper) }
+.onb2{ background:var(--grain) 0 0/200px, var(--paper) }
 /* shorter phones (or Safari with its toolbars showing): shrink the stamps and headline so the buttons stay on screen */
 @media (max-height:780px){
   .onb .inner{ padding-top:30px; padding-bottom:24px }
@@ -120,7 +125,7 @@ img{ max-width:100% }
 .flabel{ font-size:13px; font-weight:700; color:var(--muted); margin-top:16px; display:block }
 .field.code{ font-size:28px; font-weight:700; letter-spacing:10px; text-align:center }
 .resend{ display:block; margin:16px auto 0; font-size:14px; font-weight:700; color:var(--green) } .resend:disabled{ color:var(--muted) }
-.onb .signin{ display:block; width:100%; margin-top:12px; font-size:13.5px; color:#CFC3AB; text-align:center }
+.onb .signin{ display:block; width:100%; margin-top:12px; font-size:13.5px; color:var(--muted); text-align:center }
 /* what happens to what you share, said right where you're asked for it */
 .privnote{ margin:10px 2px 0; font-size:12.5px; line-height:1.45; color:var(--muted) }
 .privnote a{ color:var(--green); font-weight:700 }
@@ -322,6 +327,7 @@ img{ max-width:100% }
 .recmodal{ position:absolute; inset:0; z-index:55; display:none; align-items:flex-end; background:rgba(38,37,31,.5) }
 .recmodal.on{ display:flex }
 .recmodal .box{ background:var(--paper); width:100%; max-height:86%; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y; border-radius:26px 26px 0 0; padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px)) }
+.sheet, .recmodal .box{ background-image:var(--grain); background-size:200px }
 .recmodal .k{ font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red) }
 .recmodal .h1{ color:var(--green); margin:6px 0 4px }
 .recmodal #recTitle{ white-space:nowrap }
@@ -401,7 +407,9 @@ img{ max-width:100% }
 .tabs button{ flex:1 1 auto; padding:8px 7px; white-space:nowrap; border-radius:10px 10px 0 0; background:var(--paper-2); font-weight:700; font-size:12.5px; color:var(--muted) }
 .tabs button.on{ background:var(--card); color:var(--green) }
 .page{ background:var(--card); border-radius:0 18px 18px 18px; padding:14px 12px 16px; position:relative; min-height:300px;
-  background-image:repeating-linear-gradient(0deg, transparent 0 27px, rgba(107,103,90,.07) 27px 28px) }
+  /* a passport page: security waves and the emblem, faint ruled lines, paper grain */
+  background-image:var(--emblem), var(--waves), repeating-linear-gradient(0deg, transparent 0 27px, rgba(107,110,100,.06) 27px 28px), var(--grain);
+  background-size:280px, 100% auto, auto, 200px; background-position:center 70px, 0 0, 0 0, 0 0; background-repeat:no-repeat, repeat-y, repeat, repeat }
 .page .ph{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:0 4px 8px; border-bottom:1.5px dashed var(--line); margin-bottom:10px }
 .page .ph b{ font-family:var(--display); font-weight:800; font-size:18px; color:var(--green); text-transform:uppercase; letter-spacing:.5px }
 .page .ph span{ font-size:11.5px; color:var(--muted); text-align:right }
@@ -508,11 +516,12 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 .nav{ position:absolute; z-index:30; display:grid; grid-template-columns:repeat(4,1fr); left:16px; right:16px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); padding:6px; border-radius:40px;
   background:rgba(251,246,234,.82); -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2); border:1px solid rgba(220,205,174,.8); box-shadow:0 4px 16px rgba(38,37,31,.12) }
 .nav.hide{ display:none }
+.nav{ background:var(--green); border-color:var(--green) }
 .nav button{ position:relative; display:flex; align-items:center; justify-content:center; padding:4px 0 8px }
 /* quiet chrome: the bar stays in the background so the map and events lead */
-.nav svg{ stroke:var(--muted); opacity:.75; transition:opacity .15s }
-.nav button.on svg{ stroke:var(--green); opacity:1 }
-.nav button.on::after{ content:''; position:absolute; bottom:1px; width:5px; height:5px; border-radius:50%; background:var(--green) }
+.nav svg{ stroke:var(--paper); opacity:.7; transition:opacity .15s }
+.nav button.on svg{ stroke:var(--sun); opacity:1 }
+.nav button.on::after{ content:''; position:absolute; bottom:1px; width:5px; height:5px; border-radius:50%; background:var(--sun) }
 .toast{ position:absolute; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:30px; font-size:13.5px; font-weight:500; z-index:80; opacity:0; transition:opacity .2s; pointer-events:none; width:max-content; max-width:88%; text-align:center }
 .toast.on{ opacity:1 }
 .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib{ opacity:.6 }
@@ -543,7 +552,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
     <!-- ONBOARDING 1 -->
     <section class="screen onb" data-s="onb1">
       <div class="inner">
-        <div class="wm" id="onbMark" style="font-size:40px;color:var(--paper)"></div>
+        <div class="wm" id="onbMark" style="font-size:40px;color:var(--green)"></div>
         <div class="stampfield" id="stampfield"></div>
         <h1 class="big">Your neighborhood has plans.</h1>
         <p class="lede">Explore local events, experiences and pop-ups near you.</p>
@@ -768,7 +777,7 @@ const DEFAULT_CENTER = { lat: 34.0869, lng: -118.2702 }; // Silver Lake
 const NEARBY_MILES = 3.5;   // roughly a 15-minute weeknight drive in these neighborhoods
 const MAX_PICKS = 6;        // short list, not infinite scroll
 
-const C = { paper:'#F3E7D1', card:'#FBF6EA', ink:'#26251F', green:'#244D3A', red:'#C9533D', sun:'#D6A638', blue:'#4B66A8', muted:'#6B675A' };
+const C = { paper:'#F3EBDD', card:'#FAF6EE', ink:'#353A32', green:'#315C49', red:'#B85A38', sun:'#D5AE64', blue:'#5F7E8A', muted:'#6B6E64' };
 
 /* ---------- neighborhoods and cities (each gets a passport stamp) ---------- */
 // Every City of LA neighborhood and LA County city, with its boundary, from places.js (scripts/build-places.mjs).
@@ -982,9 +991,9 @@ function rsvpStamp(ev,w=240,h=160){
 // Place stamps: passport entry stamps drawn in code, one shape per kind of place, no illustration. They carry the
 // place, its neighborhood, the area code (where a country code sits on a real stamp), your visit number there (№)
 // and the date and time you last checked in. o.days (welcome screen) replaces the date for a place not visited yet.
-// Ink: two red, two blue, two black, like a real passport; a pale ink on dark screens.
-const STAMP_INK={ food:'#B9443A', arts:'#2F5DA8', classes:'#2D2B28', active:'#2D2B28', markets:'#2F5DA8', community:'#B9443A' };
-const STAMP_DATE_INK={ food:'#2F5DA8', community:'#2F5DA8' }, STAMP_RED='#C2453A';
+// Ink: Comuna's terracotta, ochre, dusty blue, green and charcoal; a pale ink on dark screens.
+const STAMP_INK={ food:'#B5583A', arts:'#5F7E8A', classes:'#353A32', active:'#315C49', markets:'#A9843A', community:'#B5583A' };
+const STAMP_DATE_INK={ food:'#353A32', community:'#353A32' }, STAMP_RED='#B5583A';
 let stampUid=0;
 // LA County area codes by zip. Approximate where codes overlap (213/323 share central LA): the older code wins.
 const AREA_213=new Set([90005,90006,90010,90012,90013,90014,90015,90017,90020,90021,90026,90057,90071]);
@@ -1138,11 +1147,11 @@ function welcomeStamps(){
   return picks.map(ev=>({ venue:short(ev), hood:ev.area||hoodOf(ev).name, category:ev.category, days:weeklyDays(ev), zip:ev.zip }));
 }
 function buildOnb(){
-  const f=document.getElementById('stampfield'), inks=['#F3E7D1','#E7BE5E','#EDA48C'], rots=[-6,7,3];
+  const f=document.getElementById('stampfield'), rots=[-6,7,3];
   const size=k=>k==='community'? 138 : k==='active'? 150 : k==='food'? 162 : 172;
   const slots=['left:0;top:8px','right:2px;top:0','left:50%;top:150px'];
   f.innerHTML=welcomeStamps().map((p,i)=>{ const k=catKey(p.category), w=size(k);
-    return `<div style="${slots[i]}${i===2?`;margin-left:-${w/2}px`:''}">${placeStamp(p.venue,p.hood,p.category,0,rots[i],w,null,inks[i],{days:p.days,area:areaCode(p.zip)})}</div>`; }).join('');
+    return `<div style="${slots[i]}${i===2?`;margin-left:-${w/2}px`:''}">${placeStamp(p.venue,p.hood,p.category,0,rots[i],w,null,null,{days:p.days,area:areaCode(p.zip)})}</div>`; }).join('');
 }
 const locNext=document.getElementById('locNext');
 function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
@@ -2023,9 +2032,10 @@ function openCamera(fly){
   const ins=mapInsets(), cam={ center:[origin().lng,origin().lat], zoom:OPEN_ZOOM, padding:{top:ins.t,bottom:ins.b,left:0,right:0} };
   fly? map.flyTo({...cam,duration:800}) : map.jumpTo(cam);
 }
-/* Brand Guide v2 "Paper" map style, applied on top of Mapbox Light.
-   Paper land, Map Blue water, soft green parks, white streets, Ink labels. POIs hidden so Comuna pins lead. */
-const MAPCOL={ land:'#EFE2C8', water:'#AFC0D8', park:'#C9D4B5', building:'#E6D6B8', road:'#FBF6EA', major:'#FFFFFF', label:'#26251F', halo:'#F3E7D1', minorLabel:'#6B675A' };
+/* "Paper" map style in the heritage palette, applied on top of Mapbox Light (and used by the paper fallback map).
+   Land a shade darker than the cream so cards stand out, pale dusty-blue water, pale green parks, card-white streets,
+   charcoal labels with a cream halo. POIs hidden so Comuna pins lead. */
+const MAPCOL={ land:'#EAE0CE', water:'#C3D1D6', park:'#CBD5C4', building:'#E2D7C3', road:'#FAF6EE', major:'#FFFFFF', label:'#353A32', halo:'#F3EBDD', minorLabel:'#6B6E64' };
 function styleMapbox(m=map){
   const L=m.getStyle().layers||[];
   L.forEach(l=>{ const id=l.id; try{
@@ -2101,15 +2111,15 @@ const LANDMARKS=[ {n:'Silver Lake Reservoir',lat:34.0925,lng:-118.2616,t:'water'
 function paintPaper(host,w,h,P,opts={}){
   const R=rng(7), proj=projector(w,h,P,opts.ins);
   const pxPerMi = Math.abs(proj({lat:origin().lat,lng:origin().lng+0.0185}).x - proj(origin()).x) || 60;
-  let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><rect width="${w}" height="${h}" fill="#EFE2C8"/>`;
-  LANDMARKS.forEach(L=>{ const p=proj(L); if(p.x<-200||p.x>w+200||p.y<-200||p.y>h+200) return; s+=`<ellipse cx="${p.x}" cy="${p.y}" rx="${L.rx*pxPerMi*.5}" ry="${L.ry*pxPerMi*.5}" fill="${L.t==='water'?'#AFC0D8':'#C9D4B5'}"/>`; });
+  let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><rect width="${w}" height="${h}" fill="${MAPCOL.land}"/>`;
+  LANDMARKS.forEach(L=>{ const p=proj(L); if(p.x<-200||p.x>w+200||p.y<-200||p.y>h+200) return; s+=`<ellipse cx="${p.x}" cy="${p.y}" rx="${L.rx*pxPerMi*.5}" ry="${L.ry*pxPerMi*.5}" fill="${L.t==='water'?MAPCOL.water:MAPCOL.park}"/>`; });
   const sp=Math.max(18,pxPerMi*.18);
-  s+=`<g stroke="#FBF6EA" stroke-width="2.2" transform="rotate(-12 ${w/2} ${h/2})">`;
+  s+=`<g stroke="${MAPCOL.road}" stroke-width="2.2" transform="rotate(-12 ${w/2} ${h/2})">`;
   for(let x=-w; x<w*2; x+=sp*(0.8+R()*0.5)) s+=`<line x1="${x}" y1="${-h}" x2="${x}" y2="${h*2}"/>`;
   for(let y=-h; y<h*2; y+=sp*(0.8+R()*0.5)) s+=`<line x1="${-w}" y1="${y}" x2="${w*2}" y2="${y}"/>`;
   s+=`</g><path d="M${-10} ${h*.62} C${w*.3} ${h*.5} ${w*.55} ${h*.72} ${w+10} ${h*.4}" fill="none" stroke="#FFFFFF" stroke-width="7"/><path d="M${w*.22} ${-10} C${w*.3} ${h*.4} ${w*.18} ${h*.7} ${w*.3} ${h+10}" fill="none" stroke="#FFFFFF" stroke-width="5"/>`;
   const placed=[];
-  HOODS.forEach(H=>{ const p=proj(H); if(p.x<30||p.x>w-30||p.y<20||p.y>h-20) return; if(placed.some(q=>Math.abs(q.x-p.x)<H.name.length*6+40&&Math.abs(q.y-p.y)<24)) return; placed.push(p); s+=`<text x="${p.x}" y="${p.y-22}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="15" letter-spacing="2" fill="#26251F" opacity=".55">${H.name.toUpperCase()}</text>`; });
+  HOODS.forEach(H=>{ const p=proj(H); if(p.x<30||p.x>w-30||p.y<20||p.y>h-20) return; if(placed.some(q=>Math.abs(q.x-p.x)<H.name.length*6+40&&Math.abs(q.y-p.y)<24)) return; placed.push(p); s+=`<text x="${p.x}" y="${p.y-22}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="15" letter-spacing="2" fill="${MAPCOL.label}" opacity=".55">${H.name.toUpperCase()}</text>`; });
   s+='</svg>';
   host.innerHTML=s;
   const o=proj(origin()); const you=document.createElement('div'); you.className='youare'; you.style.left=o.x+'px'; you.style.top=o.y+'px'; you.innerHTML=omark(30); host.appendChild(you);
@@ -2531,7 +2541,7 @@ function checkIn(ev,dist,pos){
   overlay.classList.remove('on');
   const un=[]; if(!hadHood) un.push(`New neighborhood: ${hood.name}`); if(!hadCity) un.push(`New city: ${city}`); if(!hadCat) un.push(`First ${CATS[catKey(ev.category)].short.toLowerCase()} stamp`); if(pl.n===5) un.push(`You're a regular here`);
   const m=document.getElementById('stampModal');
-  m.innerHTML=`<div class="stampbox">${placeStamp(ev.venue,hood.name,ev.category,pl.n,0,240,160,'#F3E7D1',{...stampDate(pl.last),area:areaCode(pl.zip)})}</div>
+  m.innerHTML=`<div class="stampbox">${placeStamp(ev.venue,hood.name,ev.category,pl.n,0,240,160,'#F3EBDD',{...stampDate(pl.last),area:areaCode(pl.zip)})}</div>
     <h3>${firstPlace?`Stamped: ${escH(ev.venue)}`:`Back at ${escH(ev.venue)}`}</h3>
     <p>${escH(ev.title)}. <b>+${total} points</b> (${earned.map(x=>`+${x[0]} ${x[1]}`).join(', ')}), and ${escH(ev.venue)} knows you came.</p>
     ${un.length?`<div class="unlocks">${un.map(u=>`<span>${u}</span>`).join('')}</div>`:''}
@@ -2863,7 +2873,7 @@ function renderPassport(){
   const nP0=Object.keys(S.places).length; document.getElementById('guestBar').hidden=!(S.guest && !S.signedUp && !S.accountId);
   document.getElementById('guestBarTxt').textContent=nP0||S.points? `Create an account to keep your ${nP0} stamp${nP0===1?'':'s'} and ${(S.points||0).toLocaleString()} points.` : 'Create an account so your stamps are safe if you switch phones.';
   document.getElementById('psVisits').textContent=S.visits; document.getElementById('psPts').textContent=(S.monthPts??S.points).toLocaleString(); loadMyPoints();
-  document.getElementById('passSeal').innerHTML=omark(130,'#F3E7D1','#F3E7D1');
+  document.getElementById('passSeal').innerHTML=omark(130,'#F3EBDD','#F3EBDD');
   if(passTab!=='hoods' && passTab!=='cities') passTab='places';
   const tabs=[['places','Places',nP],['hoods','Neighborhoods',nH],['cities','Cities',nC]];
   document.getElementById('passTabs').innerHTML=tabs.map(t=>`<button role="tab" aria-selected="${t[0]===passTab}" class="${t[0]===passTab?'on':''}" data-tab="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
