@@ -1218,6 +1218,9 @@ document.addEventListener('click',e=>{
   const g=e.target.closest('[data-go]'); if(g){ go(g.dataset.go); return; }
   if(e.target.closest('[data-back]')){ go(history.pop()||'home', false); }
 });
+// haptics: the iPhone app's own feedback (native.js sets window.comunaHaptic); Android browsers buzz briefly; elsewhere nothing
+const HAPTIC_MS={ selection:6, light:10, medium:16, heavy:24, success:[12,40,18], warning:[18,60,18] };
+function haptic(kind){ try{ if(window.comunaHaptic) window.comunaHaptic(kind); else if(navigator.vibrate) navigator.vibrate(HAPTIC_MS[kind]||10); }catch(e){} }
 let tt; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),Math.max(2200,msg.length*55)); }   // longer messages stay up long enough to read
 
 /* ---------- onboarding ---------- */
@@ -1935,7 +1938,7 @@ function centerOnLocation(){
     if(markers.you) markers.you.setLngLat([S.loc.lng,S.loc.lat]);
     userMoved=false; selId=null; fromCards=false; cardSwipe=false;
     if(current==='home'){ renderHome(); openCamera(true); }
-    toast('Map centered on your location.');
+    haptic('selection'); toast('Map centered on your location.');
   },failed,{enableHighAccuracy:true,timeout:15000,maximumAge:0}); }catch(error){ failed(error); }
 }
 document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#loadMoreEvents')){ loadMoreEventCards(); return; } if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadEvents(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
@@ -2601,16 +2604,16 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     const day=selectedPlanDay(ev); if(!day || !occursOn(ev,day)){ toast('Choose a published event date before saving.'); return false; }
     const occurrence={...ev,occurrenceDate:planDayKey(day)};
     if(hasPlan(ev,day)) return;
-    track(ev,'rsvp'); passportRevision++; rememberPlan(ev,day);
+    track(ev,'rsvp'); passportRevision++; rememberPlan(ev,day); haptic('light');
     const pts=savePts(ev); S.points+=pts; save(); dbRsvp(occurrence);
     logGuest('rsvp',{ event_id:eidOf(ev), event_title:ev.title, kind:'rsvp', occurrence_date:occurrence.occurrenceDate });
     overlay.classList.remove('on'); renderHome(); if(current==='plans') renderPlans(); showRsvp(occurrence,pts);
   };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
-    const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; toast(v.msg); return; }
+    const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; haptic('warning'); toast(v.msg); return; }
     // signed in: Supabase measures the distance and checks the schedule itself, and the stamp waits for it
     const u=S.guest? null : await dbUser();
-    if(u){ const r=await dbCheckin(ev,v.pos); if(!r.ok){ c.disabled=false; c.textContent=lab; toast(r.msg); return; } }
+    if(u){ const r=await dbCheckin(ev,v.pos); if(!r.ok){ c.disabled=false; c.textContent=lab; haptic('warning'); toast(r.msg); return; } }
     checkIn(ev,v.dist,v.pos); if(u) loadBadges(true).then(celebrateBadges); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
 }
@@ -2694,7 +2697,7 @@ function checkIn(ev,dist,pos){
     ${nudge? `<div class="keepcard"><b>Keep this stamp</b><p>It's saved on this phone for now. Add your email so it's safe if you switch phones or clear your browser.</p>
       <button class="btn primary" id="keepSave">Create account</button><button id="closeStamp">Not now</button></div>`
     : '<button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>'}`;
-  m.classList.add('on');
+  m.classList.add('on'); setTimeout(()=>haptic('success'),300);   // as the stamp lands (thunk is .45s)
   document.getElementById('closeStamp').onclick=()=>{ m.classList.remove('on'); renderHome(); setTimeout(()=>askHowWasIt(ev),300); };
   if(nudge) document.getElementById('keepSave').onclick=()=>{ m.classList.remove('on'); openAuth('signup'); };
 }
@@ -2832,6 +2835,7 @@ function openTitlePicker(){
 const FIRST_BADGES=['founding','welcome'];
 function celebrateBadges(fresh){
   if(!fresh || !fresh.length) return;
+  haptic('success');
   const m=document.getElementById('stampModal');
   if(fresh.some(b=>FIRST_BADGES.includes(b.key)) && !m.classList.contains('on')){
     // a new account sees it in the starter kit (open, or about to open); anyone else gets the sheet once
