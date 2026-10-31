@@ -507,10 +507,13 @@ img{ max-width:100% }
 .lbrow:last-child{ border-bottom:0 }
 .lbrow .r{ font-family:var(--display); font-weight:900; font-size:20px; color:var(--muted) }
 .youmk{ position:relative; z-index:20; display:grid; place-items:center; pointer-events:none }
-.youmk svg{ position:relative; filter:drop-shadow(0 1px 2px rgba(0,0,0,.25)) }
+.youmk .cloader{ position:relative; animation:none; box-shadow:0 1px 3px rgba(0,0,0,.25) }
+/* the pin rests as full rings; youSpin() plays the loading loop and stops it as the rings close up again */
+.youmk .cloader *{ animation-delay:0s !important }
+.youmk:not(.locating) .cloader *{ animation:none !important }
 .youmk .pulse{ position:absolute; left:50%; top:50%; width:100%; height:100%; margin:-50% 0 0 -50%; border-radius:50%; background:var(--red); opacity:0; animation:youPulse 2.6s ease-out infinite }
 @keyframes youPulse{ 0%{ transform:scale(1); opacity:.35 } 100%{ transform:scale(2.8); opacity:0 } }
-@media (prefers-reduced-motion: reduce){ .youmk .pulse{ animation:none; transform:scale(1.7); opacity:.18 } }
+@media (prefers-reduced-motion: reduce){ .youmk .pulse{ animation:none; transform:scale(1.7); opacity:.18 } .youmk .cloader .seg{ stroke-dasharray:var(--lc) 400; stroke-dashoffset:0 } }
 .lbrow.me{ font-weight:700 } .lbrow.me .r{ color:var(--red) }
 /* guests: progress lives on this phone until they make an account */
 .lbrow.guest{ border:2px dashed var(--red); border-radius:14px; padding:10px 12px; margin:6px -12px }
@@ -1139,7 +1142,12 @@ function cityLabel(title,sub,bg,fg,w=160,h=106,rot=0){
 }
 
 // "you are here": the Comuna mark with a soft pulse behind it, always above event pins
-function youEl(size){ const y=document.createElement('div'); y.className='youmk'; y.setAttribute('aria-label','You are here'); y.innerHTML=`<span class="pulse"></span>${omark(size)}`; return y; }
+function youEl(size){ const y=document.createElement('div'); y.className='youmk'; y.setAttribute('aria-label','You are here'); y.innerHTML=`<span class="pulse"></span>${loaderHtml('you',size)}`;
+  // each loop ends with the rings whole, so stopping at a loop's end never jumps
+  y.addEventListener('animationiteration',e=>{ if(e.target.classList.contains('dot') && y.dataset.stop) y.classList.remove('locating'); });
+  youSpin(y,true); youSpin(y,false);   // play the loop once as the pin appears
+  return y; }
+function youSpin(y,on){ if(!y) return; if(on){ y.dataset.stop=''; y.classList.add('locating'); } else y.dataset.stop='1'; }
 function omark(size,ring,dot){ const r=size/2, sw=Math.max(2,size*.085); return `<svg width="${size}" height="${size}" viewBox="${-r} ${-r} ${size} ${size}" aria-hidden="true"><circle r="${r-sw/2}" fill="none" stroke="${ring||C.sun}" stroke-width="${sw}"/><circle r="${r*.42}" fill="none" stroke="${ring||C.sun}" stroke-width="${sw*.8}"/><circle r="${r*.14}" fill="${dot||C.red}"/></svg>`; }
 // Loading mark (styles under .cloader). key names what is loading, so re-rendering mid-load keeps the animation's
 // phase instead of restarting it; the mark fades in only once a load has taken 300ms, so quick loads don't flicker.
@@ -1889,7 +1897,7 @@ function centerOnLocation(){
   const button=document.getElementById('mapLocate');
   if(button.disabled) return;
   if(!navigator.geolocation){ toast('Location is unavailable in this browser.'); return; }
-  const busy=value=>{ button.disabled=value; button.setAttribute('aria-busy',String(value)); button.setAttribute('aria-label',value?'Finding your location':'Center map on my location'); };
+  const busy=value=>{ button.disabled=value; button.setAttribute('aria-busy',String(value)); youSpin(markers.you?.getElement(),value); button.setAttribute('aria-label',value?'Finding your location':'Center map on my location'); };
   const failed=error=>{
     busy(false);
     toast(error?.code===1?'Allow location access in your browser settings to center the map.':error?.code===3?'Finding your location timed out. Please try again.':'Could not find your location. Please try again.');
@@ -2115,7 +2123,7 @@ function placePins(P){
   if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you;
     if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); if(fromCards){ fromCards=false; return; } cardsForView(); });
       ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent){ userMoved=true; fromCards=false; if(t==='dragstart' && selId!==null){ selId=null; } } })); }
-    if(!markers.you){ const y=youEl(30); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
+    if(!markers.you){ const y=youEl(34); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
     if(!map._opened){ map._opened=true; openCamera(false); }
   } else drawPaper();
 }
@@ -2215,7 +2223,7 @@ function paintPaper(host,w,h,P,opts={}){
   HOODS.forEach(H=>{ const p=proj(H); if(p.x<30||p.x>w-30||p.y<20||p.y>h-20) return; if(placed.some(q=>Math.abs(q.x-p.x)<H.name.length*6+40&&Math.abs(q.y-p.y)<24)) return; placed.push(p); s+=`<text x="${p.x}" y="${p.y-22}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="15" letter-spacing="2" fill="${MAPCOL.label}" opacity=".55">${H.name.toUpperCase()}</text>`; });
   s+='</svg>';
   host.innerHTML=s;
-  const o=proj(origin()); const you=document.createElement('div'); you.className='youare'; you.style.left=o.x+'px'; you.style.top=o.y+'px'; you.innerHTML=omark(30); host.appendChild(you);
+  const o=proj(origin()); const you=document.createElement('div'); you.className='youare'; you.style.left=o.x+'px'; you.style.top=o.y+'px'; const mk=youEl(34); mk.classList.remove('locating'); you.appendChild(mk); host.appendChild(you);   // this map redraws often, so its pin stays still
   (opts.dots||[]).forEach(ev=>{ const p=proj(ev); if(p.x<0||p.x>w||p.y<0||p.y>h) return; const d=document.createElement('button'); d.className='edot'; d.style.background=CATS[catKey(ev.category)].bg; d.style.left=p.x+'px'; d.style.top=p.y+'px'; d.setAttribute('aria-label',ev.title); d.onclick=()=>openSheet(ev.id); host.appendChild(d); });
   if(!opts.noPins) (opts.pins||P).forEach((ev,i)=>{ if(!inView(ev)) return; const p=proj(ev); const el=pinEl(ev,i); el.style.position='absolute'; el.style.left=p.x+'px'; el.style.top=p.y+'px'; host.appendChild(el); });
 }
@@ -2247,7 +2255,7 @@ function drawMini(){
   }catch(e){ mini=null; paintMini(el); }
 }
 let miniYouMk=null;
-function miniYou(){ if(!mini || !S.loc) return; if(!miniYouMk){ const y=youEl(26); miniYouMk=new mapboxgl.Marker({element:y}).setLngLat([S.loc.lng,S.loc.lat]).addTo(mini); } else miniYouMk.setLngLat([S.loc.lng,S.loc.lat]); }
+function miniYou(){ if(!mini || !S.loc) return; if(!miniYouMk){ const y=youEl(30); miniYouMk=new mapboxgl.Marker({element:y}).setLngLat([S.loc.lng,S.loc.lat]).addTo(mini); } else miniYouMk.setLngLat([S.loc.lng,S.loc.lat]); }
 function paintMini(el){ setTimeout(()=>{ if(mini) return; enrich(); paintPaper(el,el.clientWidth,el.clientHeight,picks()); },20); }
 window.addEventListener('resize',()=>{ if(current==='home') drawPaper(); if(current==='passport') fitLine(document.getElementById('passCount')); });
 
