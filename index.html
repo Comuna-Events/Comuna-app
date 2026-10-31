@@ -529,10 +529,10 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 .toast{ position:absolute; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:30px; font-size:13.5px; font-weight:500; z-index:80; opacity:0; transition:opacity .2s; pointer-events:none; width:max-content; max-width:88%; text-align:center }
 .toast.on{ opacity:1 }
 .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib{ opacity:.6 }
-/* Mapbox requires its logo + attribution to stay visible: side by side in the map's top-left corner, just under the floating header */
-#homeScreen:not(.home-list) .mapboxgl-ctrl-top-left{ top:var(--headh,120px); display:flex; align-items:center; gap:6px; padding-left:10px }
-#homeScreen:not(.home-list) .mapboxgl-ctrl-top-left .mapboxgl-ctrl{ float:none; clear:none; margin:0 }
-#homeScreen:not(.home-list) .mapboxgl-ctrl-top-left .mapboxgl-ctrl-attrib.mapboxgl-compact-show{ max-width:calc(100vw - 150px) }
+/* Mapbox requires its logo + attribution to stay visible: side by side bottom-left, level with the Map / List switch */
+#homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left{ bottom:calc(var(--navh) + 96px); height:var(--toggle-h,34px); display:flex; align-items:center; gap:6px; padding-left:10px }
+#homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl{ float:none; clear:none; margin:0 }
+#homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib.mapboxgl-compact-show{ max-width:calc(100vw - 150px) }
 </style>
 </head>
 <body>
@@ -2102,8 +2102,8 @@ function tryMapbox(){
   s.onload=()=>{ try{
       if(!mapboxgl.supported || !mapboxgl.supported()){ clearTimeout(timer); fail(); return; }
       mapboxgl.accessToken=MAPBOX_TOKEN;
-      const m=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[origin().lng,origin().lat],zoom:13.3,attributionControl:false,logoPosition:'top-left',pitchWithRotate:false,dragRotate:false});
-      m.addControl(new mapboxgl.AttributionControl({compact:true}),'top-left');
+      const m=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[origin().lng,origin().lat],zoom:13.3,attributionControl:false,logoPosition:'bottom-left',pitchWithRotate:false,dragRotate:false});
+      m.addControl(new mapboxgl.AttributionControl({compact:true}),'bottom-left');
       // A token locked to another domain answers 401/403: fall back to the Paper map instead of showing a blank one.
       m.on('error',ev=>{ const er=ev&&ev.error; if(!er) return; const bad=[401,403].includes(er.status) || /401|403|Forbidden|Unauthorized/i.test(String(er.message)); if(!bad) return;
         // once the live map is up, one refused tile (e.g. while zooming out) must not swap the whole map for Paper
