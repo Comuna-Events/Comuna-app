@@ -98,7 +98,7 @@ img{ max-width:100% }
 .stampfield{ position:relative; height:300px; margin:24px -6px 10px }
 .stampfield > *{ position:absolute }
 .onb2{ background:var(--paper) }
-/* shorter phones (or Safari with its toolbars showing): shrink the stamps and headline so "Create account" stays on screen */
+/* shorter phones (or Safari with its toolbars showing): shrink the stamps and headline so the buttons stay on screen */
 @media (max-height:780px){
   .onb .inner{ padding-top:30px; padding-bottom:24px }
   .stampfield{ zoom:.7; margin:10px -6px 4px }
@@ -121,6 +121,11 @@ img{ max-width:100% }
 .field.code{ font-size:28px; font-weight:700; letter-spacing:10px; text-align:center }
 .resend{ display:block; margin:16px auto 0; font-size:14px; font-weight:700; color:var(--green) } .resend:disabled{ color:var(--muted) }
 .onb .signin{ display:block; width:100%; margin-top:12px; font-size:13.5px; color:#CFC3AB; text-align:center }
+.onb .onbsrc{ display:block; margin-top:6px; font-size:13px; color:#CFC3AB }
+.onb .onbnote{ margin:8px 0 0; font-size:13px; color:#CFC3AB; text-align:center }
+/* what happens to what you share, said right where you're asked for it */
+.privnote{ margin:10px 2px 0; font-size:12.5px; line-height:1.45; color:var(--muted) }
+.privnote a{ color:var(--green); font-weight:700 }
 .interests{ display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 20px }
 .interests button{ width:100%; text-align:left; border:1.5px solid var(--ink); border-radius:16px; padding:12px 16px; font-size:15px; font-weight:700 }
 .vcheck{ display:inline-block; vertical-align:-0.12em; margin-left:6px; flex:none }
@@ -293,6 +298,10 @@ img{ max-width:100% }
 .evprice.unknown b{ color:var(--muted) }
 .badges > span.tier{ background:var(--sun); border-color:var(--sun); color:var(--ink) }
 .evmeta{ font-size:13px; color:var(--muted); margin:-4px 0 10px } .evmeta a{ color:var(--green); font-weight:700; white-space:nowrap }
+.evsrc{ font-size:12.5px; color:var(--muted); margin:0 0 10px; line-height:1.5 }
+.srclink{ font-size:12.5px; color:var(--green); font-weight:700; text-decoration:underline; text-underline-offset:3px; padding:2px 0 }
+.srclist{ list-style:none; padding:0; margin:12px 0 14px } .srclist li{ padding:10px 0; border-bottom:1px solid var(--line) }
+.srclist b{ display:flex; align-items:center; gap:5px; font-size:14.5px } .srclist span{ display:block; font-size:13px; color:var(--muted); line-height:1.45; margin-top:2px }
 .reportlink{ font-size:13px; color:var(--muted); text-decoration:underline; text-underline-offset:3px; padding:6px 0; margin:0 0 8px }
 .reasons{ display:flex; flex-direction:column; gap:8px; margin:14px 0 16px }
 .reasons button{ text-align:left; background:var(--card); border:1.5px solid transparent; border-radius:14px; padding:13px 14px; font-size:14px; font-weight:600 }
@@ -469,6 +478,7 @@ img{ max-width:100% }
 .stats3 b{ display:block; font-family:var(--display); font-weight:900; font-size:28px; color:var(--green) }
 .linkrow{ display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--card); border-radius:14px; padding:15px 16px; margin-top:8px; font-weight:700; font-size:14.5px; text-align:left }
 .linkrow span{ color:var(--muted); font-weight:500 }
+a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{ color:var(--muted) }
 .alert{ display:grid; grid-template-columns:40px 1fr; gap:12px; background:var(--card); border-radius:16px; padding:13px 14px; margin-top:10px; text-align:left; width:100% }
 .alert.unread{ box-shadow:inset 3px 0 0 var(--red) }
 .alert .ic{ width:40px; height:40px; border-radius:50%; display:grid; place-items:center; background:var(--paper-2) }
@@ -531,9 +541,10 @@ img{ max-width:100% }
         <div class="wm" id="onbMark" style="font-size:40px;color:var(--paper)"></div>
         <div class="stampfield" id="stampfield"></div>
         <h1 class="big">Your neighborhood has plans.</h1>
-        <p class="lede">Explore local events, experiences and pop-ups near you.</p>
-        <button class="btn primary" id="startSignup" style="margin-top:auto">Create account</button>
-        <button class="btn ghost" id="startGuest">Skip sign up</button>
+        <p class="lede">Explore local events, experiences and pop-ups near you.<span class="onbsrc">Free and paid plans from LA venues, organizers and neighbors, with new ones added every night.</span></p>
+        <button class="btn primary" id="startGuest" style="margin-top:auto">Start exploring</button>
+        <p class="onbnote" id="onbNote">No account needed to look around.</p>
+        <button class="btn ghost" id="startSignup">Create account</button>
         <button class="signin" id="signinLink">Already have an account? <u>Sign in</u></button>
       </div>
     </section>
@@ -545,6 +556,7 @@ img{ max-width:100% }
         <div class="h1" style="color:var(--green);font-size:44px">Something good is happening nearby.</div>
         <div class="mini-map" id="miniMap" style="height:230px"></div>
         <button class="btn green" id="allowLoc" style="margin-top:14px">Use my location</button>
+        <p class="privnote">Only used to show what's near you and to confirm check-ins. We never track you in the background or save your exact location.</p>
         <label class="flabel" for="locQ" style="margin-top:16px">Or search for your neighborhood or city</label>
         <input class="field" id="locQ" type="search" autocomplete="off" autocorrect="off" spellcheck="false" aria-controls="locList">
         <div class="picklist" id="locList"></div>
@@ -573,7 +585,7 @@ img{ max-width:100% }
         <input class="field" id="suName" autocomplete="name" placeholder="First and last name"></div>
         <div id="suEmailWrap"><label class="flabel" for="suEmail">Your email</label>
         <input class="field" id="suEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
-        <p class="sub" style="margin-top:8px">We'll email you a sign-in code. No password, and we never share your email.</p></div>
+        <p class="privnote">We'll email you a sign-in code, so there's no password to remember. We never sell your information or use it for ads. <a href="https://www.wearecomuna.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p></div>
         <button class="btn primary" id="suNext" style="margin-top:auto;margin-top:22px" disabled>Send my code</button>
       </div>
     </section>
@@ -673,6 +685,9 @@ img{ max-width:100% }
         <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
+        <button class="linkrow" id="pfSources">How we find events <span>Where they come from</span></button>
+        <a class="linkrow" href="https://www.wearecomuna.com/about" target="_blank" rel="noopener">About Comuna <span>Who we are</span></a>
+        <a class="linkrow" href="https://www.wearecomuna.com/privacy" target="_blank" rel="noopener">Privacy <span>What we collect and why</span></a>
         <button class="linkrow" id="dbCheck" hidden>Account sync <span id="dbStatusPf">Tap to check</span></button>
         <button class="linkrow" id="signOut"><b id="pfAuth" style="font-weight:inherit">Sign out</b> <span id="pfEmail"></span></button>
         <button class="linkrow danger" id="deleteAccount" hidden>Delete account <span>Erases points and history</span></button>
@@ -842,6 +857,9 @@ function kindOf(p){ if(KINDS[p.kind]) return p.kind; return {immersive:'popup',w
 // events come from the Supabase events table (plus approved community events and the feed). Nothing fake is shown while it loads.
 let events = [];
 let eventsState = 'loading';   // 'loading' | 'live' | 'error'
+// "N RSVP'd" (from going_counts) shows from this many people up: a lone "1 RSVP'd" reads as nobody going
+const SOCIAL_MIN=3;
+const goingText=ev=>ev.going>=SOCIAL_MIN? `${ev.going} RSVP’d` : '';
 
 
 /* ---------- state ---------- */
@@ -977,7 +995,8 @@ function go(id, push=true){
   screens.forEach(s=>s.classList.toggle('on', s.dataset.s===id));
   nav.classList.toggle('hide', ['onb1','onb2','onb3','onb4','onb5','alerts','badges'].includes(id));
   nav.querySelectorAll('button').forEach(b=>{ const on=b.dataset.nav===id; b.classList.toggle('on',on); b.querySelector('svg').setAttribute('stroke', on?C.green:C.muted); });
-  if(id==='onb1') document.getElementById('signinLink').style.display=S.signedUp?'none':'';
+  if(id==='onb1'){ document.getElementById('signinLink').style.display=S.signedUp?'none':'';
+    document.getElementById('startGuest').textContent=S.guest? 'Keep exploring' : 'Start exploring'; document.getElementById('onbNote').hidden=!!S.guest; }
   if(id==='home'){ renderHome(); maybeDailyPicks(); setTimeout(()=>{ if(map) map.resize(); else drawPaper(); },30); }
   if(id==='plans') renderPlans();
   if(id==='passport') renderPassport();
@@ -1004,12 +1023,11 @@ function buildOnb(){
   <div style="right:0;top:14px">${hoodStamp('Silver Lake',136,8,true)}</div>`;
 }
 const locNext=document.getElementById('locNext');
-function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
+function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.nbPicked=true; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
 locNext.onclick=()=>go('onb3');
-// "Skip sign up" (beta) still asks where you are and what you're into, then goes straight to the app with no name or email
-let guestFlow=false;
-document.getElementById('startSignup').onclick=()=>{ guestFlow=false; go('onb2'); };
-document.getElementById('startGuest').onclick=()=>{ guestFlow=true; go('onb2'); };
+// "Start exploring" goes straight to the events: no location, interests, name or email. "Create account" asks for all of them.
+document.getElementById('startSignup').onclick=()=>go('onb2');
+document.getElementById('startGuest').onclick=()=>S.guest? go('home') : startGuest();   // a guest back here from Profile keeps their phone's progress
 // no location sharing needed: search the same neighborhoods and cities as "Your neighborhood" in Profile
 const locQ=document.getElementById('locQ'), locList=document.getElementById('locList');
 locQ.placeholder='Search within LA County';
@@ -1030,10 +1048,13 @@ const INTERESTS=Object.values(CATS).map(c=>c.label), INT_EX=Object.fromEntries(O
 const intNext=document.getElementById('intNext');
 function renderInterests(){ const mine=S.interests||[]; document.getElementById('interestList').innerHTML=INTERESTS.map(t=>`<button aria-pressed="${mine.includes(t)}" data-int="${t}">${t}<small>${INT_EX[t]}</small></button>`).join(''); intNext.disabled=!mine.length; intNext.textContent=mine.length?`Continue with ${mine.length}`:'Pick at least one'; }
 document.getElementById('interestList').addEventListener('click',e=>{ const b=e.target.closest('[data-int]'); if(!b) return; const t=b.dataset.int, m=S.interests=S.interests||[]; m.includes(t)? m.splice(m.indexOf(t),1) : m.push(t); save(); renderInterests(); });
-intNext.onclick=()=>guestFlow? startGuest() : openAuth('signup');
+intNext.onclick=()=>openAuth('signup');
+// making an account: a guest who went straight to the events picks a home base and interests first
+function signUp(){ if(S.guest && S.nbPicked===false) go('onb2'); else openAuth('signup'); }
 // guests use the app without an account; they can create one later from Profile
 function startGuest(){
   S.guest=true; S.joined=S.joined||new Date().toISOString().slice(0,10);
+  if(!S.loc) S.nbPicked=false;   // no home base yet: events are measured from Silver Lake until they share a location or pick one
   history=[]; S.kitSeen=false; save(); renderNames(); filter=myCats().length?'mine':'All'; go('home'); setTimeout(openKit,400);
   guestSeen();
 }
@@ -1299,7 +1320,7 @@ function maybeDailyPicks(){
 }
 function showPicks(picks){
   const row=ev=>`<div class="pickhd">${KINDS[kindOf(ev)].label}</div><button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
-    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}</div></div>
+    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}${goingText(ev)?' · '+goingText(ev):''}</div></div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
   const first=(S.name||'').split(' ')[0];
   document.getElementById('recTitle').textContent=first?`${first}, your Top 4 today`:'Your Top 4 today';
@@ -1315,9 +1336,11 @@ const kitModal=document.getElementById('kitModal');
 function kitHtml(){
   enrich();
   const drive20=events.filter(ev=>mins(ev.mi)<=20).length, all=events.length, first=(S.name||'').split(' ')[0], hood=S.nb||'your neighborhood';
-  return `<div class="k">Neighborhood starter kit</div><div class="h1" id="kitTitle">Welcome to ${escH(hood)}${first?`, ${escH(first)}`:''}.</div>
-     <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
+  const somewhere=S.nbPicked===false && !S.loc;   // a guest who went straight to the events: nothing says where they are yet
+  return `<div class="k">${somewhere?'Welcome':'Neighborhood starter kit'}</div><div class="h1" id="kitTitle">${somewhere?'Welcome to Comuna.':`Welcome to ${escH(hood)}${first?`, ${escH(first)}`:''}.`}</div>
+     <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive${somewhere?` of ${escH(hood)}`:''}</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
      <ol class="kitsteps">
+      ${somewhere?`<li><div><b>See what's closest</b><span>Tap <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-label="the locate button" style="vertical-align:-2px"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg> on the map. Your location is only used for distances and check-ins.</span></div></li>`:''}
       <li><div><b>Explore the map</b><span>Tap any pin. Tap <b style="display:inline">?</b> anytime for what the colors mean.</span></div></li>
       <li><div><b>Tap "RSVP"</b><span>It saves to your Plans.</span></div></li>
       <li><div><b>Check in when you're there</b><span>Collect the stamp and earn points.</span></div></li>
@@ -1439,7 +1462,7 @@ function cardTitle(ev){
 function cardHtml(ev){
     const done=S.checked.includes(ev.id), inn=hasPlan(ev);
     return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?'<span class="chk">&check;</span>':''}</div>
-      <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${inn&&!done?' · Saved':''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</b> · ${escH(ev.venue)}${inn&&!done?' · Saved':''}</div></div>
+      <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${inn&&!done?' · Saved':goingText(ev)?' · '+goingText(ev):''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</b> · ${escH(ev.venue)}${inn&&!done?' · Saved':goingText(ev)?' · '+goingText(ev):''}</div></div>
       <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
 // after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
 let userMoved=false;
@@ -1576,13 +1599,14 @@ function editHood(){
     document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
     sheet.querySelector('.picklist').onclick=e=>{ const b=e.target.closest('[data-hood]'); if(!b) return;
       const h=hoodByName(b.dataset.hood); overlay.classList.remove('on'); if(h.name===S.nb) return;
-      S.nb=h.name; if(!S.loc){ S.loc={lat:h.lat,lng:h.lng}; rebuildMap(); }
+      S.nb=h.name; S.nbPicked=true; if(!S.loc){ S.loc={lat:h.lat,lng:h.lng}; rebuildMap(); }
       save(); dbProfile(); renderNames(); toast(`Home base is now ${h.name}`); };
   };
   draw(); overlay.classList.add('on');
 }
 document.getElementById('pfNbBtn').onclick=editHood;
-document.getElementById('guestSave').onclick=()=>openAuth('signup');
+document.getElementById('pfSources').onclick=()=>openSources();
+document.getElementById('guestSave').onclick=signUp;
 function openPicker(kind){
   const row=(attr,k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" ${attr}="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   let body;
@@ -2151,6 +2175,28 @@ function badges(ev){
   (ev.vibes||[]).forEach(v=>b.push(vibeLabel(v)));
   if(ev.rsvpReq) b.push('RSVP required'); return b;
 }
+// where an event came from, in plain words: who shared it, or the site it was found on
+function sourceLine(ev){
+  let from='';
+  if(ev.community) from=`Shared by ${ev.host==='Shared by a neighbor'?'a neighbor':'the host'}, reviewed by the Comuna team`;
+  else { const u=okLink(ev.source)||okLink(ev.ticket); try{ if(u) from='Found on '+new URL(u).hostname.replace(/^www\./,''); }catch(e){} }
+  const said=[from, ev.verified?'Verified venue or organizer':''].filter(Boolean).map(escH).join(' · ');
+  return `<div class="evsrc">${said?said+' · ':''}<button class="srclink" id="srcBtn">How we find events</button></div>`;
+}
+function openSources(back){
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to the event"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div><div class="cat">About our events</div>
+    <h2 style="font-size:28px">How Comuna finds events</h2>
+    <ul class="srclist">
+      <li><b>Gathered every night</b><span>We check LA venues', organizers' and local listings' own pages and posts for new events and skip duplicates. Most events link back to where we found them.</span></li>
+      <li><b>${vCheck({verified:true},15)} Verified</b><span>The event comes from a city, a real business or an established organizer.</span></li>
+      <li><b>Shared by neighbors</b><span>Anyone can suggest an event. Our team reviews each one before it shows up.</span></li>
+      <li><b>Free and paid</b><span>Every event says whether it's free, paid or pay what you can, when the host tells us.</span></li>
+    </ul>
+    <p class="sub">Spot a wrong time or a canceled event? Tell us with <b>Beta · Feedback</b> at the top of the map.</p>`;
+  overlay.classList.add('on');
+  document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  if(back) document.getElementById('sheetBack').onclick=back;
+}
 // Free / paid stated on its own line under when + where, so it isn't lost among the tags
 function priceLine(ev){
   const p=String(ev.price||''), hasLink=!!(okLink(ev.ticket)||okLink(ev.source));
@@ -2190,7 +2236,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the RSVP button already opens it
     return `<a class="evlink" href="${escH(u)}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
   const showHost=ev.host && ev.host!==ev.venue;
-  const meta=[showHost?`Hosted by ${escH(ev.host)}`:'', ev.going?`${ev.going} RSVP’d on Comuna`:'', link].filter(Boolean).join(' · ');
+  const meta=[showHost?`Hosted by ${escH(ev.host)}`:'', goingText(ev)?goingText(ev)+' on Comuna':'', link].filter(Boolean).join(' · ');
   const icon=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
@@ -2206,6 +2252,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${SUBCATS[ev.sub]?`<span>${SUBCATS[ev.sub].short}</span>`:''}${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${escH(x)}</span>`).join('')}</div>
     ${ev.desc?`<p class="desc">${escLines(ev.desc)}</p>`:''}
     ${meta?`<div class="evmeta">${meta}</div>`:''}
+    ${sourceLine(ev)}
     ${ev.community?'<button class="reportlink" id="reportBtn">Report this event</button>':''}
     ${(ev.parking||ev.alcohol!==undefined)?`<div class="practical">${ev.parking?`Parking: ${escLines(ev.parking)}<br>`:''}${ev.alcohol===true?'Drinks available, 21+ to drink':ev.alcohol===false?'Alcohol-free':''}</div>`:''}
     <div class="sheetfoot">
@@ -2221,6 +2268,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
+  document.getElementById('srcBtn').onclick=()=>openSources(()=>openSheet(id,back,backLabel,occurrenceDate));
   const rb=document.getElementById('reportBtn'); if(rb) rb.onclick=()=>openReport(ev,()=>openSheet(id,back,backLabel,occurrenceDate));
   const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{
     const day=selectedPlanDay(ev); if(!day || !occursOn(ev,day)){ toast('Choose a published event date before saving.'); return false; }
@@ -2321,7 +2369,7 @@ function checkIn(ev,dist,pos){
     : '<button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>'}`;
   m.classList.add('on');
   document.getElementById('closeStamp').onclick=()=>{ m.classList.remove('on'); renderHome(); setTimeout(()=>askHowWasIt(ev),300); };
-  if(nudge) document.getElementById('keepSave').onclick=()=>{ m.classList.remove('on'); openAuth('signup'); };
+  if(nudge) document.getElementById('keepSave').onclick=()=>{ m.classList.remove('on'); signUp(); };
 }
 
 // Every RSVP saves one occurrence. Only paid ticket requirements open the host page from the RSVP button.
@@ -2406,7 +2454,7 @@ function renderShelf(){
     +(next? `<span>Next: <b>${escH(next.name)}</b>, ${next.progress} of ${next.goal}</span>${bar(next,'100%')}` : `<span>You've earned every badge. Nice.</span>`)+`</div>${CHEV}`;
 }
 const CHEV=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${C.muted}" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>`;
-document.getElementById('badgeShelf').onclick=()=>{ if(!S.signedUp) openAuth('signup'); else go('badges'); };
+document.getElementById('badgeShelf').onclick=()=>{ if(!S.signedUp) signUp(); else go('badges'); };
 document.getElementById('titlePill').onclick=openTitlePicker; document.getElementById('coverPatch').onclick=openTitlePicker;
 function renderBadges(){
   const el=document.getElementById('badgeScreen'), got=earnedBadges();
@@ -2517,7 +2565,7 @@ async function loadLeaderboard(){
     const mine=S.points||0, rank=data.filter(r=>(+r.points||0)>mine).length+1;
     if(mine && known) rows.splice(Math.min(rank-1,rows.length),0,`<div class="lbrow guest"><div class="r">${rank<=5?rank:''}</div><div>You'd be ${rank<=5?ordinal(rank):'on the board'}<small>with your ${mine.toLocaleString()} points</small></div><div></div></div>`);
     el.innerHTML=(rows.length? rows.join('') : empty)+`<p class="lbcta">Guests aren't on the board. Create an account to ${mine?'claim your spot':'join in'} and compete for ${escH(S.nb||'your neighborhood')} this month.</p><button class="btn primary" id="lbClaim">${mine?'Claim my spot':'Create account'}</button>`;
-    document.getElementById('lbClaim').onclick=()=>openAuth('signup');
+    document.getElementById('lbClaim').onclick=signUp;
   };
   if(!sb){ if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; return; }
   try{
@@ -2573,7 +2621,7 @@ function renderPlans(){
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
   const card=ev=>{ const inn=hasPlan(ev,calSel), done=S.checked.includes(ev.id);
-    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${ev.going?ev.going+' RSVP’d · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">Cancel RSVP</button>`:''}</div>`; };
+    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${goingText(ev)?goingText(ev)+' · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">Cancel RSVP</button>`:''}</div>`; };
   const mineL=dayEvs.filter(ev=>hasPlan(ev,calSel)), also=dayEvs.filter(ev=>!hasPlan(ev,calSel) && (!isT || (nextDate(ev) && nextDate(ev)<=t))).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
     : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "RSVP" on an event and it lands here.</div>`;
@@ -2803,7 +2851,7 @@ async function uploadGuest(user){
 // guests: counted per install (supabase/guests.sql), with where they are and what they're into. Sent quietly.
 async function guestSeen(){
   if(!sb || !S.guest) return;
-  const { error } = await sb.rpc('guest_seen', { p_device:S.deviceId, p_neighborhood:S.nb||null, p_interests:S.interests||[] });
+  const { error } = await sb.rpc('guest_seen', { p_device:S.deviceId, p_neighborhood:S.nbPicked===false? null : S.nb||null, p_interests:S.interests||[] });
   if(error) console.warn('Supabase guest save failed', error);
 }
 // a guest made an account (or signed in to one): link this install's guest activity to it

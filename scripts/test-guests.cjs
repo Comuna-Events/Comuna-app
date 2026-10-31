@@ -48,18 +48,31 @@ const server=http.createServer((req,res)=>{
   // every install gets a random id, kept across launches
   const device=await run(()=>S.deviceId);
   assert.match(device,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-  assert.equal(rpcs().length,0,'not counted before choosing to skip sign-up');
+  assert.equal(rpcs().length,0,'not counted before choosing to look around');
 
-  // Skip sign up -> neighborhood -> interests -> the app
+  // Start exploring -> straight to the events: no location, interests, name or email
   await page.click('#startGuest');
-  await run(()=>{ setHood('Echo Park'); go('onb3'); });
-  await page.click('#interestList [data-int]');
-  await page.click('#intNext');
   await page.waitForFunction(()=>window.__comunaTestEval('S.guest'));
   await page.waitForTimeout(300);
+  assert.equal(await run(()=>current),'home','guests land on the events');
   assert.equal(rpcs().length,1,'guest counted when they start');
+  assert.deepEqual(rpcs()[0].body,{p_device:device,p_neighborhood:null,p_interests:[]},'no made-up neighborhood for a guest who picked none');
+
+  // making an account from there asks for a home base and interests first, then name and email
+  await page.waitForSelector('#kitModal.on');   // the welcome card opens just after landing
+  await run(()=>closeKit());
+  await run(()=>signUp());
+  assert.equal(await run(()=>current),'onb2');
+  await run(()=>setHood('Echo Park'));
+  await page.click('#locNext');
+  await page.click('#interestList [data-int]');
+  await page.click('#intNext');
+  assert.equal(await run(()=>current),'onb4');
+  await run(()=>guestSeen());
   const interests=await run(()=>S.interests);
-  assert.deepEqual(rpcs()[0].body,{p_device:device,p_neighborhood:'Echo Park',p_interests:interests});
+  assert.deepEqual(rpcs()[1].body,{p_device:device,p_neighborhood:'Echo Park',p_interests:interests});
+  await run(()=>{ go('home'); });
+  writes.length=0;
 
   // views and searches are saved with the device_id and no user_id
   await run(()=>{ const ev={id:1,eid:'EVT-1',title:'Jazz on the Lawn',area:'Echo Park',category:'arts'}; track(ev,'view'); return flushTrack(); });
@@ -73,8 +86,8 @@ const server=http.createServer((req,res)=>{
   // reopening the app counts another visit from the same install
   await open();
   await page.waitForTimeout(300);
-  assert.equal(rpcs().length,2,'guest counted again on launch');
-  assert.equal(rpcs()[1].body.p_device,device,'same device_id after reopening');
+  assert.equal(rpcs().length,1,'guest counted again on launch');
+  assert.equal(rpcs()[0].body.p_device,device,'same device_id after reopening');
 
   // not signed in and not a guest: nothing is sent
   writes.length=0;
