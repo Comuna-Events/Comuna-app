@@ -3,7 +3,7 @@
 // offline data strategy, just enough for a demo/beta build to qualify
 // as an installable PWA on iOS and Android.
 
-const CACHE_NAME = "third-space-demo-v116-heritage-palette";
+const CACHE_NAME = "third-space-demo-v117-passport-header";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -52,7 +52,6 @@ const APP_SHELL = [
   "./stamps/santa-monica-light.png",
   "./stamps/silver-lake-light.png",
   "./stamps/west-hollywood-light.png",
-  "./stamps/passport-stamp.webp",
 ];
 
 self.addEventListener("install", (event) => {
