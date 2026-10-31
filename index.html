@@ -300,6 +300,10 @@ img{ max-width:100% }
 .srclink{ font-size:12.5px; color:var(--green); font-weight:700; text-decoration:underline; text-underline-offset:3px; padding:2px 0 }
 .srclist{ list-style:none; padding:0; margin:12px 0 14px } .srclist li{ padding:10px 0; border-bottom:1px solid var(--line) }
 .srclist b{ display:flex; align-items:center; gap:5px; font-size:14.5px } .srclist span{ display:block; font-size:13px; color:var(--muted); line-height:1.45; margin-top:2px }
+.evphoto{ margin:4px 0 14px } .evphoto img{ display:block; width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:16px; background:var(--line) }
+.evphoto figcaption{ font-size:11.5px; color:var(--muted); margin-top:5px } .evphoto figcaption a{ color:inherit; text-decoration:underline; text-underline-offset:2px }
+.evrev{ font-size:13px; color:var(--muted); margin:-2px 0 8px } .evrev b{ color:var(--green) }
+.pick .cprice, #homeScreen:not(.home-list) .pick .m2 b.cprice{ font-weight:700; color:var(--ink) }
 .reportlink{ font-size:13px; color:var(--muted); text-decoration:underline; text-underline-offset:3px; padding:6px 0; margin:0 0 8px }
 .reasons{ display:flex; flex-direction:column; gap:8px; margin:14px 0 16px }
 .reasons button{ text-align:left; background:var(--card); border:1.5px solid transparent; border-radius:14px; padding:13px 14px; font-size:14px; font-weight:600 }
@@ -861,6 +865,16 @@ const goingText=ev=>ev.going>=SOCIAL_MIN? `${ev.going} RSVP’d` : '';
 const checkedText=ev=>ev.checkedIn>=SOCIAL_MIN? `${ev.checkedIn} checked in this month` : '';
 // one line on a card: people who went beat people who plan to
 const crowdText=ev=>ev.checkedIn>=SOCIAL_MIN? `${ev.checkedIn} checked in` : goingText(ev);
+// reviews (review_summary(): 3+ "How was it?" answers) beat counts on a card
+const socialText=ev=>ev.rev? `${ev.rev.pct}% liked it` : crowdText(ev);
+// short price for a card: the amount when the listing gives one
+function priceTag(ev){ const p=String(ev.price||'');
+  return /free/i.test(p)? 'Free' : ev.priceAmt? ev.priceAmt : /donation|pay-what/i.test(p)? 'Pay what you can' : /paid/i.test(p)? 'Paid' : ''; }
+// card times include the end ("Sat, Nov 1 · 9 AM–2 PM") when the listing gives one
+function withEnd(ev,w){ const t0=fmtTime(ev.t0), t1=fmtTime(ev.t1); return t0 && t1 && w.endsWith(t0)? w+'–'+t1 : w; }
+function cardWhen(ev){ return ev.startsIn || !ev.start? ev.startsIn||ev.time : withEnd(ev,nextWhen(ev)); }
+// venue · price · reviews or counts (or "Saved" once it's in your plans)
+const cardMeta=(ev,saved)=>[escH(ev.venue), priceTag(ev)?`<b class="cprice">${escH(priceTag(ev))}</b>`:'', saved?'Saved':socialText(ev)].filter(Boolean).join(' · ');
 
 
 /* ---------- state ---------- */
@@ -1325,7 +1339,7 @@ function maybeDailyPicks(){
 }
 function showPicks(picks){
   const row=ev=>`<div class="pickhd">${KINDS[kindOf(ev)].label}</div><button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
-    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}${crowdText(ev)?' · '+crowdText(ev):''}</div></div>
+    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}${priceTag(ev)?' · '+escH(priceTag(ev)):''}${socialText(ev)?' · '+socialText(ev):''}</div></div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
   const first=(S.name||'').split(' ')[0];
   document.getElementById('recTitle').textContent=first?`${first}, your Top 4 today`:'Your Top 4 today';
@@ -1465,7 +1479,7 @@ function cardTitle(ev){
 function cardHtml(ev){
     const done=S.checked.includes(ev.id), inn=hasPlan(ev);
     return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?'<span class="chk">&check;</span>':''}</div>
-      <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${inn&&!done?' · Saved':crowdText(ev)?' · '+crowdText(ev):''}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(ev.startsIn||(ev.start?nextWhen(ev):ev.time))}</b> · ${escH(ev.venue)}${inn&&!done?' · Saved':crowdText(ev)?' · '+crowdText(ev):''}</div></div>
+      <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(cardWhen(ev))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${cardMeta(ev,inn&&!done)}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(cardWhen(ev))}</b> · ${cardMeta(ev,inn&&!done)}</div></div>
       <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
 // after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
 let userMoved=false;
@@ -2200,14 +2214,22 @@ function openSources(back){
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=back;
 }
+// the event's own photo, from the page we found it on, credited and linked back like a link preview
+function photoHtml(ev){
+  if(!ev.photo) return '';
+  const from=okLink(ev.source)||ev.photo; let site=''; try{ site=new URL(from).hostname.replace(/^www\./,''); }catch(e){}
+  return `<figure class="evphoto"><img src="${escH(ev.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer"><figcaption>Photo: <a href="${escH(from)}" target="_blank" rel="external noopener noreferrer">${escH(site)}</a></figcaption></figure>`;
+}
+// "92% liked it · 12 reviews · Great vibe · Good for groups"
+const reviewLine=ev=>ev.rev? `<div class="evrev"><b>${ev.rev.pct}% liked it</b> · ${ev.rev.n} reviews${ev.rev.tags.map(t=>' · '+escH(t)).join('')}</div>` : '';
 // Free / paid stated on its own line under when + where, so it isn't lost among the tags
 function priceLine(ev){
   const p=String(ev.price||''), hasLink=!!(okLink(ev.ticket)||okLink(ev.source));
   const tag='<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>', dollar='<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>';
   const ic=d=>`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const [cls,label,hint]= /free/i.test(p)? ['free',ic(tag)+'Free',ev.rsvpReq?'Registration required':'']
-    : /donation|pay-what/i.test(p)? ['paid',ic(tag)+'Pay what you can','Donations welcome']
-    : /paid/i.test(p)? ['paid',ic(dollar)+'Paid',hasLink?'Tickets from the host':'']
+    : /donation|pay-what/i.test(p)? ['paid',ic(tag)+'Pay what you can',ev.priceAmt||'Donations welcome']
+    : /paid/i.test(p)? ['paid',ic(dollar)+escH(ev.priceAmt||'Paid'),hasLink?'Tickets from the host':'']
     : ['unknown','Price not listed',hasLink?'Check the event page':''];
   return `<div class="evprice ${cls}"><b>${label}</b>${hint?`<span>${hint}</span>`:''}</div>`;
 }
@@ -2247,14 +2269,16 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${escH(okRsvpLink(ev))}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
     : `<button class="btn primary" id="rsvpBtn">RSVP</button>`;
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel==='Top 4'?'your Top 4':backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div>
+    ${photoHtml(ev)}
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
     <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
-    <div class="evwhen">${escH(ev.start?nextWhen(ev):(ev.time||'Soon'))}</div>
+    <div class="evwhen">${escH(ev.start?withEnd(ev,nextWhen(ev)):(ev.time||'Soon'))}</div>
     <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span>· ${mins(ev.mi)} min away</span></a>
     ${recurs&&ev.recDetail?`<div class="evrec">${escLines(ev.recDetail)}</div>`:''}
     ${priceLine(ev)}
     <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${SUBCATS[ev.sub]?`<span>${SUBCATS[ev.sub].short}</span>`:''}${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${escH(x)}</span>`).join('')}</div>
     ${ev.desc?`<p class="desc">${escLines(ev.desc)}</p>`:''}
+    ${reviewLine(ev)}
     ${meta?`<div class="evmeta">${meta}</div>`:''}
     ${sourceLine(ev)}
     ${ev.community?'<button class="reportlink" id="reportBtn">Report this event</button>':''}
@@ -2272,6 +2296,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
+  const ph=sheet.querySelector('.evphoto img'); if(ph) ph.onerror=()=>ph.closest('.evphoto').remove();   // a photo link that stopped working
   document.getElementById('srcBtn').onclick=()=>openSources(()=>openSheet(id,back,backLabel,occurrenceDate));
   const rb=document.getElementById('reportBtn'); if(rb) rb.onclick=()=>openReport(ev,()=>openSheet(id,back,backLabel,occurrenceDate));
   const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{
@@ -2873,7 +2898,17 @@ async function loadGoing(){
     let changed=false; events.forEach(ev=>{ if(!ev.eid) return; const g=m[ev.eid]||0; if(ev.going!==g){ ev.going=g; changed=true; } });
     if(changed && current==='home') renderHome();
   }catch(e){ console.warn('Supabase going counts failed', e); }
-  loadCheckedIn();
+  loadCheckedIn(); loadReviews();
+}
+// "92% liked it" from the "How was it?" answers (supabase/review_summary.sql); events with fewer than 3 show nothing
+async function loadReviews(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.rpc('review_summary'); if(error) throw error;
+    const m=Object.fromEntries((data||[]).map(r=>[r.event_id,{ n:r.reviews, pct:r.liked_pct, tags:(r.top_tags||[]).slice(0,2) }]));
+    let changed=false; events.forEach(ev=>{ if(!ev.eid) return; const v=m[ev.eid]||null; if(JSON.stringify(ev.rev||null)!==JSON.stringify(v)){ ev.rev=v; changed=true; } });
+    if(changed && current==='home') renderHome();
+  }catch(e){ console.warn('Supabase review summary failed', e); }
 }
 // "N checked in" from verified check-ins (supabase/checkin_counts.sql); until that's run, cards keep the RSVP counts
 async function loadCheckedIn(){
@@ -2976,7 +3011,7 @@ function whenText(r){
 }
 async function mapLimit(items,n,fn){ let i=0; await Promise.all(Array.from({length:n},async()=>{ while(i<items.length){ const k=i++; await fn(items[k],k); } })); }
 // Only these columns are readable from the app (see the grants in supabase/events.sql).
-const EVENT_COLS='event_id,name,category,tier,tags,vibes,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,rsvp_required,ticket_url,age,host,source_url,status,verified,lat,lng';
+const EVENT_COLS='event_id,name,category,tier,tags,vibes,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,price_detail,rsvp_required,ticket_url,age,host,source_url,image_url,status,verified,lat,lng';
 async function loadEvents(){
   if(!sb){ eventsState='error'; return; }
   eventsState=events.length?'live':'loading';
@@ -2992,6 +3027,8 @@ async function loadEvents(){
     let { data, error } = await readAll(EVENT_COLS);
     // until events.sql adds the vibes column, load without it
     if(error && /vibes/.test(error.message||'')) ({ data, error } = await readAll(EVENT_COLS.replace(',vibes','')));
+    // until supabase/price_detail.sql adds the price amounts, load without them
+    if(error && /price_detail/.test(error.message||'')) ({ data, error } = await readAll(EVENT_COLS.replace(',price_detail','')));
     if(error) throw error;
     let rows=data
       .filter(r=>r.name && String(r.street_address).trim())                     // no address yet → not shown
@@ -3006,7 +3043,7 @@ async function loadEvents(){
     const subOf=r=>{ const g=catKey(catMap(r.category)), tags=r.tags||[],
       t=tags.map(x=>Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===String(x).toLowerCase())).find(Boolean)||catMap(tags.join(' ')); return { category:g, sub: SUB_GROUP[t]===g && !CATS[t]? t : '' }; };
     events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', tags:Array.isArray(r.tags)? r.tags : [], vibes:Array.isArray(r.vibes)? r.vibes.filter(v=>VIBE_WORDS[v]) : [], ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
-      address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), price:r.price_type||'', age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
+      address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), price:r.price_type||'', priceAmt:String(r.price_detail||'').trim().slice(0,30), photo:okLink(r.image_url), age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
       ticket:okLink(r.ticket_url), source:okLink(r.source_url), rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
     eventsState='live'; if(current==='home') renderHome(); loadGoing(); loadSubmissions();
   }catch(e){ console.warn('Events failed to load', e); if(eventsState!=='live'){ eventsState='error'; if(current==='home') renderHome(); } }
