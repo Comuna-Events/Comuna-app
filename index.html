@@ -319,7 +319,14 @@ img{ max-width:100% }
 .challenge .k{ font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red) }
 .challenge b{ display:block; font-size:15px; margin:2px 0 8px } .challenge span{ display:block; font-size:12px; color:var(--muted); margin-top:6px }
 .cbar{ height:8px; border-radius:6px; background:var(--line); overflow:hidden } .cbar i{ display:block; height:100%; background:var(--green); border-radius:6px }
-.evphoto{ margin:4px 0 14px } .evphoto img{ display:block; width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:16px; background:var(--line) }
+/* event photos are never cropped: the frame takes the photo's own shape, between square and 2:1. A photo outside that
+   (a tall flyer, a thin banner) shows whole, over a soft blurred copy of itself that fills the rest of the frame. */
+.evphoto{ margin:4px 0 14px }
+.evframe{ position:relative; aspect-ratio:16/9; border-radius:16px; overflow:hidden; background:var(--line); isolation:isolate }
+.evframe img{ position:absolute; inset:0; width:100%; height:100%; display:block }
+.evframe .fg{ object-fit:contain }
+.evframe .bg{ object-fit:cover; filter:blur(20px) saturate(1.15); transform:scale(1.2); opacity:.9 }
+.evframe.fits .fg{ object-fit:cover } .evframe.fits .bg{ display:none }
 .evphoto figcaption{ font-size:11.5px; color:var(--muted); margin-top:5px } .evphoto figcaption a{ color:inherit; text-decoration:underline; text-underline-offset:2px }
 .evrev{ font-size:13px; color:var(--muted); margin:-2px 0 8px } .evrev b{ color:var(--green) }
 .pick .cprice, #homeScreen:not(.home-list) .pick .m2 b.cprice{ font-weight:700; color:var(--ink) }
@@ -2483,7 +2490,8 @@ function openSources(back){
 function photoHtml(ev){
   if(!ev.photo) return '';
   const from=okLink(ev.source)||ev.photo; let site=''; try{ site=new URL(from).hostname.replace(/^www\./,''); }catch(e){}
-  return `<figure class="evphoto"><img src="${escH(ev.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer"><figcaption>Photo: <a href="${escH(from)}" target="_blank" rel="external noopener noreferrer">${escH(site)}</a></figcaption></figure>`;
+  const src=escH(ev.photo);
+  return `<figure class="evphoto"><div class="evframe"><img class="bg" src="${src}" alt="" aria-hidden="true" referrerpolicy="no-referrer"><img class="fg" src="${src}" alt="" referrerpolicy="no-referrer"></div><figcaption>Photo: <a href="${escH(from)}" target="_blank" rel="external noopener noreferrer">${escH(site)}</a></figcaption></figure>`;
 }
 // "92% liked it · 12 reviews · Great vibe · Good for groups"
 const reviewLine=ev=>ev.rev? `<div class="evrev"><b>${ev.rev.pct}% liked it</b> · ${ev.rev.n} reviews${ev.rev.tags.map(t=>' · '+escH(t)).join('')}</div>` : '';
@@ -2561,7 +2569,15 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=()=>{ overlay.classList.remove('on'); back(); };
   document.getElementById('calBtn').onclick=()=>{ track(ev,'calendar'); addToCalendar(ev); };
-  const ph=sheet.querySelector('.evphoto img'); if(ph) ph.onerror=()=>ph.closest('.evphoto').remove();   // a photo link that stopped working
+  const ph=sheet.querySelector('.evphoto .fg');
+  if(ph){
+    ph.onerror=()=>ph.closest('.evphoto').remove();   // a photo link that stopped working
+    // the frame takes the photo's shape (square to 2:1); outside that it stays at the nearest and the blur fills in
+    const fit=()=>{ const r=ph.naturalWidth/ph.naturalHeight; if(!r) return;
+      const f=ph.parentNode, cl=Math.min(2,Math.max(1,r));
+      f.style.aspectRatio=cl.toFixed(3); f.classList.toggle('fits',Math.abs(cl-r)<.02); };
+    if(ph.complete) fit(); else ph.addEventListener('load',fit,{once:true});
+  }
   document.getElementById('srcBtn').onclick=()=>openSources(()=>openSheet(id,back,backLabel,occurrenceDate));
   const rb=document.getElementById('reportBtn'); if(rb) rb.onclick=()=>openReport(ev,()=>openSheet(id,back,backLabel,occurrenceDate));
   const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{
