@@ -29,6 +29,20 @@ Set `lat` and `lng` **in the same update** as `street_address`, `city` or `zip`.
 the coordinates don't, the database clears them on purpose (the old pin would be wrong), and the event
 loses its location if the Census can't place the new address.
 
+## Fill in price, photo and times
+
+Event cards show these, so fill them whenever the event's page states them. Leave a field empty rather
+than guess.
+
+- `price_type`: `Free`, `Paid` or `Donation / Pay-what-you-can`.
+- `price_detail`: the price exactly as stated, kept short: `$15`, `$20–40`, `$10 suggested donation`,
+  `$25 adv / $30 door`. Leave it empty for free events.
+- `image_url`: the full `https://` address of the event's own photo, usually the page's `og:image` (or the
+  `image` in its schema.org event data). Not a bare filename, not the site's logo, and not a photo from
+  a page that lists many events. The app credits it to `source_url` and links back.
+- `start_time` and `end_time`: 24-hour `HH:MM`. Cards show "9 AM–2 PM" when both are there.
+- `source_url`: the event's own page, so the photo credit and "Found on" link go to the right place.
+
 ## Check after each run
 
 This should return no rows. Anything it lists can't be checked into until it has coordinates:
@@ -39,5 +53,16 @@ from events
 where (lat is null or lng is null)
   and coalesce(end_date, start_date) >= (now() at time zone 'America/Los_Angeles')::date
   and coalesce(status, '') !~* '(past|archiv|cancel)'
+order by start_date;
+```
+
+And this lists upcoming paid events still missing an amount, and events without a usable photo:
+
+```sql
+select event_id, name, price_type, price_detail, image_url, source_url
+from events
+where coalesce(end_date, start_date) >= (now() at time zone 'America/Los_Angeles')::date
+  and coalesce(status, '') !~* '(past|archiv|cancel)'
+  and ((price_type is distinct from 'Free' and price_detail is null) or coalesce(image_url, '') !~ '^https?://')
 order by start_date;
 ```
