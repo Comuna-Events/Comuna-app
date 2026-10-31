@@ -53,11 +53,14 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#srchSugg [data-sev]').count(),2);
   assert.equal(await page.isVisible('#srchCancel'),true);
 
-  // running it resets filters to Anytime / Everything, shows a keyword chip, and finds matches outside the old filters
+  // running it resets filters to Anytime / Everything, keeps the words in the box, and finds matches outside the old filters
   await page.press('#srchQ','Enter');
   assert.equal(await page.isVisible('#srchSugg'),false);
   assert.deepEqual(await ids(),[1,2],'title/tag match ranks above a description match');
-  assert.match(await page.textContent('#chips'),/Anytime[\s\S]*Everything[\s\S]*“spooky”/);
+  assert.equal(await page.getAttribute('#filtBtn','aria-label'),'Filters: Anytime · Everything');
+  assert.equal(await page.isVisible('#filtCount'),false,'no filters narrowing the search');
+  assert.equal(await page.inputValue('#srchQ'),'spooky');
+  assert.equal(await page.isVisible('#srchBack'),true);
   assert.equal(await page.evaluate(()=>document.getElementById('homeScreen').classList.contains('searching')),true);
   assert.equal(await page.textContent('#mapNote'),'2 matches');
   if(process.env.SEARCH_SCREENSHOT) await page.screenshot({path:process.env.SEARCH_SCREENSHOT});
@@ -119,7 +122,7 @@ const server=http.createServer((req,res)=>{
   // typed text is escaped everywhere it shows
   await page.evaluate(()=>{ overlay.classList.remove('on'); window.__injected=0; applySearch('<img src=x onerror="window.__injected=1">'); });
   await page.click('#srchQ');
-  assert.equal(await page.locator('#chips img, #srchSugg img, #picks img').count(),0);
+  assert.equal(await page.locator('#srchSugg img, #picks img').count(),0);
   assert.equal(await page.evaluate(()=>window.__injected),0);
 
   assert.deepEqual(errors,[],'no JavaScript errors');
