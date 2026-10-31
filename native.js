@@ -34,8 +34,8 @@
   /* share: the iOS share sheet (closing it rejects, as navigator.share does) */
   navigator.share=d=>Share.share({ title:d?.title, text:d?.text, url:d?.url });
 
-  /* status bar: light text over the green screens, dark text over the paper ones */
-  const DARK=['onb1','profile'];
+  /* status bar: light text over the dark Profile screen, dark text over the paper ones */
+  const DARK=['profile'];
   let style='';
   const fitBar=()=>{ const on=document.querySelector('.screen.on'), next=on && DARK.includes(on.dataset.s)? 'DARK' : 'LIGHT';
     if(next!==style){ style=next; StatusBar.setStyle({ style }).catch(()=>{}); } };
