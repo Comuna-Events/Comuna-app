@@ -155,7 +155,7 @@ img{ max-width:100% }
 /* tier = pin shape (category = colour), growing with the tier: Pop-up dot, Hidden Gem triangle, Weekly square, Headliner starburst */
 .ticon{ display:inline-grid; place-items:center; width:16px; height:16px; vertical-align:-3px; margin-right:2px } .ticon i{ display:block }
 .cluster{ z-index:21; border-radius:50%; background:var(--card); color:var(--green); border:2px solid var(--green); box-shadow:0 2px 6px rgba(0,0,0,.18); display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:15px; cursor:pointer }
-.pin .chk{ position:absolute; right:-8px; top:-8px; width:16px; height:16px; border-radius:50%; background:var(--green); color:var(--paper); font-size:11px; font-weight:700; display:grid; place-items:center; border:2px solid var(--paper) }
+.pin .chk{ position:absolute; right:-8px; top:-8px; width:17px; height:17px; border-radius:50%; background:var(--green); color:var(--paper); display:grid; place-items:center; border:2px solid var(--paper); line-height:0 }
 .mapboxgl-marker .pin{ transform:none }
 /* venue pin: many events at one spot share a single pin with a count; tapping it lists them by day */
 .pin.venue{ z-index:3; box-shadow:3px -3px 0 -1px var(--paper),3px -3px 0 0 #DCCDAE,0 3px 8px rgba(0,0,0,.28) }
@@ -227,7 +227,7 @@ img{ max-width:100% }
 .picks{ padding:6px 20px 110px; overflow-y:auto; flex:1 }
 .pick{ display:grid; grid-template-columns:44px 1fr auto; gap:12px; align-items:center; background:var(--card); border-radius:16px; padding:12px 14px; margin-top:10px; width:100%; text-align:left }
 .pick .n{ width:44px; height:44px; position:relative; display:grid; place-items:center }
-.pick .n .chk{ position:absolute; right:-4px; top:-4px; width:18px; height:18px; border-radius:50%; background:var(--green); color:var(--paper); font-size:11px; font-weight:700; display:grid; place-items:center; border:2px solid var(--card) }
+.pick .n .chk{ position:absolute; right:-4px; top:-4px; width:18px; height:18px; border-radius:50%; background:var(--green); color:var(--paper); display:grid; place-items:center; border:2px solid var(--card); line-height:0 }
 .pick .when{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--red); text-transform:uppercase }
 .pick .t{ font-weight:700; font-size:15px; margin:2px 0 1px; line-height:1.2 }
 .pick .m{ font-size:12.5px; color:var(--muted) }
@@ -1062,9 +1062,17 @@ function areaCode(zip){ const z=parseInt(String(zip||'').match(/\b9\d{4}\b/)?.[0
 function stampDate(iso){ if(!iso) return {}; const d=new Date(iso); if(isNaN(d)) return {};
   const f=o=>d.toLocaleString('en-US',{timeZone:'America/Los_Angeles',...o});
   return { date:`${f({month:'2-digit'})}.${f({day:'2-digit'})}.${f({year:'2-digit'})}`, time:f({hour:'2-digit',minute:'2-digit',hourCycle:'h23'}) }; }
+// the venue as a stamp names it: "Third Street Promenade (between Arizona Ave and…)" -> "Third Street Promenade",
+// "Santa Monica Public Library - Main Library" -> "Santa Monica Public Library". Places are still kept by the full name.
+// the green "you've been" badge on pins and list rows: a drawn tick, since the ✓ character renders slanted on iPhone
+const CHK_BADGE='<span class="chk" aria-label="Checked in"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>';
+function stampPlaceName(name){
+  const full=String(name||'').trim(), short=full.replace(/\s*\(.*?\)\s*/g,' ').split(/ [-–—] | \/ |, /)[0].trim();
+  return short.length>2? short : full;
+}
 function placeStamp(name,hood,cat,n,rot,w=150,h,ink,o={}){
   const kind=STAMP_INK[catKey(cat)]? catKey(cat) : 'community', c=ink||STAMP_INK[kind], dc=ink||STAMP_DATE_INK[kind]||STAMP_RED;
-  const id='ps'+(stampUid++), H=String(hood||'').toUpperCase(), N=String(name||'').toUpperCase(), A=o.area||'';
+  const id='ps'+(stampUid++), H=String(hood||'').toUpperCase(), N=stampPlaceName(name).toUpperCase(), A=o.area||'';
   const V=n? `№ ${String(n).padStart(2,'0')}` : '', date=o.days||o.date||'', when=[date,o.days?'':o.time].filter(Boolean).join(' · '), time=o.days?'':(o.time||'');
   const fit=(t,per,max)=>t.length*per>max? `textLength="${max}" lengthAdjust="spacingAndGlyphs"` : '';
   const lines=(t,max)=>{ const ws=t.split(/\s+/); if(t.length<=max||ws.length<2) return [t]; let best=[t], diff=1e9;
@@ -1699,7 +1707,7 @@ function cardTitle(ev){
 }
 function cardHtml(ev){
     const done=S.checked.includes(ev.id), inn=hasPlan(ev);
-    return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?'<span class="chk">&check;</span>':''}</div>
+    return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?CHK_BADGE:''}</div>
       <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(cardWhen(ev))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${cardMeta(ev,inn&&!done)}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(cardWhen(ev))}</b> · ${cardMeta(ev,inn&&!done)}</div></div>
       <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
 // after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
@@ -2015,7 +2023,7 @@ let map=null, markers=[], paperDrawn=false;
 // small tier glyph for tabs, badges and the legend
 function tierIcon(k,size=14){ return k==='cornerstone'? `<span class="ticon"><i style="width:${size*.8}px;height:${size*.8}px;border-radius:50%;background:${C.green};box-shadow:0 0 0 2px ${C.sun}"></i></span>` : `<span class="ticon"></span>`; }
 function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev), big=k==='cornerstone';
-  el.className='pin'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,15)+(done?'<span class="chk">&check;</span>':'');
+  el.className='pin'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,15)+(done?CHK_BADGE:'');
   el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+CATS[catKey(ev.category)].label+(big?', Headliner':'')); el.tabIndex=0;
   el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
@@ -2874,19 +2882,32 @@ let calSel=today0(), calView=new Date(calSel.getFullYear(),calSel.getMonth(),1);
 // Fallback for events with no start date: the weekday at the start of their time text ("Tue · 8:00 PM"), next one from today.
 function evDate(ev){ const w=WD.indexOf(String(ev.time||'').slice(0,3)); if(w<0) return null; const d=today0(); d.setDate(d.getDate()+((w-d.getDay()+7)%7)); return d; }
 // does this event happen on this day (local midnight)? Same recurrence rules as nextDate.
-const FULL_WD=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+// the weekdays a schedule note names: "Every Wednesday and Saturday", "Wed–Fri; Sat–Sun", "Friday through Monday".
+// Days after "closed", "except", "some sources say" or "session on" don't count. Same rules as detail_weekdays() in
+// supabase/checkin_verify.sql, so the app and check-in agree on which days an event is on.
+const WD_TOK='(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tues|tue|weds|wed|thurs|thur|thu|fri|sat)s?';
+const WD_RANGE=new RegExp(`\\b${WD_TOK}\\s*(?:–|—|-|through|thru|to)\\s*${WD_TOK}\\b`,'g'), WD_ONE=new RegExp(`\\b${WD_TOK}\\b`,'g');
+const wdOf=t=>['sun','mon','tue','wed','thu','fri','sat'].indexOf(t.slice(0,3));
+function detailWeekdays(detail){
+  const days=new Set();
+  for(let cl of String(detail||'').toLowerCase().split(/[.;]/)){
+    cl=cl.replace(/\b(closed|except|sources say|session on)\b.*$/,'');
+    for(const m of cl.matchAll(WD_RANGE)) for(let d=wdOf(m[1]);;d=(d+1)%7){ days.add(d); if(d===wdOf(m[2])) break; }
+    for(const m of cl.matchAll(WD_ONE)) days.add(wdOf(m[1]));
+  }
+  return days;
+}
 function occursOn(ev,day){
-  const d0=ev.start, rec=(ev.rec||'').toLowerCase();
+  const d0=ev.start, rec=(ev.rec||'').toLowerCase(), wds=detailWeekdays(ev.recDetail);
   if(!d0){   // no start date: weekly events named like "Every Thursday" still land on that weekday
-    const w=FULL_WD.findIndex(n=>(ev.recDetail||'').toLowerCase().includes(n));
-    if(w>=0 && /weekly|daily/.test(rec)) return /daily/.test(rec) || day.getDay()===w;
+    if(wds.size && /weekly|daily/.test(rec)) return /daily/.test(rec) || wds.has(day.getDay());
     const e=evDate(ev); return !!e && +e===+day;
   }
   if(day<d0 || (ev.end && day>ev.end)) return false;
   const diff=Math.round((day-d0)/864e5);
   if(/daily/.test(rec)) return true;
   if(/biweekly/.test(rec)) return diff%14===0;
-  if(/weekly/.test(rec)) return diff%7===0;
+  if(/weekly/.test(rec)) return diff%7===0 || wds.has(day.getDay());   // its start weekday, plus any others the note names
   if(/monthly/.test(rec)) return day.getDay()===d0.getDay() && Math.ceil(day.getDate()/7)===Math.ceil(d0.getDate()/7);
   return ev.end? true : diff===0;   // one-off or seasonal: its date, or every day of its run
 }
