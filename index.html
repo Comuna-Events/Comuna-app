@@ -401,6 +401,43 @@ img{ max-width:100% }
 .dayev .tag{ font-size:11px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.06em }
 .empty{ text-align:center; padding:26px 10px; color:var(--muted); font-size:14px }
 .empty .hand{ font-size:24px; color:var(--red); display:block; margin-bottom:6px }
+.empty .cloader{ margin:0 auto 12px }
+/* loading mark: the logo on a Heritage Green chip. Full rings break into the logo's arcs, the rings orbit opposite ways,
+   then close back into full rings. Each arc is a dashed circle (see loaderHtml); --t keeps the loop's phase across re-renders. */
+.cloader{ flex:none; display:grid; place-items:center; border-radius:50%; background:var(--green); animation:cl-in .25s var(--in,0ms) both }
+.cloader svg{ width:76%; height:76%; overflow:visible }
+.cloader g, .cloader circle{ transform-box:view-box; transform-origin:100px 100px }
+.cloader .seg{ fill:none; stroke:var(--sun); stroke-width:15; stroke-linecap:round; stroke-dasharray:var(--lc) 400; animation:cl-dash 4.2s var(--t,0ms) infinite }
+.cloader .inner{ animation:cl-inner 4.2s var(--t,0ms) infinite }
+.cloader .outer{ animation:cl-outer 4.2s var(--t,0ms) infinite }
+.cloader .dot{ fill:#D16C48; animation:cl-dot 4.2s var(--t,0ms) ease-in-out infinite }
+@keyframes cl-in{ from{ opacity:0 } }
+@keyframes cl-dash{
+  0%,8%{ stroke-dasharray:var(--lc) 400; stroke-dashoffset:0; animation-timing-function:cubic-bezier(.65,0,.35,1) }
+  22%,79%{ stroke-dasharray:var(--lo) 400; stroke-dashoffset:var(--off); animation-timing-function:cubic-bezier(.65,0,.35,1) }
+  93%,100%{ stroke-dasharray:var(--lc) 400; stroke-dashoffset:0 } }
+@keyframes cl-inner{
+  0%,22%{ rotate:0deg; animation-timing-function:cubic-bezier(.65,0,.35,1) }
+  60.1%{ rotate:360deg; animation-timing-function:cubic-bezier(.65,0,.35,1) }
+  79%,100%{ rotate:540deg } }
+@keyframes cl-outer{
+  0%,22%{ rotate:0deg; animation-timing-function:cubic-bezier(.65,0,.35,1) }
+  79%,100%{ rotate:-360deg } }
+@keyframes cl-dot{ 0%,22%,50.5%,79%,100%{ transform:scale(1) } 36.3%,64.8%{ transform:scale(1.08) } }
+/* reduced motion: the logo at rest (its arcs), with only the dot's gentle pulse */
+@media (prefers-reduced-motion:reduce){
+  .cloader .seg{ animation:none; stroke-dasharray:var(--lo) 400; stroke-dashoffset:var(--off) }
+  .cloader .inner, .cloader .outer{ animation:none }
+  .cloader .dot{ animation:cl-pulse 1.2s ease-in-out infinite } }
+@keyframes cl-pulse{ 50%{ transform:scale(1.08) } }
+/* iPhone app launch: the same mark, full screen. Ring size and colours match the native splash
+   (ios/App/App/Assets.xcassets/Splash.imageset: the mark's 200-unit box is 20% of an aspect-filled square), so the handover is invisible. */
+.launch{ position:fixed; inset:0; z-index:10000; background:#244D3A; display:grid; place-items:center; transition:opacity .35s ease }
+.launch.done{ opacity:0; pointer-events:none }
+.launch .cloader{ width:calc(max(100vw,100vh)*.2) !important; height:calc(max(100vw,100vh)*.2) !important; background:none; animation:none !important }
+.launch .cloader svg{ width:100%; height:100% }
+.launch.hold *{ animation-play-state:paused !important }
+@media (prefers-reduced-motion:reduce){ .launch .cloader .seg{ stroke-dasharray:var(--lc) 400; stroke-dashoffset:0 } }
 
 /* ---------- passport ---------- */
 .passcover{ background:var(--green); color:var(--paper); border-radius:22px; padding:18px 18px 16px; margin-top:6px; position:relative; overflow:hidden }
@@ -1104,6 +1141,20 @@ function cityLabel(title,sub,bg,fg,w=160,h=106,rot=0){
 // "you are here": the Comuna mark with a soft pulse behind it, always above event pins
 function youEl(size){ const y=document.createElement('div'); y.className='youmk'; y.setAttribute('aria-label','You are here'); y.innerHTML=`<span class="pulse"></span>${omark(size)}`; return y; }
 function omark(size,ring,dot){ const r=size/2, sw=Math.max(2,size*.085); return `<svg width="${size}" height="${size}" viewBox="${-r} ${-r} ${size} ${size}" aria-hidden="true"><circle r="${r-sw/2}" fill="none" stroke="${ring||C.sun}" stroke-width="${sw}"/><circle r="${r*.42}" fill="none" stroke="${ring||C.sun}" stroke-width="${sw*.8}"/><circle r="${r*.14}" fill="${dot||C.red}"/></svg>`; }
+// Loading mark (styles under .cloader). key names what is loading, so re-rendering mid-load keeps the animation's
+// phase instead of restarting it; the mark fades in only once a load has taken 300ms, so quick loads don't flicker.
+const loaderT0={};
+function loaderHtml(key,size){
+  const now=performance.now(), t0=loaderT0[key]??(loaderT0[key]=now), el=now-t0;
+  // a ring of the logo's arcs [start, end] in degrees clockwise from 12 o'clock; closed, each arc reaches to the middle of the gaps beside it
+  const ring=(r,arcs)=>arcs.map(([a0,a1],i)=>{
+    const gapB=((a0-arcs[(i+arcs.length-1)%arcs.length][1])%360+360)%360, gapA=((arcs[(i+1)%arcs.length][0]-a1)%360+360)%360;
+    const c0=a0-gapB/2, lc=(a1+gapA/2-c0+.5).toFixed(1);
+    return `<circle class="seg" cx="100" cy="100" r="${r}" pathLength="360" transform="rotate(${(c0-90).toFixed(1)})" style="--lc:${lc};--lo:${a1-a0};--off:${-(a0-c0)}"/>`;
+  }).join('');
+  return `<div class="cloader" role="img" aria-label="Loading" style="width:${size}px;height:${size}px;--t:${-Math.round(el)}ms;--in:${Math.max(0,Math.round(300-el))}ms;${el>300?'animation:none':''}"><svg viewBox="0 0 200 200" aria-hidden="true">`
+    +`<g class="outer">${ring(80,[[22,150],[200,345]])}</g><g class="inner">${ring(53,[[212,272],[300,515]])}</g><circle class="dot" cx="100" cy="100" r="22"/></svg></div>`;
+}
 function wordmark(el){ const px=parseFloat(getComputedStyle(el).fontSize); el.innerHTML=`COMUNA${omark(px*.6)}`; el.setAttribute('aria-label','Comuna'); }
 
 /* ---------- navigation ---------- */
@@ -1732,7 +1783,7 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   if(eventListObserver) eventListObserver.disconnect();
   if(isEventList() && P.length) renderEventList(P);
   else document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
-    + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
+    + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:44px 1fr">${loaderHtml('events',44)}<div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
       : eventsState==='error'? `<button class="pick" id="retryEvents" style="grid-template-columns:1fr"><div><div class="t">Couldn't load events</div><div class="m2" style="display:block">Check your connection, then tap to try again</div></div></button>`
       : searchQ? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches “${escH(searchQ)}”</div><div class="m2" style="display:block">Try fewer words, or Anytime / Everything</div></div></div>`
       : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches these filters</div><div class="m2" style="display:block">Try Anytime or Everything</div></div></div>`);
@@ -2671,7 +2722,7 @@ const bar=(b,w)=>`<div class="bprog" style="width:${w}"><i style="width:${Math.r
 function renderShelf(){
   const el=document.getElementById('badgeShelf'), got=earnedBadges(), next=nextBadges()[0];
   if(!S.signedUp){ el.innerHTML=`<div class="bsx"><b>Badges and titles</b><span>Create an account to earn badges and a title for your name.</span></div>${CHEV}`; return; }
-  if(!S.badges){ el.innerHTML=`<div class="bsx"><b>Badges</b><span>${badgesFailed?'Couldn\'t load your badges.':'Loading your badges…'}</span></div>${CHEV}`; return; }
+  if(!S.badges){ el.innerHTML=`${badgesFailed?'':loaderHtml('badges',46)}<div class="bsx"><b>Badges</b><span>${badgesFailed?'Couldn\'t load your badges.':'Loading your badges…'}</span></div>${CHEV}`; return; }
   el.innerHTML=(got.length? `<div class="bstack">${got.slice(0,3).map(b=>badgeIcon(b,46)).join('')}</div>` : '')
     +`<div class="bsx"><b>${got.length? `${got.length} badge${got.length===1?'':'s'}` : 'Badges'}</b>`
     +(next? `<span>Next: <b>${escH(next.name)}</b>, ${next.progress} of ${next.goal}</span>${bar(next,'100%')}` : `<span>You've earned every badge. Nice.</span>`)+`</div>${CHEV}`;
@@ -2682,7 +2733,7 @@ document.getElementById('titlePill').onclick=openTitlePicker; document.getElemen
 function renderBadges(){
   const el=document.getElementById('badgeScreen'), got=earnedBadges();
   let html=`<div class="bhead"><div class="h1" style="color:var(--green)">Badges</div>${S.badges?`<span class="hand">${got.length} of ${shownCount()} earned</span>`:''}</div>`;
-  if(!S.badges){ el.innerHTML=html+`<div class="empty">${badgesFailed? 'Couldn\'t load your badges. Check your connection and try again.' : 'Loading your badges…'}</div>`; loadBadges(); return; }
+  if(!S.badges){ el.innerHTML=html+`<div class="empty">${badgesFailed? 'Couldn\'t load your badges. Check your connection and try again.' : loaderHtml('badges',64)+'Loading your badges…'}</div>`; loadBadges(); return; }
   const close=nextBadges().filter(b=>b.progress>0).slice(0,2);
   if(close.length) html+=`<div class="bsec">Almost there</div><div class="bclose">${close.map(b=>`<button data-badge="${escH(b.key)}"><b>${escH(b.name)}</b><span>${escH(b.blurb)}</span>${bar(b,'100%')}</button>`).join('')}</div>`;
   html+=`<div class="bbook">`;
@@ -3327,6 +3378,15 @@ setInterval(refreshEventVisibility,60000);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') refreshEventVisibility(); });
 
 /* ---------- boot ---------- */
+// iPhone app: cover the page with the animated mark. native.js hides the native splash on load, which pictures this
+// overlay's first frame (full rings); the rings then break and orbit while the app settles, and the overlay fades out.
+if(window.Capacitor?.isNativePlatform?.()){
+  const launch=document.createElement('div'); launch.className='launch hold'; launch.innerHTML=loaderHtml('launch',0);
+  document.body.appendChild(launch);
+  const start=()=>{ launch.classList.remove('hold');
+    setTimeout(()=>{ launch.classList.add('done'); setTimeout(()=>launch.remove(),400); },1700); };
+  if(document.readyState==='complete') start(); else addEventListener('load',start);
+}
 function boot(){
   ['asideMark','onbMark','homeMark'].forEach(id=>wordmark(document.getElementById(id)));
   buildOnb(); updateDot(); renderNames(); current='';
