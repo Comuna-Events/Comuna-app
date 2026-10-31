@@ -516,13 +516,11 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 .nav{ position:absolute; z-index:30; display:grid; grid-template-columns:repeat(4,1fr); left:16px; right:16px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); padding:6px; border-radius:40px;
   background:rgba(251,246,234,.82); -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2); border:1px solid rgba(220,205,174,.8); box-shadow:0 4px 16px rgba(38,37,31,.12) }
 .nav.hide{ display:none }
-/* see-through green, so the map and event cards still show while you scroll past them */
-.nav{ background:rgba(49,92,73,.62); border-color:rgba(49,92,73,.35); box-shadow:0 4px 18px rgba(30,45,38,.18) }
 .nav button{ position:relative; display:flex; align-items:center; justify-content:center; padding:4px 0 8px }
 /* quiet chrome: the bar stays in the background so the map and events lead */
-.nav svg{ stroke:var(--paper); opacity:.7; transition:opacity .15s }
-.nav button.on svg{ stroke:var(--sun); opacity:1 }
-.nav button.on::after{ content:''; position:absolute; bottom:1px; width:5px; height:5px; border-radius:50%; background:var(--sun) }
+.nav svg{ stroke:var(--muted); opacity:.75; transition:opacity .15s }
+.nav button.on svg{ stroke:var(--green); opacity:1 }
+.nav button.on::after{ content:''; position:absolute; bottom:1px; width:5px; height:5px; border-radius:50%; background:var(--green) }
 .toast{ position:absolute; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:30px; font-size:13.5px; font-weight:500; z-index:80; opacity:0; transition:opacity .2s; pointer-events:none; width:max-content; max-width:88%; text-align:center }
 .toast.on{ opacity:1 }
 .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib{ opacity:.6 }
