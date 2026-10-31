@@ -314,7 +314,7 @@ img{ max-width:100% }
 .srclink{ font-size:12.5px; color:var(--green); font-weight:700; text-decoration:underline; text-underline-offset:3px; padding:2px 0 }
 .srclist{ list-style:none; padding:0; margin:12px 0 14px } .srclist li{ padding:10px 0; border-bottom:1px solid var(--line) }
 .srclist b{ display:flex; align-items:center; gap:5px; font-size:14.5px } .srclist span{ display:block; font-size:13px; color:var(--muted); line-height:1.45; margin-top:2px }
-.passhow{ font-size:13px; color:var(--muted); line-height:1.45; margin:10px 2px 0 }
+.passhow{ font-family:var(--hand); font-weight:700; font-size:20px; color:var(--red); line-height:1.15; margin:10px 2px 0 }
 .challenge{ background:var(--card); border-radius:16px; padding:12px 14px; margin:10px 0 0 }
 .challenge .k{ font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red) }
 .challenge b{ display:block; font-size:15px; margin:2px 0 8px } .challenge span{ display:block; font-size:12px; color:var(--muted); margin-top:6px }
@@ -729,7 +729,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
           <div class="passstats"><div><b id="psVisits">0</b>check-ins</div><div><b id="psPts">0</b><span id="psPtsLab">points</span></div></div>
           <div id="passSeal" style="position:absolute;right:-26px;bottom:-26px;opacity:.18"></div>
         </div>
-        <p class="passhow">Check in at events to collect a stamp for every place and neighborhood you explore. Points put you on your neighborhood's monthly board.</p>
+        <p class="passhow">Check in to collect stamps &amp; climb your neighborhood's board.</p>
         <div class="challenge" id="challenge"></div>
         <button class="bshelf" id="badgeShelf"></button>
         <div class="tabs" id="passTabs" role="tablist"></div>
@@ -2990,7 +2990,7 @@ function renderPassport(){
     html=`<div class="ph"><b>${city?'Cities':'Neighborhoods'}</b><span>earned with your first place in each</span></div><div class="pagegrid">`+
       all.filter(h=>V[h.name]).map((h,i)=>`<div class="slot">${stamp(h,i)}</div>`).join('')+
       all.filter(h=>!V[h.name]).sort((a,b)=>miles(origin(),a)-miles(origin(),b)).slice(0,n%2?1:2).map(h=>`<div class="slot"><div class="ghost-stamp">${escH(h.name)}?</div></div>`).join('')+
-      `</div><div class="pagenote">${n} of ${all.length} ${city?'cities':'neighborhoods'}</div>`;
+      `</div><div class="pagenote">${n} of ${all.length} ${city?'cities':'neighborhoods'} in LA County</div>`;
   }
   document.getElementById('passPage').innerHTML=html; renderShelf();
   document.getElementById('lbTitle').textContent=`Top 5 explorers in ${S.nb||'your neighborhood'}`;
