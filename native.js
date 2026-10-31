@@ -44,7 +44,8 @@
     const watch=new MutationObserver(fitBar);
     document.querySelectorAll('.screen').forEach(s=>watch.observe(s,{ attributes:true, attributeFilter:['class'] }));
   });
-  addEventListener('load',()=>SplashScreen.hide({ fadeOutDuration:250 }).catch(()=>{}));
+  // no fade: index.html's launch overlay shows the same picture underneath, then animates it
+  addEventListener('load',()=>SplashScreen.hide({ fadeOutDuration:0 }).catch(()=>{}));
 
   /* reminders ("starts in an hour", sent by supabase/functions/send-reminders): iOS asks for permission after
      someone saves their first plan, when a reminder obviously helps. Every launch re-sends the phone's token,

@@ -9,7 +9,7 @@ const plain=x=>JSON.parse(JSON.stringify(x));
  const calls=[],toasts=[],updates=[],went=[];let reply={data:[],error:null},updateError=null,boards=0;
  const overlay={on:false,classList:{add(){overlay.on=true;},remove(){overlay.on=false;}}};
  const c={console:{warn(){}},C:{red:'#C9533D',blue:'#4B66A8',green:'#244D3A',sun:'#D6A638',ink:'#26251F',muted:'#6B675A'},S:{signedUp:true,accountId:'joe',badges:null,titleKey:null},
-  current:'badges',document:{getElementById:el},save(){},escH:s=>String(s),toast:m=>toasts.push(m),
+  current:'badges',document:{getElementById:el},save(){},escH:s=>String(s),loaderHtml:()=>'<div class="cloader"></div>',toast:m=>toasts.push(m),
   renderNames(){},renderProfile(){},loadLeaderboard(){boards++;},go:id=>went.push(id),openAuth(){},
   overlay,sheet:{innerHTML:'',querySelector:()=>({})},kitModal:{classList:{contains:()=>false}},dbUser:async()=>({id:'joe'}),
   sb:{auth:{getSession:async()=>({data:{session:{user:{id:'joe'}}}})},rpc:async(name)=>{calls.push(name);return reply;},

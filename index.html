@@ -430,6 +430,14 @@ img{ max-width:100% }
   .cloader .inner, .cloader .outer{ animation:none }
   .cloader .dot{ animation:cl-pulse 1.2s ease-in-out infinite } }
 @keyframes cl-pulse{ 50%{ transform:scale(1.08) } }
+/* iPhone app launch: the same mark, full screen. Ring size and colours match the native splash
+   (ios/App/App/Assets.xcassets/Splash.imageset: the mark's 200-unit box is 20% of an aspect-filled square), so the handover is invisible. */
+.launch{ position:fixed; inset:0; z-index:10000; background:#244D3A; display:grid; place-items:center; transition:opacity .35s ease }
+.launch.done{ opacity:0; pointer-events:none }
+.launch .cloader{ width:calc(max(100vw,100vh)*.2) !important; height:calc(max(100vw,100vh)*.2) !important; background:none; animation:none !important }
+.launch .cloader svg{ width:100%; height:100% }
+.launch.hold *{ animation-play-state:paused !important }
+@media (prefers-reduced-motion:reduce){ .launch .cloader .seg{ stroke-dasharray:var(--lc) 400; stroke-dashoffset:0 } }
 
 /* ---------- passport ---------- */
 .passcover{ background:var(--green); color:var(--paper); border-radius:22px; padding:18px 18px 16px; margin-top:6px; position:relative; overflow:hidden }
@@ -3370,6 +3378,15 @@ setInterval(refreshEventVisibility,60000);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') refreshEventVisibility(); });
 
 /* ---------- boot ---------- */
+// iPhone app: cover the page with the animated mark. native.js hides the native splash on load, which pictures this
+// overlay's first frame (full rings); the rings then break and orbit while the app settles, and the overlay fades out.
+if(window.Capacitor?.isNativePlatform?.()){
+  const launch=document.createElement('div'); launch.className='launch hold'; launch.innerHTML=loaderHtml('launch',0);
+  document.body.appendChild(launch);
+  const start=()=>{ launch.classList.remove('hold');
+    setTimeout(()=>{ launch.classList.add('done'); setTimeout(()=>launch.remove(),400); },1700); };
+  if(document.readyState==='complete') start(); else addEventListener('load',start);
+}
 function boot(){
   ['asideMark','onbMark','homeMark'].forEach(id=>wordmark(document.getElementById(id)));
   buildOnb(); updateDot(); renderNames(); current='';
