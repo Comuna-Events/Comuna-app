@@ -2032,9 +2032,10 @@ function openCamera(fly){
   const ins=mapInsets(), cam={ center:[origin().lng,origin().lat], zoom:OPEN_ZOOM, padding:{top:ins.t,bottom:ins.b,left:0,right:0} };
   fly? map.flyTo({...cam,duration:800}) : map.jumpTo(cam);
 }
-/* Brand Guide v2 "Paper" map style, applied on top of Mapbox Light.
-   Paper land, Map Blue water, soft green parks, white streets, Ink labels. POIs hidden so Comuna pins lead. */
-const MAPCOL={ land:'#EFE2C8', water:'#AFC0D8', park:'#C9D4B5', building:'#E6D6B8', road:'#FBF6EA', major:'#FFFFFF', label:'#26251F', halo:'#F3E7D1', minorLabel:'#6B675A' };
+/* "Paper" map style in the heritage palette, applied on top of Mapbox Light (and used by the paper fallback map).
+   Land a shade darker than the cream so cards stand out, pale dusty-blue water, pale green parks, card-white streets,
+   charcoal labels with a cream halo. POIs hidden so Comuna pins lead. */
+const MAPCOL={ land:'#EAE0CE', water:'#C3D1D6', park:'#CBD5C4', building:'#E2D7C3', road:'#FAF6EE', major:'#FFFFFF', label:'#353A32', halo:'#F3EBDD', minorLabel:'#6B6E64' };
 function styleMapbox(m=map){
   const L=m.getStyle().layers||[];
   L.forEach(l=>{ const id=l.id; try{
@@ -2110,15 +2111,15 @@ const LANDMARKS=[ {n:'Silver Lake Reservoir',lat:34.0925,lng:-118.2616,t:'water'
 function paintPaper(host,w,h,P,opts={}){
   const R=rng(7), proj=projector(w,h,P,opts.ins);
   const pxPerMi = Math.abs(proj({lat:origin().lat,lng:origin().lng+0.0185}).x - proj(origin()).x) || 60;
-  let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><rect width="${w}" height="${h}" fill="#EFE2C8"/>`;
-  LANDMARKS.forEach(L=>{ const p=proj(L); if(p.x<-200||p.x>w+200||p.y<-200||p.y>h+200) return; s+=`<ellipse cx="${p.x}" cy="${p.y}" rx="${L.rx*pxPerMi*.5}" ry="${L.ry*pxPerMi*.5}" fill="${L.t==='water'?'#AFC0D8':'#C9D4B5'}"/>`; });
+  let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><rect width="${w}" height="${h}" fill="${MAPCOL.land}"/>`;
+  LANDMARKS.forEach(L=>{ const p=proj(L); if(p.x<-200||p.x>w+200||p.y<-200||p.y>h+200) return; s+=`<ellipse cx="${p.x}" cy="${p.y}" rx="${L.rx*pxPerMi*.5}" ry="${L.ry*pxPerMi*.5}" fill="${L.t==='water'?MAPCOL.water:MAPCOL.park}"/>`; });
   const sp=Math.max(18,pxPerMi*.18);
-  s+=`<g stroke="#FBF6EA" stroke-width="2.2" transform="rotate(-12 ${w/2} ${h/2})">`;
+  s+=`<g stroke="${MAPCOL.road}" stroke-width="2.2" transform="rotate(-12 ${w/2} ${h/2})">`;
   for(let x=-w; x<w*2; x+=sp*(0.8+R()*0.5)) s+=`<line x1="${x}" y1="${-h}" x2="${x}" y2="${h*2}"/>`;
   for(let y=-h; y<h*2; y+=sp*(0.8+R()*0.5)) s+=`<line x1="${-w}" y1="${y}" x2="${w*2}" y2="${y}"/>`;
   s+=`</g><path d="M${-10} ${h*.62} C${w*.3} ${h*.5} ${w*.55} ${h*.72} ${w+10} ${h*.4}" fill="none" stroke="#FFFFFF" stroke-width="7"/><path d="M${w*.22} ${-10} C${w*.3} ${h*.4} ${w*.18} ${h*.7} ${w*.3} ${h+10}" fill="none" stroke="#FFFFFF" stroke-width="5"/>`;
   const placed=[];
-  HOODS.forEach(H=>{ const p=proj(H); if(p.x<30||p.x>w-30||p.y<20||p.y>h-20) return; if(placed.some(q=>Math.abs(q.x-p.x)<H.name.length*6+40&&Math.abs(q.y-p.y)<24)) return; placed.push(p); s+=`<text x="${p.x}" y="${p.y-22}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="15" letter-spacing="2" fill="#26251F" opacity=".55">${H.name.toUpperCase()}</text>`; });
+  HOODS.forEach(H=>{ const p=proj(H); if(p.x<30||p.x>w-30||p.y<20||p.y>h-20) return; if(placed.some(q=>Math.abs(q.x-p.x)<H.name.length*6+40&&Math.abs(q.y-p.y)<24)) return; placed.push(p); s+=`<text x="${p.x}" y="${p.y-22}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="15" letter-spacing="2" fill="${MAPCOL.label}" opacity=".55">${H.name.toUpperCase()}</text>`; });
   s+='</svg>';
   host.innerHTML=s;
   const o=proj(origin()); const you=document.createElement('div'); you.className='youare'; you.style.left=o.x+'px'; you.style.top=o.y+'px'; you.innerHTML=omark(30); host.appendChild(you);
