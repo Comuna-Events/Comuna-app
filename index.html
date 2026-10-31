@@ -103,18 +103,19 @@ img{ max-width:100% }
 .onb .btn.ghost{ border-color:var(--green); color:var(--green); margin-top:10px }
 .onb .big{ color:var(--green); font-family:var(--display); font-weight:900; font-size:60px; line-height:.9; text-transform:uppercase; margin:0 }
 .onb .lede{ color:var(--muted); font-size:15px; line-height:1.5; margin:14px 0 22px }
-.stampfield{ position:relative; height:300px; margin:24px -6px 10px }
-.stampfield > *{ position:absolute }
+.stampfield{ position:relative; flex:0 1 300px; max-height:300px; min-height:150px; margin:24px -6px 10px }
+/* the stamps are laid out at 300px tall and scaled (--s, set in buildOnb) to the height the screen leaves them */
+.stampfield .stamps{ position:absolute; top:0; left:50%; width:calc(100% / var(--s,1)); height:300px; transform:translateX(-50%) scale(var(--s,1)); transform-origin:top center }
+.stampfield .stamps > *{ position:absolute }
 .onb2{ background:var(--grain) 0 0/200px, var(--paper) }
 /* shorter phones (or Safari with its toolbars showing): shrink the stamps and headline so the buttons stay on screen */
 @media (max-height:780px){
   .onb .inner{ padding-top:30px; padding-bottom:24px }
-  .stampfield{ zoom:.7; margin:10px -6px 4px }
+  .stampfield{ margin:10px -6px 4px }
   .onb .big{ font-size:48px }
   .onb .lede{ margin:10px 0 16px }
 }
 @media (max-height:640px){
-  .stampfield{ zoom:.5 }
   .onb .big{ font-size:40px }
 }
 .mini-map{ height:300px; border-radius:22px; overflow:hidden; position:relative; margin:18px 0 6px; box-shadow:0 1px 0 var(--line) }
@@ -1297,34 +1298,21 @@ function flyToPlans(from){
 let tt; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),Math.max(2200,msg.length*55)); }   // longer messages stay up long enough to read
 
 /* ---------- onboarding ---------- */
-// "THURSDAYS" or "WED & SAT", from "Every Saturday 8am-1:30pm and every Tuesday 1:30-7pm" or the start date
-function weeklyDays(ev){
-  const names=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'], t=String(ev.recDetail||'').toLowerCase();
-  let ds=names.filter(n=>t.includes(n)); if(!ds.length && ev.start) ds=[names[ev.start.getDay()]];
-  return ds.length===1? ds[0].toUpperCase()+'S' : ds.slice(0,2).map(n=>n.slice(0,3).toUpperCase()).join(' & ');
-}
-// Before anyone's checked in: three weekly events' stamps, a market first, then two other kinds, closest first.
-// Until events load, a fixed three from around LA.
+// The welcome screen's three stamps: a hand-picked spread across LA (three area codes, three kinds, short names),
+// shown before anyone has picked a neighborhood, so they don't depend on where the map starts
 const WELCOME_STAMPS=[
-  {venue:'Santa Monica Farmers Market',hood:'Santa Monica',category:'markets',days:'WED & SAT',zip:'90401'},
-  {venue:'Trivia at The Greyhound',hood:'Highland Park',category:'community',days:'THURSDAYS',zip:'90042'},
-  {venue:'Sawtelle Run Club',hood:'Sawtelle',category:'active',days:'THURSDAYS',zip:'90025'}];
-function welcomeStamps(){
-  const o=origin(), weekly=events.filter(ev=>/weekly/i.test(ev.rec||'') && ev.venue && ev.lat!=null).sort((a,b)=>miles(o,a)-miles(o,b));
-  const picks=[], kinds=new Set(), take=ev=>{ picks.push(ev); kinds.add(catKey(ev.category)); };
-  const market=weekly.find(ev=>catKey(ev.category)==='markets'); if(market) take(market);
-  for(const ev of weekly){ if(picks.length>=3) break; if(!kinds.has(catKey(ev.category))) take(ev); }
-  if(picks.length<3) return WELCOME_STAMPS;
-  // the event's name, without " - Saturday Downtown" or "(rain or shine)" tails
-  const short=ev=>ev.title.replace(/\s+[-–—|:]\s+.*$/,'').replace(/\s*\(.*?\)/g,'').trim()||ev.venue;
-  return picks.map(ev=>({ venue:short(ev), hood:ev.area||hoodOf(ev).name, category:ev.category, days:weeklyDays(ev), zip:ev.zip }));
-}
+  {venue:'Hollywood Farmers Market',hood:'Hollywood',category:'markets',days:'SUNDAYS',zip:'90028'},
+  {venue:'Pasadena Run Club',hood:'Pasadena',category:'active',days:'WEDNESDAYS',zip:'91105'},
+  {venue:'Drum Circle',hood:'Venice Beach',category:'arts',days:'SAT & SUN',zip:'90291'}];
 function buildOnb(){
   const f=document.getElementById('stampfield'), rots=[-6,7,3];
   const size=k=>k==='community'? 138 : k==='active'? 150 : k==='food'? 162 : 172;
   const slots=['left:0;top:8px','right:2px;top:0','left:50%;top:150px'];
-  f.innerHTML=welcomeStamps().map((p,i)=>{ const k=catKey(p.category), w=size(k);
-    return `<div style="${slots[i]}${i===2?`;margin-left:-${w/2}px`:''}">${placeStamp(p.venue,p.hood,p.category,0,rots[i],w,null,null,{days:p.days,area:areaCode(p.zip)})}</div>`; }).join('');
+  f.innerHTML='<div class="stamps">'+WELCOME_STAMPS.map((p,i)=>{ const k=catKey(p.category), w=size(k);
+    return `<div style="${slots[i]}${i===2?`;margin-left:-${w/2}px`:''}">${placeStamp(p.venue,p.hood,p.category,0,rots[i],w,null,null,{days:p.days,area:areaCode(p.zip)})}</div>`; }).join('')+'</div>';
+  // shrink the stamps with the space: on shorter screens the headline and buttons take what they need first
+  if(!f.dataset.fit){ f.dataset.fit=1; const fit=()=>{ const h=f.clientHeight; if(h) f.style.setProperty('--s',Math.min(1,h/300)); };
+    if(window.ResizeObserver) new ResizeObserver(fit).observe(f); fit(); }
 }
 const locNext=document.getElementById('locNext');
 function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
