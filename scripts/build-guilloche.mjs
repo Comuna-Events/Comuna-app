@@ -1,11 +1,11 @@
-// Builds the passport-page security pattern: fine wavy lines (guilloche) and a rosette emblem around the Comuna mark,
+// Builds the passport-page security pattern: fine wavy lines (guilloche) and a rosette emblem,
 // in faint dusty blue, plus a paper grain. Run: node scripts/build-guilloche.mjs  (writes stamps/passport-*.svg)
 // The pattern tiles vertically, so it covers a page of any length; the app sets how faint it is with these opacities.
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const out = name => fileURLToPath(new URL(`../stamps/${name}`, import.meta.url));
-const BLUE = '#7895A0', OCHRE = '#D5AE64';
+const BLUE = '#7895A0';
 const f = n => n.toFixed(1);
 
 // Two families of waves at different wavelengths cross each other, like the moiré on a real passport page.
@@ -28,7 +28,7 @@ const waves = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}
 </g></svg>`;
 writeFileSync(out('passport-waves.svg'), waves);
 
-// Rosette: rings whose radius ripples (r = R + a·sin(nθ + k)), around the Comuna mark's two circles.
+// Rosette: rings whose radius ripples (r = R + a·sin(nθ + k)).
 const S = 300, c = S / 2;
 let rings = '';
 for (let k = 0; k < 22; k++) {
@@ -42,8 +42,7 @@ for (let k = 0; k < 22; k++) {
 }
 const emblem = `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
 <g fill="none" stroke="${BLUE}" stroke-width=".55" stroke-opacity=".13">${rings}</g>
-<g fill="none" stroke="${OCHRE}" stroke-opacity=".16"><circle cx="${c}" cy="${c}" r="34" stroke-width="5"/><circle cx="${c}" cy="${c}" r="15" stroke-width="4"/></g>
-<circle cx="${c}" cy="${c}" r="5" fill="${OCHRE}" fill-opacity=".16"/></svg>`;
+</svg>`;
 writeFileSync(out('passport-emblem.svg'), emblem);
 
 // Paper grain: fine speckle, warm brown, faint enough to read through.
