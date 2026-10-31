@@ -3,7 +3,7 @@
 // offline data strategy, just enough for a demo/beta build to qualify
 // as an installable PWA on iOS and Android.
 
-const CACHE_NAME = "third-space-demo-v117-passport-header";
+const CACHE_NAME = "third-space-demo-v120-mapbox-bottom";
 const APP_SHELL = [
   "./",
   "./index.html",

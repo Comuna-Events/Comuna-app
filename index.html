@@ -168,15 +168,10 @@ img{ max-width:100% }
 @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(201,83,61,.55) } 100%{ box-shadow:0 0 0 14px rgba(201,83,61,0) } }
 @media (prefers-reduced-motion:reduce){ .pin.live{ animation:none } }
 .youare{ position:absolute; transform:translate(-50%,-50%); pointer-events:none }
-.chips{ display:flex; gap:8px; overflow-x:auto; padding:14px 20px 4px; scrollbar-width:none }
-.chips::-webkit-scrollbar{ display:none }
 .chip{ flex:none; border:1.5px solid var(--ink); border-radius:30px; padding:6px 13px; font-size:13px; font-weight:500 }
 .chip.on{ background:var(--ink); color:var(--paper) }
-#homeScreen{ --home-control-height:34px }
-.fbtn{ flex:1; display:flex; align-items:center; gap:6px; min-width:0; height:var(--home-control-height); border:1px solid #DCCDAE; border-radius:20px; padding:0 12px; font-size:13px; font-weight:600; color:var(--ink); background:var(--card); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.fbtn small{ font-size:10px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.05em } .fbtn i{ margin-left:auto; font-style:normal; font-size:11px; color:var(--muted) }
-.fbtn.set::before{ content:''; flex:none; align-self:center; width:6px; height:6px; border-radius:50%; background:var(--green) }
-/* search: sits between the wordmark row and the When / Type filters; a search sets those same filters, plus one keyword chip */
+#homeScreen{ --home-control-height:40px }
+/* search: under the wordmark row, with the filters button beside it; a search also resets the filters to Anytime / Everything */
 .srch{ position:relative; display:flex; align-items:center; gap:10px; margin:4px 20px 0 }
 .srch [hidden]{ display:none }
 .srchbox{ flex:1; min-width:0; display:flex; align-items:center; gap:10px; height:var(--home-control-height); padding:0 12px 0 14px; background:var(--card); border:1.5px solid #DCCDAE; border-radius:20px; box-shadow:0 4px 14px rgba(38,37,31,.10) }
@@ -194,10 +189,24 @@ img{ max-width:100% }
 .sopt > b{ font-size:13px; color:var(--muted); font-weight:500 }
 .sopt.go{ margin-top:10px; padding:12px 14px; border:0; border-radius:14px; background:var(--green); color:var(--paper) } .sopt.go small{ color:#CFC3AB } .sopt.go > b{ color:var(--paper) }
 .sopt .pl{ flex:none; width:30px; height:30px; border-radius:8px; background:var(--line); display:grid; place-items:center }
-.fbtn.kw{ flex:none; background:var(--ink); border-color:var(--ink); color:var(--paper); align-items:center } .fbtn.kw i{ color:var(--paper) }
 #homeScreen.searching .topbar{ display:none }
 #homeScreen.searching .srch{ margin-top:18px }
-#homeScreen.searching .fbtn{ flex:none }
+.filtbtn{ position:relative; flex:none; width:var(--home-control-height); height:var(--home-control-height); border-radius:50%; display:grid; place-items:center; background:var(--card); border:1.5px solid #DCCDAE; color:var(--green); box-shadow:0 4px 14px rgba(38,37,31,.10) }
+.filtbtn[hidden]{ display:none }
+.filtbtn:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
+.fcount{ position:absolute; right:-4px; top:-4px; min-width:17px; height:17px; padding:0 4px; border-radius:9px; background:var(--green); color:var(--paper); font-size:10.5px; font-weight:800; line-height:1; display:grid; place-items:center; border:2px solid var(--paper) }
+.fcount[hidden]{ display:none }
+/* filters sheet: When as one row of choices, then categories with counts */
+.fseg{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px }
+.fseg button{ padding:9px 2px; border-radius:12px; border:1.5px solid #DCCDAE; background:var(--card); font-size:13px; font-weight:600; color:var(--ink) }
+.fseg button.on{ background:var(--green); border-color:var(--green); color:var(--paper) }
+.fseg button:disabled{ opacity:.4 }
+.fseg.f3{ grid-template-columns:repeat(3,1fr) }
+.flegend{ display:block; margin:14px auto 0; font-size:13px; font-weight:600; color:var(--muted); text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
+.fhead{ display:flex; align-items:center; justify-content:space-between }
+.fclear{ font-size:13px; font-weight:700; color:var(--green); padding:4px 2px }
+.fclear:disabled{ color:var(--muted); opacity:.5 }
+.fshow{ position:sticky; bottom:0; display:block; width:100%; margin-top:16px; padding:14px; border-radius:16px; background:var(--red-action); color:#fff; font:inherit; font-weight:700; box-shadow:0 -8px 14px var(--paper) }
 #homeScreen .homehead.sugg-on{ z-index:35 }
 .picklist{ display:flex; flex-direction:column; margin-top:8px } .popt{ display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px dashed #DCCDAE; font-size:15px; text-align:left }
 .betapill{ font-size:12px; font-weight:600; color:var(--muted); padding:5px 4px; background:none; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
@@ -231,15 +240,11 @@ img{ max-width:100% }
 .listmore{ display:block; width:100%; margin:18px 0 4px; padding:14px; border:1.5px solid var(--line); border-radius:16px; background:var(--card); color:var(--green); font:inherit; font-weight:700 }
 .listmore:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
 .demo-tag{ text-align:center; font-size:11px; color:var(--muted); margin-top:4px }
-/* map mode: the map fills the screen; header, chips and a swipeable row of picks float over it */
+/* map mode: the map fills the screen; header and a swipeable row of picks float over it */
 #homeScreen:not(.home-list) .homehead{ position:relative; z-index:6; padding-bottom:14px; background:linear-gradient(var(--paper) 84%, rgba(243,231,209,0)); pointer-events:none }
 #homeScreen:not(.home-list) .homehead > *{ pointer-events:auto }
-#homeScreen:not(.home-list) .chips{ padding-top:12px }
 #homeScreen:not(.home-list) .mapwrap{ position:absolute; inset:0; height:auto; min-height:0; margin:0; border-radius:0 }
-.maphelp{ position:absolute; left:10px; top:10px; z-index:5; width:34px; height:34px; border-radius:50%; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.12); font-family:var(--display); font-weight:900; font-size:19px; color:var(--green) }
-#homeScreen:not(.home-list) .maphelp{ top:auto; bottom:calc(var(--navh) + 96px) }
-.home-list .maphelp{ display:none }
-.maplocate{ position:absolute; left:54px; bottom:calc(var(--navh) + 96px); z-index:5; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
+.maplocate{ position:absolute; right:10px; bottom:calc(var(--navh) + 142px); z-index:5; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
 .maplocate:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
 .maplocate:disabled{ cursor:wait; opacity:.65 }
 .maplocate[aria-busy="true"] svg{ animation:locating 1.2s linear infinite }
@@ -524,9 +529,10 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 .toast{ position:absolute; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:30px; font-size:13.5px; font-weight:500; z-index:80; opacity:0; transition:opacity .2s; pointer-events:none; width:max-content; max-width:88%; text-align:center }
 .toast.on{ opacity:1 }
 .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib{ opacity:.6 }
-/* Mapbox requires its logo + attribution to stay visible: tuck them in the map's top corners, just under the floating header */
-#homeScreen:not(.home-list) .mapboxgl-ctrl-top-left, #homeScreen:not(.home-list) .mapboxgl-ctrl-top-right{ top:var(--headh,170px) }
-#homeScreen:not(.home-list) .mapboxgl-ctrl-top-left .mapboxgl-ctrl, #homeScreen:not(.home-list) .mapboxgl-ctrl-top-right .mapboxgl-ctrl{ margin:0 10px }
+/* Mapbox requires its logo + attribution to stay visible: side by side bottom-left, level with the Map / List switch */
+#homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left{ bottom:calc(var(--navh) + 96px); height:var(--toggle-h,34px); display:flex; align-items:center; gap:6px; padding-left:10px }
+#homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl{ float:none; clear:none; margin:0 }
+#homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib.mapboxgl-compact-show{ max-width:calc(100vw - 150px) }
 </style>
 </head>
 <body>
@@ -633,15 +639,14 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
           <input id="srchQ" type="search" placeholder="Ask Comuna" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Search events, places and vibes" aria-controls="srchSugg" aria-expanded="false">
           <button type="button" class="srchx" id="srchX" aria-label="Clear search" hidden><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </form>
+        <button type="button" class="filtbtn" id="filtBtn" aria-label="Filters"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3.5 8h8.5M17.5 8h3M3.5 16h3M12 16h8.5"/><circle cx="14.8" cy="8" r="2.6"/><circle cx="9.2" cy="16" r="2.6"/></svg><span class="fcount" id="filtCount" hidden></span></button>
         <button type="button" class="srchcancel" id="srchCancel" hidden>Cancel</button>
         <div class="srchsugg" id="srchSugg" hidden></div>
       </div>
-      <div class="chips" id="chips"></div>
       </div>
       <div class="mapwrap" id="mapwrap">
         <div id="map"></div>
         <div class="toggle"><button class="on" id="tMap">Map</button><button id="tList">List</button></div>
-        <button class="maphelp" id="mapHelp" aria-label="How to read the map">?</button>
         <button class="maplocate" id="mapLocate" type="button" aria-label="Center map on my location" title="Center on my location" aria-busy="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>
         <div class="maplabel" id="mapNote"></div>
       </div>
@@ -1535,6 +1540,13 @@ function enrich(){ const o=origin(); events.forEach(ev=>{ ev.mi=miles(o,ev); ev.
    somewhere (title, tags, category, venue, host, neighborhood, description); if no event has them all, events
    matching any of them show instead. Time words ("tonight", "this weekend") set the When filter rather than
    matching text. */
+// price filter: 'free' is free events only; 'u25' adds pay-what-you-can and events whose stated price starts at $25 or less
+// (events without a stated amount are left out of 'u25', so it fills in as listings gain prices)
+let price='any';
+const PRICES=[['any','Any price'],['free','Free'],['u25','Under $25']];
+function priceFrom(ev){ const m=String(ev.priceAmt||'').match(/\$\s*(\d+(?:\.\d+)?)/); return m? +m[1] : null; }
+function priceOK(ev,pr=price){ if(pr==='any') return true; const free=/^free/i.test(String(ev.price||'').trim()); if(pr==='free') return free;
+  if(free || /donation|pay.what/i.test(ev.price||'')) return true; const a=priceFrom(ev); return a!==null && a<=25; }
 let searchQ='', searchPrev=null, searchHits=null;   // searchHits: event id -> score for searchQ, rebuilt when events reload
 const STOPWORDS=new Set(('a an and the to of in on at for from near me my i im is are am be any some all thing things stuff '
   +'do does what whats where wheres something anything cool fun good great best nice happening going around there here '
@@ -1586,7 +1598,7 @@ const searchOK=ev=>{ const s=searchState(); return !s || s.hits.has(ev.id); };
 function picks(){
   enrich();
   const s=searchState();
-  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev) && searchOK(ev))
+  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev) && priceOK(ev) && searchOK(ev))
     .sort((a,b)=> (s? s.hits.get(b.id)-s.hits.get(a.id) : 0) || a.mi-b.mi);
   return list;                                    // all of LA, closest first (best matches first while searching)
 }
@@ -1689,9 +1701,9 @@ function renderEventList(results){
 }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
-  const wl=WHEN.find(w=>w[0]===when)[1], cl=[tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:''].filter(Boolean).join(' · ')||'Everything';
-  document.getElementById('chips').innerHTML=`<button class="fbtn ${when!=='any'?'set':''}" data-pick="when" aria-label="When: ${wl}">${wl}<i>▾</i></button><button class="fbtn ${filter!=='All'||tier!=='any'?'set':''}" data-pick="type" aria-label="Type: ${cl}">${cl}<i>▾</i></button>`
-    + (searchQ? `<button class="fbtn kw" data-clear-search aria-label="Clear search: ${escH(searchQ)}">“${escH(searchQ.length>24?searchQ.slice(0,23)+'…':searchQ)}”<i>✕</i></button>` : '');
+  const nf=(when!=='any')+(filter!=='All')+(tier!=='any')+(price!=='any'), fc=document.getElementById('filtCount');
+  fc.textContent=nf; fc.hidden=!nf;
+  document.getElementById('filtBtn').setAttribute('aria-label','Filters: '+filterSummary());
   document.getElementById('homeScreen').classList.toggle('searching',!!searchQ);
   const P=picks();
   if(eventListObserver) eventListObserver.disconnect();
@@ -1706,9 +1718,11 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
     : first ? (first.live? `${first.title.split(' ').slice(0,2).join(' ')}: ${first.startsIn}` : '') : '';
   placePins(P);
 }
-document.getElementById('chips').addEventListener('click',e=>{ if(e.target.closest('[data-clear-search]')){ clearSearch(); return; } const b=e.target.closest('[data-pick]'); if(b) openPicker(b.dataset.pick); });
+// what the map is showing, in words: "Today · Your interests"
+function filterSummary(){ return [WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything', price!=='any'?PRICES.find(p=>p[0]===price)[1]:''].filter(Boolean).join(' · '); }
+document.getElementById('filtBtn').onclick=openFilters;
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
-function countWith(w,c,t=tier){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&searchOK(ev)).length; when=ow; return n; }
+function countWith(w,c,t=tier,pr=price){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&priceOK(ev,pr)&&searchOK(ev)).length; when=ow; return n; }
 // change the interests you picked at sign-up (also drives "Your interests" on the map and the daily Top 4)
 function editInterests(){
   const pick=new Set(S.interests||[]);
@@ -1774,22 +1788,28 @@ function editLeaderboard(){
 document.getElementById('pfLbBtn').onclick=editLeaderboard;
 document.getElementById('pfSources').onclick=()=>openSources();
 document.getElementById('guestSave').onclick=()=>openAuth('signup');
-function openPicker(kind){
-  const row=(attr,k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" ${attr}="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
-  let body;
-  if(kind==='when') body=WHEN.map(([k,l])=>row('data-opt',k,'',l,countWith(k,filter),k===when,k==='any')).join('');
-  else body=``
-    + `<div class="psub" style="display:flex;align-items:center">Category<button class="editint" id="editInt">${myCats().length?'Edit interests':'Pick interests'}</button></div>`
-    + (myCats().length? row('data-opt','mine',`<span class="ticon">${omark(15)}</span>`,'Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
-    + ['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))].map(k=>row('data-opt',k,k==='All'?'<span class="ticon"></span>':catDot(k,12),k==='All'?'Everything':CATS[k].label,countWith(when,k),k===filter,k==='All')).join('');
-  sheet.innerHTML=`<div class="grab"></div><div class="cat">${kind==='when'?'When':'Type of event'}</div><div class="picklist">${body}</div>`;
-  overlay.classList.add('on');
-  const ei=document.getElementById('editInt'); if(ei) ei.onclick=e=>{ e.stopPropagation(); editInterests(); };
-  sheet.querySelector('.picklist').onclick=e=>{ const o=e.target.closest('[data-opt],[data-tier]'); if(!o||o.disabled) return;
-    if(o.dataset.tier) tier=o.dataset.tier; else if(kind==='when') when=o.dataset.opt; else filter=o.dataset.opt;
-    overlay.classList.remove('on'); renderHome(); };
+// filters: one sheet for when and what, with how many events each choice shows; it stays open so both can be set
+function openFilters(){
+  const row=(k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" data-opt="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
+  const draw=()=>{
+    const n=countWith(when,filter);
+    sheet.innerHTML=`<div class="grab"></div><div id="fWrap"><div class="fhead"><div class="cat">Filters</div><button class="fclear" id="fClear" ${when==='any'&&filter==='All'&&tier==='any'&&price==='any'?'disabled':''}>Clear all</button></div>`
+      + `<div class="psub">When</div><div class="fseg">${WHEN.map(([k,l])=>`<button data-when="${k}" class="${k===when?'on':''}" ${countWith(k,filter)||k==='any'?'':'disabled'}>${l}</button>`).join('')}</div>`
+      + `<div class="psub">Price</div><div class="fseg f3">${PRICES.map(([k,l])=>`<button data-price="${k}" class="${k===price?'on':''}" ${countWith(when,filter,tier,k)||k==='any'?'':'disabled'}>${l}</button>`).join('')}</div>`
+      + `<div class="psub" style="display:flex;align-items:center">Category<button class="editint" id="editInt">${myCats().length?'Edit interests':'Pick interests'}</button></div><div class="picklist">`
+      + (myCats().length? row('mine',`<span class="ticon">${omark(15)}</span>`,'Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
+      + ['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))].map(k=>row(k,k==='All'?'<span class="ticon"></span>':catDot(k,12),k==='All'?'Everything':CATS[k].label,countWith(when,k),k===filter,k==='All')).join('')
+      + `</div><button class="flegend" id="fLegend">What the pins mean</button><button class="fshow" id="fShow">${n? `Show ${n} ${n===1?'event':'events'}` : 'No events match'}</button></div>`;
+    document.getElementById('editInt').onclick=e=>{ e.stopPropagation(); editInterests(); };
+    document.getElementById('fClear').onclick=()=>{ when='any'; filter='All'; tier='any'; price='any'; renderHome(); draw(); };
+    document.getElementById('fLegend').onclick=openLegend;
+    document.getElementById('fShow').onclick=()=>overlay.classList.remove('on');
+    document.getElementById('fWrap').onclick=e=>{ const w=e.target.closest('[data-when]'), pr=e.target.closest('[data-price]'), o=e.target.closest('[data-opt]'), b=w||pr||o; if(!b||b.disabled) return;
+      if(w) when=w.dataset.when; else if(pr) price=pr.dataset.price; else filter=o.dataset.opt;
+      renderHome(); draw(); };
+  };
+  draw(); overlay.classList.add('on');
 }
-document.getElementById('mapHelp').onclick=openLegend;
 document.getElementById('mapLocate').onclick=centerOnLocation;
 function centerOnLocation(){
   const button=document.getElementById('mapLocate');
@@ -1846,7 +1866,7 @@ function fitToResults(P){
 function syncSearchBar(){
   const typing=document.activeElement===srchQ || !srchSugg.hidden;
   document.getElementById('srchBack').hidden=!searchQ || typing; document.getElementById('srchIcon').hidden=!!searchQ && !typing;
-  document.getElementById('srchX').hidden=!srchQ.value; document.getElementById('srchCancel').hidden=!typing;
+  document.getElementById('srchX').hidden=!srchQ.value; document.getElementById('srchCancel').hidden=!typing; document.getElementById('filtBtn').hidden=typing;
 }
 function closeSugg(){ srchSugg.hidden=true; srchSugg.innerHTML=''; srchQ.setAttribute('aria-expanded','false'); document.querySelector('#homeScreen .homehead').classList.remove('sugg-on'); syncSearchBar(); }
 // suggestions while typing: run the search, then categories, places and events that match what's typed so far
@@ -2082,8 +2102,8 @@ function tryMapbox(){
   s.onload=()=>{ try{
       if(!mapboxgl.supported || !mapboxgl.supported()){ clearTimeout(timer); fail(); return; }
       mapboxgl.accessToken=MAPBOX_TOKEN;
-      const m=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[origin().lng,origin().lat],zoom:13.3,attributionControl:false,logoPosition:'top-left',pitchWithRotate:false,dragRotate:false});
-      m.addControl(new mapboxgl.AttributionControl({compact:true}),'top-right');
+      const m=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[origin().lng,origin().lat],zoom:13.3,attributionControl:false,logoPosition:'bottom-left',pitchWithRotate:false,dragRotate:false});
+      m.addControl(new mapboxgl.AttributionControl({compact:true}),'bottom-left');
       // A token locked to another domain answers 401/403: fall back to the Paper map instead of showing a blank one.
       m.on('error',ev=>{ const er=ev&&ev.error; if(!er) return; const bad=[401,403].includes(er.status) || /401|403|Forbidden|Unauthorized/i.test(String(er.message)); if(!bad) return;
         // once the live map is up, one refused tile (e.g. while zooming out) must not swap the whole map for Paper
