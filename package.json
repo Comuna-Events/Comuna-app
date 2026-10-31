@@ -1,0 +1,20 @@
+{
+  "name": "comuna",
+  "private": true,
+  "description": "Comuna's iPhone app: the web app in index.html, packaged with Capacitor. See IOS.md.",
+  "scripts": {
+    "ios": "node scripts/build-ios.mjs && cap sync ios",
+    "ios:open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/geolocation": "8.2.3",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}
