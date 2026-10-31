@@ -252,7 +252,10 @@ img{ max-width:100% }
 .listmore:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
 .demo-tag{ text-align:center; font-size:11px; color:var(--muted); margin-top:4px }
 /* map mode: the map fills the screen; header and a swipeable row of picks float over it */
-#homeScreen:not(.home-list) .homehead{ position:relative; z-index:6; padding-bottom:14px; background:linear-gradient(var(--paper) 84%, rgba(243,231,209,0)); pointer-events:none }
+#homeScreen:not(.home-list) .homehead{ position:relative; z-index:6; padding-bottom:14px; pointer-events:none }
+/* the same grained paper as the status bar strip above it, fading out over the map */
+#homeScreen:not(.home-list) .homehead::before{ content:''; position:absolute; inset:0; z-index:-1; background:var(--grain) 0 0/200px, var(--paper);
+  -webkit-mask-image:linear-gradient(#000 84%, transparent); mask-image:linear-gradient(#000 84%, transparent) }
 #homeScreen:not(.home-list) .homehead > *{ pointer-events:auto }
 #homeScreen:not(.home-list) .mapwrap{ position:absolute; inset:0; height:auto; min-height:0; margin:0; border-radius:0 }
 .maplocate{ position:absolute; right:10px; bottom:calc(var(--navh) + 142px); z-index:5; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
