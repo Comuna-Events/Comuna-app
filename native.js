@@ -47,6 +47,15 @@
   // no fade: index.html's launch overlay shows the same picture underneath, then animates it
   addEventListener('load',()=>SplashScreen.hide({ fadeOutDuration:0 }).catch(()=>{}));
 
+  /* haptics: index.html calls window.comunaHaptic(kind) at moments like a check-in, a save or a badge */
+  const Haptics=cap.registerPlugin('Haptics');
+  const IMPACT={ light:'LIGHT', medium:'MEDIUM', heavy:'HEAVY' }, NOTICE={ success:'SUCCESS', warning:'WARNING', error:'ERROR' };
+  window.comunaHaptic=kind=>{
+    const done=kind==='selection'? Haptics.selectionStart().then(()=>Haptics.selectionChanged()).then(()=>Haptics.selectionEnd())
+      : NOTICE[kind]? Haptics.notification({ type:NOTICE[kind] }) : Haptics.impact({ style:IMPACT[kind]||'LIGHT' });
+    done.catch(()=>{});
+  };
+
   /* reminders ("starts in an hour", sent by supabase/functions/send-reminders): iOS asks for permission after
      someone saves their first plan, when a reminder obviously helps. Every launch re-sends the phone's token,
      since iOS can change it. `sb` and `openSheet` are the app's own, from index.html. */

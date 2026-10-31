@@ -6,7 +6,7 @@ const els=new Map(),el=id=>{if(!els.has(id))els.set(id,{innerHTML:'',textContent
 (async()=>{
  const calls=[];const replies={my_points_this_month:440,
   leaderboard_top:[{display_name:'Ana R.',points:420,is_me:false},{display_name:'Joe P.',points:30,is_me:true}],going_counts:[{event_id:'EVT-1',going:3}],checkin_counts:[{event_id:'EVT-2',checked_in:4}],review_summary:[{event_id:'EVT-1',reviews:5,liked_pct:80,top_tags:['Great vibe','Good for groups','Kid-friendly']}]};
- const c={console:{warn(){}},S:{nb:'Santa Monica',guest:false},myPtsAt:0,document:{getElementById:el},save(){},escH:s=>s,shortName:()=>'Joe P.',ordinal:n=>n+'th',
+ const c={console:{warn(){}},S:{nb:'Santa Monica',guest:false},myPtsAt:0,document:{getElementById:el},save(){},escH:s=>s,shortName:()=>'Joe P.',ordinal:n=>n+'th',climbBoard(){},
   current:'passport',renderHome(){},events:[{eid:'EVT-1',going:0},{eid:'EVT-2',going:5}],
   sb:{auth:{getSession:async()=>({data:{session:{user:{id:'joe'}}}})},rpc:async(name,args)=>{calls.push({name,args:JSON.parse(JSON.stringify(args||{}))});return {data:replies[name],error:null};},
    from:()=>{throw new Error('the views are no longer read directly');}}};
