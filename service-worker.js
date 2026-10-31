@@ -3,7 +3,7 @@
 // offline data strategy, just enough for a demo/beta build to qualify
 // as an installable PWA on iOS and Android.
 
-const CACHE_NAME = "third-space-demo-v124-text-box-zoom";
+const CACHE_NAME = "third-space-demo-v125-loading-mark";
 const APP_SHELL = [
   "./",
   "./index.html",
