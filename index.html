@@ -507,12 +507,8 @@ img{ max-width:100% }
 .lbrow:last-child{ border-bottom:0 }
 .lbrow .r{ font-family:var(--display); font-weight:900; font-size:20px; color:var(--muted) }
 .youmk{ position:relative; z-index:20; display:grid; place-items:center; pointer-events:none }
-/* on the map the mark has no chip and green rings, so it reads on the cream map; a soft paper halo keeps it clear of roads */
-.youmk .cloader{ position:relative; animation:none; background:none; filter:drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 1px 1px rgba(0,0,0,.18)) }
-.youmk .cloader svg{ width:100%; height:100% }
-.youmk .cloader{ transition:width .2s ease, height .2s ease }
+.youmk .cloader{ position:relative; animation:none; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:width .2s ease, height .2s ease }
 .youmk.dots .cloader{ width:20px !important; height:20px !important }   /* YOU_DOT_SIZE */
-.youmk .cloader .seg{ stroke:var(--green) }
 /* the pin rests as full rings; youSpin() plays the loading loop and stops it as the rings close up again */
 .youmk .cloader *{ animation-delay:0s !important }
 .youmk:not(.locating) .cloader *{ animation:none !important }
