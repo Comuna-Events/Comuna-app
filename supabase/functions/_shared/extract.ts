@@ -36,6 +36,7 @@ export interface ExtractedEvent {
   neighborhood: string | null;
   setting: string | null;
   price_type: string | null;
+  price_detail: string | null; // as stated: "$15", "$20–40"
   rsvp_required: boolean | null;
   ticket_url: string | null;
   age: string | null;
@@ -71,6 +72,7 @@ const EVENT_SCHEMA = {
     neighborhood: text,
     setting: oneOf(SETTING),
     price_type: oneOf(PRICE_TYPE),
+    price_detail: text,
     rsvp_required: orNull({ type: "boolean" }),
     ticket_url: text,
     age: oneOf(AGE),
@@ -81,7 +83,7 @@ const EVENT_SCHEMA = {
   required: [
     "name", "description", "category", "tags", "vibes", "start_date", "end_date", "start_time", "end_time",
     "recurrence", "recurrence_detail", "venue", "street_address", "city", "zip", "neighborhood", "setting",
-    "price_type", "rsvp_required", "ticket_url", "age", "host", "confidence", "notes",
+    "price_type", "price_detail", "rsvp_required", "ticket_url", "age", "host", "confidence", "notes",
   ],
   additionalProperties: false,
 };
@@ -103,6 +105,7 @@ Fill each field only from what the post (and any flyer image) actually says. Whe
 - Leave out events whose last date is before today.
 - category is the closest of the six: Food & Drink (tastings, supper clubs, food festivals), Arts & Entertainment (concerts, comedy, theater, film, galleries, DJ nights, dance), Classes & Workshops (classes, workshops, talks, readings), Active & Outdoors (run clubs, yoga, hikes, sports), Markets & Shopping (farmers, flea and makers markets, pop-up shops), Community & Social (meetups, trivia and game nights, family events, festivals, volunteering, civic). Put the specific kind ("comedy", "jazz", "book club") in tags.
 - ${VIBE_GUIDE}
+- price_detail is the price exactly as stated, kept short: "$15", "$20–40", "$10 suggested donation", "$25 adv / $30 door". Empty when no amount is given, including for free events.
 - confidence is 0 to 1: how sure you are this is a real, public, upcoming in-person event with the date right.
 - notes: one short line on anything you were unsure about or had to guess, or an empty string.`;
 
