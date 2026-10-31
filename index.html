@@ -507,7 +507,10 @@ img{ max-width:100% }
 .lbrow:last-child{ border-bottom:0 }
 .lbrow .r{ font-family:var(--display); font-weight:900; font-size:20px; color:var(--muted) }
 .youmk{ position:relative; z-index:20; display:grid; place-items:center; pointer-events:none }
-.youmk .cloader{ position:relative; animation:none; box-shadow:0 1px 3px rgba(0,0,0,.25) }
+/* on the map the mark has no chip and green rings, so it reads on the cream map; a soft paper halo keeps it clear of roads */
+.youmk .cloader{ position:relative; animation:none; background:none; filter:drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 1px 1px rgba(0,0,0,.18)) }
+.youmk .cloader svg{ width:100%; height:100% }
+.youmk .cloader .seg{ stroke:var(--green) }
 /* the pin rests as full rings; youSpin() plays the loading loop and stops it as the rings close up again */
 .youmk .cloader *{ animation-delay:0s !important }
 .youmk:not(.locating) .cloader *{ animation:none !important }
@@ -1142,6 +1145,7 @@ function cityLabel(title,sub,bg,fg,w=160,h=106,rot=0){
 }
 
 // "you are here": the Comuna mark with a soft pulse behind it, always above event pins
+const YOU_SIZE=20;   // "you are here" stays only a little bigger than the event dots (12px) at every zoom
 function youEl(size){ const y=document.createElement('div'); y.className='youmk'; y.setAttribute('aria-label','You are here'); y.innerHTML=`<span class="pulse"></span>${loaderHtml('you',size)}`;
   // each loop ends with the rings whole, so stopping at a loop's end never jumps
   y.addEventListener('animationiteration',e=>{ if(e.target.classList.contains('dot') && y.dataset.stop) y.classList.remove('locating'); });
@@ -2123,7 +2127,7 @@ function placePins(P){
   if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you;
     if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); if(fromCards){ fromCards=false; return; } cardsForView(); });
       ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent){ userMoved=true; fromCards=false; if(t==='dragstart' && selId!==null){ selId=null; } } })); }
-    if(!markers.you){ const y=youEl(34); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
+    if(!markers.you){ const y=youEl(YOU_SIZE); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
     if(!map._opened){ map._opened=true; openCamera(false); }
   } else drawPaper();
 }
@@ -2223,7 +2227,7 @@ function paintPaper(host,w,h,P,opts={}){
   HOODS.forEach(H=>{ const p=proj(H); if(p.x<30||p.x>w-30||p.y<20||p.y>h-20) return; if(placed.some(q=>Math.abs(q.x-p.x)<H.name.length*6+40&&Math.abs(q.y-p.y)<24)) return; placed.push(p); s+=`<text x="${p.x}" y="${p.y-22}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="15" letter-spacing="2" fill="${MAPCOL.label}" opacity=".55">${H.name.toUpperCase()}</text>`; });
   s+='</svg>';
   host.innerHTML=s;
-  const o=proj(origin()); const you=document.createElement('div'); you.className='youare'; you.style.left=o.x+'px'; you.style.top=o.y+'px'; const mk=youEl(34); mk.classList.remove('locating'); you.appendChild(mk); host.appendChild(you);   // this map redraws often, so its pin stays still
+  const o=proj(origin()); const you=document.createElement('div'); you.className='youare'; you.style.left=o.x+'px'; you.style.top=o.y+'px'; const mk=youEl(YOU_SIZE); mk.classList.remove('locating'); you.appendChild(mk); host.appendChild(you);   // this map redraws often, so its pin stays still
   (opts.dots||[]).forEach(ev=>{ const p=proj(ev); if(p.x<0||p.x>w||p.y<0||p.y>h) return; const d=document.createElement('button'); d.className='edot'; d.style.background=CATS[catKey(ev.category)].bg; d.style.left=p.x+'px'; d.style.top=p.y+'px'; d.setAttribute('aria-label',ev.title); d.onclick=()=>openSheet(ev.id); host.appendChild(d); });
   if(!opts.noPins) (opts.pins||P).forEach((ev,i)=>{ if(!inView(ev)) return; const p=proj(ev); const el=pinEl(ev,i); el.style.position='absolute'; el.style.left=p.x+'px'; el.style.top=p.y+'px'; host.appendChild(el); });
 }
@@ -2255,7 +2259,7 @@ function drawMini(){
   }catch(e){ mini=null; paintMini(el); }
 }
 let miniYouMk=null;
-function miniYou(){ if(!mini || !S.loc) return; if(!miniYouMk){ const y=youEl(30); miniYouMk=new mapboxgl.Marker({element:y}).setLngLat([S.loc.lng,S.loc.lat]).addTo(mini); } else miniYouMk.setLngLat([S.loc.lng,S.loc.lat]); }
+function miniYou(){ if(!mini || !S.loc) return; if(!miniYouMk){ const y=youEl(YOU_SIZE); miniYouMk=new mapboxgl.Marker({element:y}).setLngLat([S.loc.lng,S.loc.lat]).addTo(mini); } else miniYouMk.setLngLat([S.loc.lng,S.loc.lat]); }
 function paintMini(el){ setTimeout(()=>{ if(mini) return; enrich(); paintPaper(el,el.clientWidth,el.clientHeight,picks()); },20); }
 window.addEventListener('resize',()=>{ if(current==='home') drawPaper(); if(current==='passport') fitLine(document.getElementById('passCount')); });
 
