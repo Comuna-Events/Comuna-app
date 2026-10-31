@@ -11,6 +11,13 @@
       "launchAutoHide": false,
       "backgroundColor": "#244D3A",
       "showSpinner": false
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "banner",
+        "sound",
+        "list"
+      ]
     }
   }
 }

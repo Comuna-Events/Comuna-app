@@ -1209,6 +1209,9 @@ const suCode=document.getElementById('suCode'), codeNext=document.getElementById
 let authMode='signup';   // 'signup' (new account) or 'signin' (coming back, e.g. on a new phone)
 let authed=null;         // the Supabase user, once their email is verified
 let codeEmail='', resendT=null, verifying=false;
+// Apple's reviewers can't get our emails, so this address skips the email and takes the code from the App Review notes
+// (supabase/functions/review-login checks it)
+const REVIEW_EMAIL='appreview@wearecomuna.com';
 const emailOk=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 function suUpdate(){
   const needName=authMode==='signup', needEmail=!authed;
@@ -1243,6 +1246,8 @@ suNext.onclick=async()=>{
 };
 async function sendCode(email){
   if(!sb){ toast('Couldn\'t connect. Check your connection and try again.'); return false; }
+  if(email===REVIEW_EMAIL){ codeEmail=email; document.getElementById('codeSent').textContent='Enter the code from the App Review notes.';
+    suCode.value=''; suCode.dataset.len=0; codeNext.disabled=true; codeResend.disabled=true; codeResend.textContent='Resend code'; return true; }
   const { error } = await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:true } });
   if(error){ console.warn('Supabase send code failed', error);
     toast(/security purposes|rate limit/i.test(error.message)? 'Please wait a minute before asking for another code.' : 'Couldn\'t send the code: '+error.message); return false; }
@@ -1268,12 +1273,21 @@ suCode.addEventListener('input',()=>{
 codeNext.onclick=async()=>{
   if(verifying || suCode.value.length<CODE_MIN) return;
   verifying=true; codeNext.disabled=true; codeNext.textContent='Checking…';
-  const { data, error } = await sb.auth.verifyOtp({ email:codeEmail, token:suCode.value, type:'email' });
+  const { data, error } = codeEmail===REVIEW_EMAIL? await reviewSignIn(suCode.value) : await sb.auth.verifyOtp({ email:codeEmail, token:suCode.value, type:'email' });
   verifying=false; codeNext.textContent='Verify';
   if(error || !data.user){ console.warn('Supabase code check failed', error); codeNext.disabled=false; suCode.select();
     return toast('That code didn\'t work. Check it, or tap "Resend code" for a new one.'); }
   authed=data.user; S.email=codeEmail; save(); finishAuth();
 };
+async function reviewSignIn(token){
+  try{
+    const r=await fetch(SUPABASE_URL+'/functions/v1/review-login',{ method:'POST', headers:{ 'content-type':'application/json', apikey:SUPABASE_KEY },
+      body:JSON.stringify({ email:REVIEW_EMAIL, token }) });
+    const j=await r.json();
+    if(!r.ok || !j.token_hash) return { data:{}, error:new Error(j.error||'review sign-in failed') };
+    return await sb.auth.verifyOtp({ token_hash:j.token_hash, type:'email' });
+  }catch(error){ return { data:{}, error }; }
+}
 let passportRestoreId=0, passportRevision=0;
 const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; badgesAt=0; return Object.assign(S,{ accountId:null, badges:null, titleKey:null, nickname:'', lbShow:'', monthLog:null, monthDb:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
 // your profile row; until supabase/leaderboard_privacy.sql adds nickname and lb_show, read it without them
@@ -1386,6 +1400,7 @@ async function finishAuth(){
 }
 // back to a signed-out, empty passport (sign out, demo reset, or an account from before email sign-in)
 async function signOutLocal(){
+  try{ await window.comunaSigningOut?.(); }catch(e){}   // the iPhone app stops this phone's reminders (native.js)
   authed=null; S.signedUp=false; S.guest=false; S.guestLog=[]; S.email=''; freshPassport(); save();
   if(sb) try{ await sb.auth.signOut({ scope:'local' }); }catch(e){}
 }
@@ -3027,6 +3042,7 @@ async function dbRsvp(ev){
   if(!ev) return; const u=await dbUser(); if(!u) return;
   const { error } = await sb.from('rsvps').upsert({ user_id:u.id, event_id:eidOf(ev), event_title:ev.title, kind:'rsvp', occurrence_date:ev.occurrenceDate }, {onConflict:'user_id,event_id,occurrence_date'});
   if(error){ console.warn('Supabase RSVP save failed', error); dbStatus('RSVP save failed: '+error.message,true); }
+  else try{ dispatchEvent(new Event('comuna:plan-saved')); }catch(e){}   // the iPhone app asks for reminders here (native.js)
   dbProfile(); loadGoing();
 }
 // what people look at and tap, per event, for host stats. Batched, sent quietly (no error toasts), never blocks the app.
