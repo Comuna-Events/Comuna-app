@@ -407,9 +407,7 @@ img{ max-width:100% }
 .page .ph span{ font-size:11.5px; color:var(--muted); text-align:right }
 .pagegrid{ display:grid; grid-template-columns:1fr 1fr; gap:4px 2px; justify-items:center; align-items:center }
 .pagegrid .slot{ text-align:center; padding:4px 0 }
-.pstamp{ position:relative; aspect-ratio:100/92; margin:4px auto }
-.pstamp .pink{ position:absolute; inset:0; -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat }
-.pstamp svg{ position:absolute; inset:0; width:100%; height:100%; overflow:visible }
+.pstamp{ position:relative; margin:4px auto } .pstamp svg{ display:block; overflow:visible }
 .ghost-rect{ width:140px; height:128px; border-radius:10px; border:2px dashed #CDBF9F; display:grid; place-items:center; font-family:var(--hand); font-size:18px; color:#A89C82; margin:4px 0; padding:8px; line-height:1 }
 .pagenote{ font-family:var(--hand); font-size:18px; color:var(--red); text-align:center; margin-top:10px }
 /* passport: the six kinds of outing, lit once you have a stamp in each */
@@ -981,19 +979,97 @@ function rsvpStamp(ev,w=240,h=160){
   <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
   <circle cx="75" cy="18" r="3.2" fill="${C.red}"/></svg>`;
 }
-// Place stamps: illustrated passport entry stamps, one per kind of place (stamps/place-<category>.webp, ink only).
-// The art is used as a mask, so it prints in any ink: its own color, or pale ink on dark screens. The venue goes in the
-// top band and its neighborhood or city in the bottom band, in the same worn ink.
-const PLACE_INK={ food:'#325A93', arts:'#B35042', classes:'#4A4640', active:'#B45647', markets:'#4D4942', community:'#2F67A4' };
-function placeStamp(name,hood,cat,n,rot,w=150,h,ink){
-  const k=PLACE_INK[catKey(cat)]? catKey(cat) : 'community', c=ink||PLACE_INK[k], nm=name.toUpperCase(), sub=`• ${hood.toUpperCase()} •`;
+// Place stamps: passport entry stamps drawn in code, one shape per kind of place, no illustration. They carry the
+// place, its neighborhood, the area code (where a country code sits on a real stamp), your visit number there (№)
+// and the date and time you last checked in. o.days (welcome screen) replaces the date for a place not visited yet.
+// Ink: two red, two blue, two black, like a real passport; a pale ink on dark screens.
+const STAMP_INK={ food:'#B9443A', arts:'#2F5DA8', classes:'#2D2B28', active:'#2D2B28', markets:'#2F5DA8', community:'#B9443A' };
+const STAMP_DATE_INK={ food:'#2F5DA8', community:'#2F5DA8' }, STAMP_RED='#C2453A';
+let stampUid=0;
+// LA County area codes by zip. Approximate where codes overlap (213/323 share central LA): the older code wins.
+const AREA_213=new Set([90005,90006,90010,90012,90013,90014,90015,90017,90020,90021,90026,90057,90071]);
+const AREA_310=new Set([90024,90025,90034,90035,90045,90049,90056,90064,90066,90067,90069,90073,90077,90094,90095]);
+const AREA_RANGES=[[90001,90099,'323'],[90201,90201,'323'],[90240,90242,'562'],[90255,90255,'323'],[90280,90280,'323'],[90202,90399,'310'],
+  [90401,90411,'310'],[90501,90510,'310'],[90601,90699,'562'],[90731,90733,'310'],[90744,90748,'310'],[90701,90899,'562'],
+  [91011,91011,'818'],[91020,91046,'818'],[91001,91199,'626'],[91201,91699,'818'],[91709,91711,'909'],[91750,91750,'909'],
+  [91765,91768,'909'],[91701,91799,'626'],[93501,93599,'661']];
+function areaCode(zip){ const z=parseInt(String(zip||'').match(/\b9\d{4}\b/)?.[0]); if(!z) return '';
+  if(AREA_213.has(z)) return '213'; if(AREA_310.has(z)) return '310';
+  const r=AREA_RANGES.find(([lo,hi])=>z>=lo&&z<=hi); return r? r[2] : ''; }
+// "11.01.26" and "18:05" from an ISO time, in LA
+function stampDate(iso){ if(!iso) return {}; const d=new Date(iso); if(isNaN(d)) return {};
+  const f=o=>d.toLocaleString('en-US',{timeZone:'America/Los_Angeles',...o});
+  return { date:`${f({month:'2-digit'})}.${f({day:'2-digit'})}.${f({year:'2-digit'})}`, time:f({hour:'2-digit',minute:'2-digit',hourCycle:'h23'}) }; }
+function placeStamp(name,hood,cat,n,rot,w=150,h,ink,o={}){
+  const kind=STAMP_INK[catKey(cat)]? catKey(cat) : 'community', c=ink||STAMP_INK[kind], dc=ink||STAMP_DATE_INK[kind]||STAMP_RED;
+  const id='ps'+(stampUid++), H=String(hood||'').toUpperCase(), N=String(name||'').toUpperCase(), A=o.area||'';
+  const V=n? `№ ${String(n).padStart(2,'0')}` : '', date=o.days||o.date||'', when=[date,o.days?'':o.time].filter(Boolean).join(' · '), time=o.days?'':(o.time||'');
   const fit=(t,per,max)=>t.length*per>max? `textLength="${max}" lengthAdjust="spacingAndGlyphs"` : '';
-  return `<div class="pstamp" style="width:${w}px;transform:rotate(${rot}deg)" role="img" aria-label="${escH(name)} stamp, ${escH(hood)}">
-  <div class="pink" style="background:${c};-webkit-mask-image:url(stamps/place-${k}.webp);mask-image:url(stamps/place-${k}.webp)"></div>
-  <svg viewBox="0 0 100 92" aria-hidden="true"><g filter="url(#inkWear)" fill="${c}">
-  <text x="50" y="18.3" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="9.6" letter-spacing=".9" ${fit(nm,5.6,76)}>${escH(nm)}</text>
-  <text x="50" y="81.3" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="7.6" letter-spacing="1.2" ${fit(sub,4.7,78)}>${escH(sub)}</text>
-  </g></svg></div>`;
+  const lines=(t,max)=>{ const ws=t.split(/\s+/); if(t.length<=max||ws.length<2) return [t]; let best=[t], diff=1e9;
+    for(let i=1;i<ws.length;i++){ const a=ws.slice(0,i).join(' '), b=ws.slice(i).join(' '), d=Math.abs(a.length-b.length); if(d<diff){ diff=d; best=[a,b]; } } return best; };
+  const dots=(cx,cy,r,k=12)=>Array.from({length:k},(_,i)=>{ const a=i/k*2*Math.PI; return `<circle cx="${(cx+r*Math.cos(a)).toFixed(1)}" cy="${(cy+r*Math.sin(a)).toFixed(1)}" r="1.5" stroke="none"/>`; }).join('');
+  const arrow=(x,y)=>`<g fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M${x+12} ${y} h14 v22 h-14"/><path d="M${x} ${y+11} h17 m-6 -6 l6 6 l-6 6"/></g>`;
+  const star=(x,y,s=4)=>{ const p=[]; for(let i=0;i<10;i++){ const r=i%2?s*.45:s, a=-Math.PI/2+i*Math.PI/5; p.push(`${(x+r*Math.cos(a)).toFixed(1)},${(y+r*Math.sin(a)).toFixed(1)}`); } return `<polygon points="${p.join(' ')}" stroke="none"/>`; };
+  const D='stroke="none" font-family="Big Shoulders Display" font-weight="800"', S='stroke="none" font-family="DM Sans" font-weight="700"';
+  let vb='0 0 260 170', body='';
+  if(kind==='arts'){            // rounded box, dotted LA ring with the area code beside it, visit-number box
+    const L=lines(N,16);
+    body=`<rect x="5" y="5" width="250" height="160" rx="14" fill="none" stroke-width="4"/>
+      ${dots(38,38,17)}<text x="38" y="44" text-anchor="middle" ${S} font-size="15">LA</text><text x="66" y="44" ${S} font-size="17" letter-spacing="1">${A}</text>
+      ${V?`<rect x="168" y="20" width="72" height="34" rx="5" fill="none" stroke-width="2.6"/><text x="204" y="44" text-anchor="middle" ${S} font-size="16" letter-spacing="1">${V}</text>`:''}
+      <text x="22" y="86" ${S} font-size="${time?17:21}" fill="${dc}">${escH(when)}</text>
+      <text x="238" y="104" text-anchor="end" ${S} font-size="13" letter-spacing="1.5" ${fit(H,9,150)}>${escH(H)}</text>
+      ${arrow(20,128)}${L.map((t,i)=>`<text x="238" y="${L.length>1?132+i*24:146}" text-anchor="end" ${D} font-size="${L.length>1?24:26}" letter-spacing=".5" ${fit(t,13,170)}>${escH(t)}</text>`).join('')}`;
+  } else if(kind==='food'){     // octagon with ruled lines, like an airport arrival stamp
+    vb='0 0 260 190'; const L=lines(N,14), foot=[H,A].filter(Boolean).join(' · ');
+    body=`<polygon points="78,6 182,6 254,62 254,128 182,184 78,184 6,128 6,62" fill="none" stroke-width="4" stroke-linejoin="round"/>
+      <polygon points="83,15 177,15 244,66 244,124 177,175 83,175 16,124 16,66" fill="none" stroke-width="1.6" stroke-linejoin="round"/>
+      ${V?`<text x="130" y="36" text-anchor="middle" ${S} font-size="12" letter-spacing="2">${V}</text>`:''}
+      <text x="130" y="56" text-anchor="middle" ${S} font-size="${time?17:20}" fill="${dc}">${escH(when)}</text><line x1="40" y1="66" x2="220" y2="66" stroke-width="2.2"/>
+      ${L.map((t,i)=>`<text x="130" y="${L.length>1?95+i*27:108}" text-anchor="middle" ${D} font-size="28" ${fit(t,15,190)}>${escH(t)}</text>`).join('')}
+      <line x1="40" y1="${L.length>1?132:124}" x2="220" y2="${L.length>1?132:124}" stroke-width="2.2"/>
+      <text x="130" y="${L.length>1?156:150}" text-anchor="middle" ${S} font-size="12.5" letter-spacing="2" ${fit(foot,9.5,140)}>${escH(foot)}</text>`;
+  } else if(kind==='classes'){  // double frame like an ARRIVAL stamp: the check-in time sits top right
+    const L=lines(N,15);
+    body=`<rect x="5" y="5" width="250" height="160" rx="12" fill="none" stroke-width="4"/><rect x="22" y="38" width="216" height="96" rx="8" fill="none" stroke-width="2.6"/>
+      <text x="24" y="27" ${S} font-size="12.5" letter-spacing="2">CLASS${A?' · '+A:''}</text><text x="236" y="27" text-anchor="end" ${S} font-size="12.5" letter-spacing="1">${time}</text>
+      ${arrow(34,52)}<text x="78" y="70" ${S} font-size="19" fill="${dc}">${escH(date)}</text>${V?`<text x="226" y="70" text-anchor="end" ${S} font-size="13" letter-spacing="1">${V}</text>`:''}
+      ${L.map((t,i)=>`<text x="130" y="${L.length>1?100+i*25:114}" text-anchor="middle" ${D} font-size="26" ${fit(t,14,200)}>${escH(t)}</text>`).join('')}
+      ${star(48,151)}${star(62,151)}${star(76,151)}${star(184,151)}${star(198,151)}${star(212,151)}
+      <text x="130" y="156" text-anchor="middle" ${S} font-size="12" letter-spacing="1.5" ${fit(H,8.5,90)}>${escH(H)}</text>`;
+  } else if(kind==='active'){   // triangle: date and time up one side, area code in the middle ring
+    vb='0 0 260 230';
+    body=`<defs><path id="${id}l" d="M30 205 L130 22"/><path id="${id}r" d="M130 22 L230 205"/></defs>
+      <polygon points="130,8 252,220 8,220" fill="none" stroke-width="4" stroke-linejoin="round"/><polygon points="130,84 192,192 68,192" fill="none" stroke-width="2.4" stroke-linejoin="round"/>
+      <text ${S} font-size="12.5" letter-spacing="1.5" fill="${dc}" dy="17"><textPath href="#${id}l" startOffset="${time?12:22}%">${escH(date)}${time?' ★ '+time:''}</textPath></text>
+      <text ${S} font-size="12.5" letter-spacing="2" dy="17"><textPath href="#${id}r" startOffset="12%">${V||'ACTIVE'} ★ ${escH(H)}</textPath></text>
+      ${dots(130,158,19,14)}<text x="130" y="164" text-anchor="middle" ${S} font-size="15">${A||'LA'}</text>
+      <text x="130" y="212" text-anchor="middle" ${D} font-size="16" letter-spacing=".5" ${fit(N,9.2,214)}>${escH(N)}</text>`;
+  } else if(kind==='markets'){  // ticket stamp: notched corners, header bar with the area code, dotted ring
+    const L=lines(N,17);
+    body=`<path d="M22 5 H238 A17 17 0 0 0 255 22 V148 A17 17 0 0 0 238 165 H22 A17 17 0 0 0 5 148 V22 A17 17 0 0 0 22 5 Z" fill="none" stroke-width="4"/>
+      <line x1="16" y1="44" x2="244" y2="44" stroke-width="2.2"/><text x="130" y="33" text-anchor="middle" ${S} font-size="13.5" letter-spacing="3">MARKET DAY${A?' · '+A:''}</text>
+      ${dots(42,78,16)}<text x="42" y="84" text-anchor="middle" ${S} font-size="14">LA</text>
+      <text x="70" y="86" ${S} font-size="${time?17:21}" fill="${dc}">${escH(when)}</text>${V?`<text x="238" y="86" text-anchor="end" ${S} font-size="14" letter-spacing="1">${V}</text>`:''}
+      ${L.map((t,i)=>`<text x="130" y="${L.length>1?114+i*24:126}" text-anchor="middle" ${D} font-size="25" ${fit(t,13.5,215)}>${escH(t)}</text>`).join('')}
+      <text x="130" y="156" text-anchor="middle" ${S} font-size="11.5" letter-spacing="2" ${fit(H,8,160)}>• ${escH(H)} •</text>`;
+  } else {                      // community: round seal, neighborhood and area code around the ring
+    vb='0 0 220 220'; const L=lines(N,11), ring=[H,'COMMUNITY',A].filter(Boolean).join(' ★ ');
+    body=`<defs><path id="${id}c" d="M110 110 m-80 0 a80 80 0 1 1 160 0 a80 80 0 1 1 -160 0"/></defs>
+      <circle cx="110" cy="110" r="104" fill="none" stroke-width="4"/><circle cx="110" cy="110" r="70" fill="none" stroke-width="2.2"/>
+      <text ${S} font-size="13.5" letter-spacing="3"><textPath href="#${id}c" startOffset="54%" text-anchor="middle">${escH(ring)}</textPath></text>
+      <text x="110" y="${L.length>1?88:96}" text-anchor="middle" ${S} font-size="${time?13:17}" fill="${dc}">${escH(when)}</text>
+      ${L.map((t,i)=>`<text x="110" y="${L.length>1?116+i*24:126}" text-anchor="middle" ${D} font-size="25" ${fit(t,13.5,122)}>${escH(t)}</text>`).join('')}
+      ${V?`<text x="110" y="${L.length>1?160:152}" text-anchor="middle" ${S} font-size="12.5" letter-spacing="1.5">★ ${V} ★</text>`:`${star(96,L.length>1?160:150)}${star(110,L.length>1?160:150)}${star(124,L.length>1?160:150)}`}`;
+  }
+  const [,,vw,vh]=vb.split(' ').map(Number), seed=stampUid%89;
+  return `<div class="pstamp" style="width:${w}px;transform:rotate(${rot}deg)" role="img" aria-label="${escH(name)} stamp, ${escH(hood)}${V?', visit '+n:''}">
+  <svg viewBox="${vb}" width="100%" height="${(w*vh/vw).toFixed(0)}" aria-hidden="true" style="overflow:visible"><defs><filter id="${id}f" x="-4%" y="-4%" width="108%" height="108%">
+    <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="${seed}" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="1.6" result="d"/>
+    <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="1" seed="${seed+3}" result="sp"/><feColorMatrix in="sp" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.6 2.05" result="m"/>
+    <feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="${seed+7}" result="bl"/><feColorMatrix in="bl" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.4 1.75" result="m2"/>
+    <feComposite in="d" in2="m" operator="in" result="a"/><feComposite in="a" in2="m2" operator="in"/></filter></defs>
+  <g filter="url(#${id}f)" fill="${c}" stroke="${c}" opacity=".92">${body}</g></svg></div>`;
 }
 function cityLabel(title,sub,bg,fg,w=160,h=106,rot=0){
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="transform:rotate(${rot}deg);overflow:visible;display:block" aria-label="${escH(title)} stamp">
@@ -1039,12 +1115,34 @@ document.addEventListener('click',e=>{
 let tt; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),Math.max(2200,msg.length*55)); }   // longer messages stay up long enough to read
 
 /* ---------- onboarding ---------- */
+// "THURSDAYS" or "WED & SAT", from "Every Saturday 8am-1:30pm and every Tuesday 1:30-7pm" or the start date
+function weeklyDays(ev){
+  const names=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'], t=String(ev.recDetail||'').toLowerCase();
+  let ds=names.filter(n=>t.includes(n)); if(!ds.length && ev.start) ds=[names[ev.start.getDay()]];
+  return ds.length===1? ds[0].toUpperCase()+'S' : ds.slice(0,2).map(n=>n.slice(0,3).toUpperCase()).join(' & ');
+}
+// Before anyone's checked in: three weekly events' stamps, a market first, then two other kinds, closest first.
+// Until events load, a fixed three from around LA.
+const WELCOME_STAMPS=[
+  {venue:'Santa Monica Farmers Market',hood:'Santa Monica',category:'markets',days:'WED & SAT',zip:'90401'},
+  {venue:'Trivia at The Greyhound',hood:'Highland Park',category:'community',days:'THURSDAYS',zip:'90042'},
+  {venue:'Sawtelle Run Club',hood:'Sawtelle',category:'active',days:'THURSDAYS',zip:'90025'}];
+function welcomeStamps(){
+  const o=origin(), weekly=events.filter(ev=>/weekly/i.test(ev.rec||'') && ev.venue && ev.lat!=null).sort((a,b)=>miles(o,a)-miles(o,b));
+  const picks=[], kinds=new Set(), take=ev=>{ picks.push(ev); kinds.add(catKey(ev.category)); };
+  const market=weekly.find(ev=>catKey(ev.category)==='markets'); if(market) take(market);
+  for(const ev of weekly){ if(picks.length>=3) break; if(!kinds.has(catKey(ev.category))) take(ev); }
+  if(picks.length<3) return WELCOME_STAMPS;
+  // the event's name, without " - Saturday Downtown" or "(rain or shine)" tails
+  const short=ev=>ev.title.replace(/\s+[-–—|:]\s+.*$/,'').replace(/\s*\(.*?\)/g,'').trim()||ev.venue;
+  return picks.map(ev=>({ venue:short(ev), hood:ev.area||hoodOf(ev).name, category:ev.category, days:weeklyDays(ev), zip:ev.zip }));
+}
 function buildOnb(){
-  const f=document.getElementById('stampfield');
-  // three neighborhood stamps, one per ink color, spread evenly across the field
-  f.innerHTML=`<div style="left:0;top:14px">${hoodStamp('Santa Monica',136,-8,true)}</div>
-  <div style="left:50%;top:150px;margin-left:-68px">${hoodStamp('West Hollywood',136,5,true)}</div>
-  <div style="right:0;top:14px">${hoodStamp('Silver Lake',136,8,true)}</div>`;
+  const f=document.getElementById('stampfield'), inks=['#F3E7D1','#E7BE5E','#EDA48C'], rots=[-6,7,3];
+  const size=k=>k==='community'? 138 : k==='active'? 150 : k==='food'? 162 : 172;
+  const slots=['left:0;top:8px','right:2px;top:0','left:50%;top:150px'];
+  f.innerHTML=welcomeStamps().map((p,i)=>{ const k=catKey(p.category), w=size(k);
+    return `<div style="${slots[i]}${i===2?`;margin-left:-${w/2}px`:''}">${placeStamp(p.venue,p.hood,p.category,0,rots[i],w,null,inks[i],{days:p.days,area:areaCode(p.zip)})}</div>`; }).join('');
 }
 const locNext=document.getElementById('locNext');
 function setHood(name,loc){ const h=hoodByName(name); S.nb=h.name; S.loc=loc||{lat:h.lat,lng:h.lng}; save(); rebuildMap(); locNext.disabled=false; drawMini(); }
@@ -1206,8 +1304,8 @@ async function restorePassport(user){
     const details=new Map(), ids=[...new Set(checkins.map(r=>String(r.event_id)))];
     // Read historical records directly, not the filtered current discovery list.
     for(const [table,column,keys,columns] of [
-      ['events','event_id',ids.filter(id=>/^EVT-\d+$/.test(id)),'event_id,name,venue,lat,lng,category,tier'],
-      ['event_submissions','id',ids.filter(id=>/^SUB-\d+$/.test(id)).map(id=>Number(id.slice(4))),'id,venue,lat,lng,category,recurrence']
+      ['events','event_id',ids.filter(id=>/^EVT-\d+$/.test(id)),'event_id,name,venue,lat,lng,category,tier,zip'],
+      ['event_submissions','id',ids.filter(id=>/^SUB-\d+$/.test(id)).map(id=>Number(id.slice(4))),'id,venue,lat,lng,category,recurrence,address']
     ]){
       for(let i=0;i<keys.length;i+=100){
         const {data,error}=await sb.from(table).select(columns).in(column,keys.slice(i,i+100));
@@ -1224,7 +1322,8 @@ async function restorePassport(user){
       const name=row.venue||detail.venue||detail.name||'Event '+row.event_id;
       const category=catKey(row.category||detail.category||'community');
       const place=places[name]||(places[name]={n:0,cat:category,sub:'',kind:tierKey(detail.tier),lat:null,lng:null,hood:row.neighborhood||''});
-      place.n++;
+      place.n++; if(!place.last || row.created_at>place.last) place.last=row.created_at;
+      const zip=detail.zip||(String(detail.address||'').match(/\b9\d{4}\b/)||[])[0]; if(zip) place.zip=zip;
       if(detail.lat!=null && detail.lng!=null && Number.isFinite(+detail.lat) && Number.isFinite(+detail.lng)){ place.lat=+detail.lat; place.lng=+detail.lng; }
     }
     S.places=places; S.checked=[...new Set(checked)]; S.visits=checkins.length;
@@ -2422,7 +2521,7 @@ function checkIn(ev,dist,pos){
   const hood=hoodByName(ev.hood), city=cityOf(hood);
   const hadHood=!!hood.city||!!visitedHoods()[hood.name], hadCity=!!visitedCities()[city], hadCat=Object.values(S.places).some(p=>catKey(p.cat)===ev.category);
   const pl=S.places[ev.venue] || (S.places[ev.venue]={n:0,cat:ev.category,sub:ev.sub||'',kind:kindOf(ev),lat:ev.lat,lng:ev.lng});
-  const firstPlace=pl.n===0; pl.n++;
+  const firstPlace=pl.n===0; pl.n++; pl.last=new Date().toISOString(); pl.zip=ev.zip||(String(ev.address||'').match(/\b9\d{4}\b/)||[''])[0]||pl.zip||'';
   const earned=[[PTS.checkin,'checked in']];
   const total=earned.reduce((a,x)=>a+x[0],0);
   track(ev,'checkin'); S.checked.push(ev.id); S.visits++; S.points+=total; logMonth(hood.name); save();
@@ -2432,7 +2531,7 @@ function checkIn(ev,dist,pos){
   overlay.classList.remove('on');
   const un=[]; if(!hadHood) un.push(`New neighborhood: ${hood.name}`); if(!hadCity) un.push(`New city: ${city}`); if(!hadCat) un.push(`First ${CATS[catKey(ev.category)].short.toLowerCase()} stamp`); if(pl.n===5) un.push(`You're a regular here`);
   const m=document.getElementById('stampModal');
-  m.innerHTML=`<div class="stampbox">${placeStamp(ev.venue,hood.name,ev.category,pl.n,0,240,160,'#F3E7D1')}</div>
+  m.innerHTML=`<div class="stampbox">${placeStamp(ev.venue,hood.name,ev.category,pl.n,0,240,160,'#F3E7D1',{...stampDate(pl.last),area:areaCode(pl.zip)})}</div>
     <h3>${firstPlace?`Stamped: ${escH(ev.venue)}`:`Back at ${escH(ev.venue)}`}</h3>
     <p>${escH(ev.title)}. <b>+${total} points</b> (${earned.map(x=>`+${x[0]} ${x[1]}`).join(', ')}), and ${escH(ev.venue)} knows you came.</p>
     ${un.length?`<div class="unlocks">${un.map(u=>`<span>${u}</span>`).join('')}</div>`:''}
@@ -2777,7 +2876,7 @@ function renderPassport(){
     html=`<div class="ph"><b>Places</b><span>a stamp for every spot you check in</span></div>
       <div class="kinds">${Object.keys(CATS).map(k=>`<span class="${tried.has(k)?'on':''}" title="${CATS[k].label}">${catDot(k,30)}<small>${CATS[k].short}</small></span>`).join('')}<b>${tried.size} of ${Object.keys(CATS).length}</b></div>
       <div class="pagegrid">`+
-      list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,placeHood(p)?.name||'Location unavailable',p.cat,p.n,rots[i%rots.length])}<div class="pagenote" style="margin-top:4px">${p.n} visit${p.n>1?'s':''}${p.n>=5?' · regular':''}</div></div>`).join('')+
+      list.map(([name,p],i)=>`<div class="slot">${placeStamp(name,placeHood(p)?.name||'Location unavailable',p.cat,p.n,rots[i%rots.length],150,null,null,{...stampDate(p.last),area:areaCode(p.zip)})}<div class="pagenote" style="margin-top:4px">${p.n} visit${p.n>1?'s':''}${p.n>=5?' · regular':''}</div></div>`).join('')+
       (untried.length? untried : ['next']).slice(0,list.length%2?1:2).map(k=>`<div class="slot"><div class="ghost-rect">${FIRST[k]||'your next spot?'}</div></div>`).join('')+
       `</div><div class="pagenote">${list.length} place${list.length===1?'':'s'} stamped</div>`;
   } else {
@@ -3112,9 +3211,9 @@ async function loadEvents(){
     const subOf=r=>{ const g=catKey(catMap(r.category)), tags=r.tags||[],
       t=tags.map(x=>Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===String(x).toLowerCase())).find(Boolean)||catMap(tags.join(' ')); return { category:g, sub: SUB_GROUP[t]===g && !CATS[t]? t : '' }; };
     events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', tags:Array.isArray(r.tags)? r.tags : [], vibes:Array.isArray(r.vibes)? r.vibes.filter(v=>VIBE_WORDS[v]) : [], ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
-      address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), price:r.price_type||'', priceAmt:String(r.price_detail||'').trim().slice(0,30), photo:okLink(r.image_url), age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
+      address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), zip:r.zip||'', price:r.price_type||'', priceAmt:String(r.price_detail||'').trim().slice(0,30), photo:okLink(r.image_url), age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
       ticket:okLink(r.ticket_url), source:okLink(r.source_url), rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
-    eventsState='live'; if(current==='home') renderHome(); loadGoing(); loadSubmissions();
+    eventsState='live'; if(current==='home') renderHome(); if(current==='onb1') buildOnb(); loadGoing(); loadSubmissions();
   }catch(e){ console.warn('Events failed to load', e); if(eventsState!=='live'){ eventsState='error'; if(current==='home') renderHome(); } }
 }
 
