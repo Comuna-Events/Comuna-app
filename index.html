@@ -2862,19 +2862,32 @@ let calSel=today0(), calView=new Date(calSel.getFullYear(),calSel.getMonth(),1);
 // Fallback for events with no start date: the weekday at the start of their time text ("Tue · 8:00 PM"), next one from today.
 function evDate(ev){ const w=WD.indexOf(String(ev.time||'').slice(0,3)); if(w<0) return null; const d=today0(); d.setDate(d.getDate()+((w-d.getDay()+7)%7)); return d; }
 // does this event happen on this day (local midnight)? Same recurrence rules as nextDate.
-const FULL_WD=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+// the weekdays a schedule note names: "Every Wednesday and Saturday", "Wed–Fri; Sat–Sun", "Friday through Monday".
+// Days after "closed", "except", "some sources say" or "session on" don't count. Same rules as detail_weekdays() in
+// supabase/checkin_verify.sql, so the app and check-in agree on which days an event is on.
+const WD_TOK='(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tues|tue|weds|wed|thurs|thur|thu|fri|sat)s?';
+const WD_RANGE=new RegExp(`\\b${WD_TOK}\\s*(?:–|—|-|through|thru|to)\\s*${WD_TOK}\\b`,'g'), WD_ONE=new RegExp(`\\b${WD_TOK}\\b`,'g');
+const wdOf=t=>['sun','mon','tue','wed','thu','fri','sat'].indexOf(t.slice(0,3));
+function detailWeekdays(detail){
+  const days=new Set();
+  for(let cl of String(detail||'').toLowerCase().split(/[.;]/)){
+    cl=cl.replace(/\b(closed|except|sources say|session on)\b.*$/,'');
+    for(const m of cl.matchAll(WD_RANGE)) for(let d=wdOf(m[1]);;d=(d+1)%7){ days.add(d); if(d===wdOf(m[2])) break; }
+    for(const m of cl.matchAll(WD_ONE)) days.add(wdOf(m[1]));
+  }
+  return days;
+}
 function occursOn(ev,day){
-  const d0=ev.start, rec=(ev.rec||'').toLowerCase();
+  const d0=ev.start, rec=(ev.rec||'').toLowerCase(), wds=detailWeekdays(ev.recDetail);
   if(!d0){   // no start date: weekly events named like "Every Thursday" still land on that weekday
-    const w=FULL_WD.findIndex(n=>(ev.recDetail||'').toLowerCase().includes(n));
-    if(w>=0 && /weekly|daily/.test(rec)) return /daily/.test(rec) || day.getDay()===w;
+    if(wds.size && /weekly|daily/.test(rec)) return /daily/.test(rec) || wds.has(day.getDay());
     const e=evDate(ev); return !!e && +e===+day;
   }
   if(day<d0 || (ev.end && day>ev.end)) return false;
   const diff=Math.round((day-d0)/864e5);
   if(/daily/.test(rec)) return true;
   if(/biweekly/.test(rec)) return diff%14===0;
-  if(/weekly/.test(rec)) return diff%7===0;
+  if(/weekly/.test(rec)) return diff%7===0 || wds.has(day.getDay());   // its start weekday, plus any others the note names
   if(/monthly/.test(rec)) return day.getDay()===d0.getDay() && Math.ceil(day.getDate()/7)===Math.ceil(d0.getDate()/7);
   return ev.end? true : diff===0;   // one-off or seasonal: its date, or every day of its run
 }

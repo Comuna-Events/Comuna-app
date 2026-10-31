@@ -12,17 +12,40 @@ alter table public.checkins alter column checkin_date set default ((now() at tim
 alter table public.checkins alter column checkin_date set not null;
 create unique index if not exists checkins_one_per_day on public.checkins (user_id, event_id, checkin_date);
 
+-- The weekdays (0 = Sunday) a schedule note names: "Every Wednesday and Saturday", "Wed–Fri; Sat–Sun",
+-- "Friday through Monday". Days after "closed", "except", "some sources say" or "session on" don't count.
+-- Same rules as detailWeekdays() in index.html.
+create or replace function public.detail_weekdays(detail text)
+returns int[] language plpgsql immutable set search_path = public as $$
+declare
+  tok constant text := '(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tues|tue|weds|wed|thurs|thur|thu|fri|sat)s?';
+  names constant text[] := array['sun','mon','tue','wed','thu','fri','sat'];
+  cl text; m text[]; a int; b int; days int[] := '{}';
+begin
+  foreach cl in array regexp_split_to_array(lower(coalesce(detail,'')), '[.;]') loop
+    cl := regexp_replace(cl, '\m(closed|except|sources say|session on)\M.*$', '');
+    for m in select regexp_matches(cl, '\m' || tok || '\s*(?:–|—|-|through|thru|to)\s*' || tok || '\M', 'g') loop
+      a := array_position(names, left(m[1], 3)) - 1; b := array_position(names, left(m[2], 3)) - 1;
+      loop days := days || a; exit when a = b; a := (a + 1) % 7; end loop;
+    end loop;
+    for m in select regexp_matches(cl, '\m' || tok || '\M', 'g') loop
+      days := days || (array_position(names, left(m[1], 3)) - 1);
+    end loop;
+  end loop;
+  return days;
+end $$;
+
 -- Does an event happen on this day? Same rules as occursOn() in index.html.
 create or replace function public.event_occurs_on(rec text, start_day date, end_day date, detail text, d date)
 returns boolean language sql immutable set search_path = public as $$
   select case
     when start_day is null then   -- no start date: "Every Thursday"-style weekly events land on that weekday
-      lower(coalesce(rec,'')) ~ '(weekly|daily)' and (lower(rec) like '%daily%' or lower(coalesce(detail,'')) like
-        '%' || (array['sunday','monday','tuesday','wednesday','thursday','friday','saturday'])[extract(dow from d)::int + 1] || '%')
+      lower(coalesce(rec,'')) ~ '(weekly|daily)' and (lower(rec) like '%daily%' or extract(dow from d)::int = any(detail_weekdays(detail)))
     when d < start_day or (end_day is not null and d > end_day) then false
     when lower(coalesce(rec,'')) like '%daily%' then true
     when lower(coalesce(rec,'')) like '%biweekly%' then (d - start_day) % 14 = 0
-    when lower(coalesce(rec,'')) like '%weekly%' then (d - start_day) % 7 = 0
+    -- its start weekday, plus any others the schedule note names ("Every Wednesday and Saturday")
+    when lower(coalesce(rec,'')) like '%weekly%' then (d - start_day) % 7 = 0 or extract(dow from d)::int = any(detail_weekdays(detail))
     when lower(coalesce(rec,'')) like '%monthly%' then extract(dow from d) = extract(dow from start_day)
       and ceil(extract(day from d) / 7) = ceil(extract(day from start_day) / 7)
     else end_day is not null or d = start_day   -- one-off or seasonal: its date, or every day of its run
