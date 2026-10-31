@@ -170,7 +170,7 @@ img{ max-width:100% }
 .youare{ position:absolute; transform:translate(-50%,-50%); pointer-events:none }
 .chip{ flex:none; border:1.5px solid var(--ink); border-radius:30px; padding:6px 13px; font-size:13px; font-weight:500 }
 .chip.on{ background:var(--ink); color:var(--paper) }
-#homeScreen{ --home-control-height:34px }
+#homeScreen{ --home-control-height:40px }
 /* search: under the wordmark row, with the filters button beside it; a search also resets the filters to Anytime / Everything */
 .srch{ position:relative; display:flex; align-items:center; gap:10px; margin:4px 20px 0 }
 .srch [hidden]{ display:none }
@@ -201,6 +201,8 @@ img{ max-width:100% }
 .fseg button{ padding:9px 2px; border-radius:12px; border:1.5px solid #DCCDAE; background:var(--card); font-size:13px; font-weight:600; color:var(--ink) }
 .fseg button.on{ background:var(--green); border-color:var(--green); color:var(--paper) }
 .fseg button:disabled{ opacity:.4 }
+.fseg.f3{ grid-template-columns:repeat(3,1fr) }
+.flegend{ display:block; margin:14px auto 0; font-size:13px; font-weight:600; color:var(--muted); text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
 .fhead{ display:flex; align-items:center; justify-content:space-between }
 .fclear{ font-size:13px; font-weight:700; color:var(--green); padding:4px 2px }
 .fclear:disabled{ color:var(--muted); opacity:.5 }
@@ -242,9 +244,6 @@ img{ max-width:100% }
 #homeScreen:not(.home-list) .homehead{ position:relative; z-index:6; padding-bottom:14px; background:linear-gradient(var(--paper) 84%, rgba(243,231,209,0)); pointer-events:none }
 #homeScreen:not(.home-list) .homehead > *{ pointer-events:auto }
 #homeScreen:not(.home-list) .mapwrap{ position:absolute; inset:0; height:auto; min-height:0; margin:0; border-radius:0 }
-.maphelp{ position:absolute; left:10px; top:10px; z-index:5; width:34px; height:34px; border-radius:50%; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.12); font-family:var(--display); font-weight:900; font-size:19px; color:var(--green) }
-#homeScreen:not(.home-list) .maphelp{ left:auto; right:10px; top:calc(var(--headh,120px) + 4px) }
-.home-list .maphelp{ display:none }
 .maplocate{ position:absolute; right:10px; bottom:calc(var(--navh) + 142px); z-index:5; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.12) }
 .maplocate:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
 .maplocate:disabled{ cursor:wait; opacity:.65 }
@@ -648,7 +647,6 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
       <div class="mapwrap" id="mapwrap">
         <div id="map"></div>
         <div class="toggle"><button class="on" id="tMap">Map</button><button id="tList">List</button></div>
-        <button class="maphelp" id="mapHelp" aria-label="How to read the map">?</button>
         <button class="maplocate" id="mapLocate" type="button" aria-label="Center map on my location" title="Center on my location" aria-busy="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>
         <div class="maplabel" id="mapNote"></div>
       </div>
@@ -1542,6 +1540,13 @@ function enrich(){ const o=origin(); events.forEach(ev=>{ ev.mi=miles(o,ev); ev.
    somewhere (title, tags, category, venue, host, neighborhood, description); if no event has them all, events
    matching any of them show instead. Time words ("tonight", "this weekend") set the When filter rather than
    matching text. */
+// price filter: 'free' is free events only; 'u25' adds pay-what-you-can and events whose stated price starts at $25 or less
+// (events without a stated amount are left out of 'u25', so it fills in as listings gain prices)
+let price='any';
+const PRICES=[['any','Any price'],['free','Free'],['u25','Under $25']];
+function priceFrom(ev){ const m=String(ev.priceAmt||'').match(/\$\s*(\d+(?:\.\d+)?)/); return m? +m[1] : null; }
+function priceOK(ev,pr=price){ if(pr==='any') return true; const free=/^free/i.test(String(ev.price||'').trim()); if(pr==='free') return free;
+  if(free || /donation|pay.what/i.test(ev.price||'')) return true; const a=priceFrom(ev); return a!==null && a<=25; }
 let searchQ='', searchPrev=null, searchHits=null;   // searchHits: event id -> score for searchQ, rebuilt when events reload
 const STOPWORDS=new Set(('a an and the to of in on at for from near me my i im is are am be any some all thing things stuff '
   +'do does what whats where wheres something anything cool fun good great best nice happening going around there here '
@@ -1593,7 +1598,7 @@ const searchOK=ev=>{ const s=searchState(); return !s || s.hits.has(ev.id); };
 function picks(){
   enrich();
   const s=searchState();
-  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev) && searchOK(ev))
+  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev) && priceOK(ev) && searchOK(ev))
     .sort((a,b)=> (s? s.hits.get(b.id)-s.hits.get(a.id) : 0) || a.mi-b.mi);
   return list;                                    // all of LA, closest first (best matches first while searching)
 }
@@ -1696,7 +1701,7 @@ function renderEventList(results){
 }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
-  const nf=(when!=='any')+(filter!=='All')+(tier!=='any'), fc=document.getElementById('filtCount');
+  const nf=(when!=='any')+(filter!=='All')+(tier!=='any')+(price!=='any'), fc=document.getElementById('filtCount');
   fc.textContent=nf; fc.hidden=!nf;
   document.getElementById('filtBtn').setAttribute('aria-label','Filters: '+filterSummary());
   document.getElementById('homeScreen').classList.toggle('searching',!!searchQ);
@@ -1714,10 +1719,10 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   placePins(P);
 }
 // what the map is showing, in words: "Today · Your interests"
-function filterSummary(){ return [WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything'].filter(Boolean).join(' · '); }
+function filterSummary(){ return [WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything', price!=='any'?PRICES.find(p=>p[0]===price)[1]:''].filter(Boolean).join(' · '); }
 document.getElementById('filtBtn').onclick=openFilters;
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
-function countWith(w,c,t=tier){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&searchOK(ev)).length; when=ow; return n; }
+function countWith(w,c,t=tier,pr=price){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&priceOK(ev,pr)&&searchOK(ev)).length; when=ow; return n; }
 // change the interests you picked at sign-up (also drives "Your interests" on the map and the daily Top 4)
 function editInterests(){
   const pick=new Set(S.interests||[]);
@@ -1787,23 +1792,24 @@ document.getElementById('guestSave').onclick=()=>openAuth('signup');
 function openFilters(){
   const row=(k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" data-opt="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   const draw=()=>{
-    const n=events.filter(ev=>catOK(ev,filter)&&(tier==='any'||kindOf(ev)===tier)&&inWindow(ev)&&searchOK(ev)).length;
-    sheet.innerHTML=`<div class="grab"></div><div id="fWrap"><div class="fhead"><div class="cat">Filters</div><button class="fclear" id="fClear" ${when==='any'&&filter==='All'&&tier==='any'?'disabled':''}>Clear all</button></div>`
+    const n=countWith(when,filter);
+    sheet.innerHTML=`<div class="grab"></div><div id="fWrap"><div class="fhead"><div class="cat">Filters</div><button class="fclear" id="fClear" ${when==='any'&&filter==='All'&&tier==='any'&&price==='any'?'disabled':''}>Clear all</button></div>`
       + `<div class="psub">When</div><div class="fseg">${WHEN.map(([k,l])=>`<button data-when="${k}" class="${k===when?'on':''}" ${countWith(k,filter)||k==='any'?'':'disabled'}>${l}</button>`).join('')}</div>`
+      + `<div class="psub">Price</div><div class="fseg f3">${PRICES.map(([k,l])=>`<button data-price="${k}" class="${k===price?'on':''}" ${countWith(when,filter,tier,k)||k==='any'?'':'disabled'}>${l}</button>`).join('')}</div>`
       + `<div class="psub" style="display:flex;align-items:center">Category<button class="editint" id="editInt">${myCats().length?'Edit interests':'Pick interests'}</button></div><div class="picklist">`
       + (myCats().length? row('mine',`<span class="ticon">${omark(15)}</span>`,'Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
       + ['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))].map(k=>row(k,k==='All'?'<span class="ticon"></span>':catDot(k,12),k==='All'?'Everything':CATS[k].label,countWith(when,k),k===filter,k==='All')).join('')
-      + `</div><button class="fshow" id="fShow">${n? `Show ${n} ${n===1?'event':'events'}` : 'No events match'}</button></div>`;
+      + `</div><button class="flegend" id="fLegend">What the pins mean</button><button class="fshow" id="fShow">${n? `Show ${n} ${n===1?'event':'events'}` : 'No events match'}</button></div>`;
     document.getElementById('editInt').onclick=e=>{ e.stopPropagation(); editInterests(); };
-    document.getElementById('fClear').onclick=()=>{ when='any'; filter='All'; tier='any'; renderHome(); draw(); };
+    document.getElementById('fClear').onclick=()=>{ when='any'; filter='All'; tier='any'; price='any'; renderHome(); draw(); };
+    document.getElementById('fLegend').onclick=openLegend;
     document.getElementById('fShow').onclick=()=>overlay.classList.remove('on');
-    document.getElementById('fWrap').onclick=e=>{ const w=e.target.closest('[data-when]'), o=e.target.closest('[data-opt]'), b=w||o; if(!b||b.disabled) return;
-      if(w) when=w.dataset.when; else filter=o.dataset.opt;
+    document.getElementById('fWrap').onclick=e=>{ const w=e.target.closest('[data-when]'), pr=e.target.closest('[data-price]'), o=e.target.closest('[data-opt]'), b=w||pr||o; if(!b||b.disabled) return;
+      if(w) when=w.dataset.when; else if(pr) price=pr.dataset.price; else filter=o.dataset.opt;
       renderHome(); draw(); };
   };
   draw(); overlay.classList.add('on');
 }
-document.getElementById('mapHelp').onclick=openLegend;
 document.getElementById('mapLocate').onclick=centerOnLocation;
 function centerOnLocation(){
   const button=document.getElementById('mapLocate');
