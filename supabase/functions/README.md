@@ -81,3 +81,11 @@ that `post_id` from `event_candidates`.
   with the nightly ingest and fills them in for any event that hasn't been checked yet, 20 events per Claude call.
   Add `?dry=1` to see its picks for the next 40 events without saving; see the top of `ingest-vibes/index.ts`.
 - Each new post or changed page costs one Claude call (`claude-sonnet-5-5` at low effort). The model is set at the top of `_shared/extract.ts`.
+
+## Filling in older events
+
+`backfill-details/` reads each upcoming event's own page for what older events are missing: the price amount, a
+photo (the event's schema.org image or the page's og:image) and the end time. It only fills gaps and marks each
+event checked (`events.details_checked_at`). Set up with `supabase/backfill_details.sql`, then call
+`select ingest.run('backfill-details');` until it reports `checked: 0`. Without `ANTHROPIC_API_KEY` it skips the
+Claude step and flags those events (`details_ai_pending`); the first run with the key reads just those again.
