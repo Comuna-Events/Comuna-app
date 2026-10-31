@@ -405,7 +405,7 @@ img{ max-width:100% }
 .tabs{ display:flex; gap:6px; margin-top:14px; overflow-x:auto; scrollbar-width:none }
 .tabs::-webkit-scrollbar{ display:none }
 .tabs button{ flex:1 1 auto; padding:8px 7px; white-space:nowrap; border-radius:10px 10px 0 0; background:var(--paper-2); font-weight:700; font-size:12.5px; color:var(--muted) }
-.tabs button.on{ background:var(--card); color:var(--green) }
+.tabs button.on{ background:var(--card) var(--grain) 0 0/200px; color:var(--green) }   /* the same paper as the page below it */
 .page{ background:var(--card); border-radius:0 18px 18px 18px; padding:14px 12px 16px; position:relative; min-height:300px;
   /* a passport page: security waves and the emblem, faint ruled lines, paper grain */
   background-image:var(--emblem), var(--waves), repeating-linear-gradient(0deg, transparent 0 27px, rgba(107,110,100,.06) 27px 28px), var(--grain);
@@ -516,12 +516,11 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 .nav{ position:absolute; z-index:30; display:grid; grid-template-columns:repeat(4,1fr); left:16px; right:16px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); padding:6px; border-radius:40px;
   background:rgba(251,246,234,.82); -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2); border:1px solid rgba(220,205,174,.8); box-shadow:0 4px 16px rgba(38,37,31,.12) }
 .nav.hide{ display:none }
-.nav{ background:var(--green); border-color:var(--green) }
 .nav button{ position:relative; display:flex; align-items:center; justify-content:center; padding:4px 0 8px }
 /* quiet chrome: the bar stays in the background so the map and events lead */
-.nav svg{ stroke:var(--paper); opacity:.7; transition:opacity .15s }
-.nav button.on svg{ stroke:var(--sun); opacity:1 }
-.nav button.on::after{ content:''; position:absolute; bottom:1px; width:5px; height:5px; border-radius:50%; background:var(--sun) }
+.nav svg{ stroke:var(--muted); opacity:.75; transition:opacity .15s }
+.nav button.on svg{ stroke:var(--green); opacity:1 }
+.nav button.on::after{ content:''; position:absolute; bottom:1px; width:5px; height:5px; border-radius:50%; background:var(--green) }
 .toast{ position:absolute; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:30px; font-size:13.5px; font-weight:500; z-index:80; opacity:0; transition:opacity .2s; pointer-events:none; width:max-content; max-width:88%; text-align:center }
 .toast.on{ opacity:1 }
 .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib{ opacity:.6 }
@@ -596,7 +595,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <div class="carry" id="suCarry" hidden></div>
         <div id="suNameWrap"><label class="flabel" for="suName">Your name</label>
         <input class="field" id="suName" autocomplete="name" placeholder="First and last name">
-        <p class="privnote">On leaderboards you show up as a nickname, not your name. You can change that in Profile.</p></div>
+        <p class="privnote">On leaderboards you show as your first name and last initial. You can pick a nickname or hide in Profile.</p></div>
         <div id="suEmailWrap"><label class="flabel" for="suEmail">Your email</label>
         <input class="field" id="suEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
         <p class="privnote">We'll email you a sign-in code, so there's no password to remember. We never sell your information or use it for ads. <a href="https://www.wearecomuna.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p></div>
@@ -667,7 +666,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 
     <!-- PASSPORT -->
     <section class="screen" data-s="passport">
-      <div class="topbar"><div style="display:flex;align-items:center;gap:10px"><div class="h1" style="color:var(--green)">Passport</div><img src="stamps/passport-stamp.webp" alt="" style="height:42px;width:auto;transform:rotate(-8deg) translateY(-2px)"></div><button class="pill" data-go="profile">Profile</button></div>
+      <div class="topbar"><div class="h1" style="color:var(--green)">Passport</div><button class="pill" data-go="profile">Profile</button></div>
       <div class="scroll">
         <div class="guestbar" id="guestBar" hidden><div><b>Saved on this phone only</b><span id="guestBarTxt"></span></div><button class="btn primary" id="guestSave">Save</button></div>
         <div class="passcover">
@@ -1747,11 +1746,11 @@ function editHood(){
   draw(); overlay.classList.add('on');
 }
 document.getElementById('pfNbBtn').onclick=editHood;
-// how you appear on the monthly leaderboard (supabase/leaderboard_privacy.sql): a nickname by default, your name, or hidden
-const lbLabel=()=>S.lbShow==='name'? shortName() : S.lbShow==='hidden'? 'Hidden' : S.nickname||'Nickname';
+// how you appear on the monthly leaderboard (supabase/leaderboard_names.sql): your name by default, a nickname you choose, or hidden
+const lbLabel=()=>S.lbShow==='hidden'? 'Hidden' : S.lbShow==='nickname'&&S.nickname? S.nickname : shortName();
 function editLeaderboard(){
-  let show=S.lbShow||'nickname', nick=S.nickname||'';
-  const opts=[['nickname','A nickname','Recommended'],['name','Your name',shortName()],['hidden','Hidden','You still earn points']];
+  let show=S.lbShow||'name', nick=S.nickname||'';
+  const opts=[['name','Your name',shortName()],['nickname','A nickname','One you choose'],['hidden','Hidden','You still earn points']];
   const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Leaderboard</div>
     <h2 style="font-size:28px">How you appear</h2><p class="sub">On ${escH(S.nb||'your neighborhood')}'s monthly Top 5.</p>
     <div class="picklist" id="lbOpts">${opts.map(([k,l,sub])=>`<button class="popt ${k===show?'on':''}" data-show="${k}" aria-pressed="${k===show}"><span>${l}<small>${escH(sub)}</small></span>${k===show?'<em>✓</em>':''}</button>`).join('')}</div>
