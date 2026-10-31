@@ -28,6 +28,27 @@ build**. Changes in Supabase (events, badges, rules) show up straight away, as o
    a real phone, approve it on the phone under Settings > General > VPN & Device Management, and turn on
    Settings > Privacy & Security > Developer Mode.
 
+## Reminders (push notifications)
+
+After someone saves their first plan, the app asks to send notifications. An hour before each saved plan starts,
+`supabase/functions/send-reminders` sends "starts at 6:30 PM … check in when you get there", and tapping it opens the
+event. The database runs it every 10 minutes (`supabase/push.sql`). It needs an Apple push key, once:
+
+1. On developer.apple.com > **Certificates, IDs & Profiles** > **Keys** > **+**: name it `Comuna push`, tick
+   **Apple Push Notifications service (APNs)**, then **Continue** > **Register** > **Download**. Apple lets you
+   download the `.p8` file only once, so keep it safe.
+2. In Supabase > **Edge Functions** > **Secrets**, add `APNS_KEY_ID` (the key's Key ID), `APNS_TEAM_ID` (your Team ID,
+   top right of the developer site) and `APNS_KEY` (open the `.p8` in TextEdit and paste all of it).
+
+The Xcode project already has the Push Notifications capability (`ios/App/App/App.entitlements`).
+
+## App Review sign-in
+
+Apple's reviewers can't receive emailed codes, so `appreview@wearecomuna.com` takes a fixed 8-digit code instead
+(`supabase/functions/review-login`). Set the code as the `REVIEW_CODE` secret in Supabase > Edge Functions >
+Secrets, and give both in App Store Connect > the app's version > **App Review Information** > **Sign-in required**
+(user name: the address; password: the code). If a reviewer deletes the account, signing in again makes a new one.
+
 ## Upload to the App Store
 
 1. `npm run ios`, so the build has the latest app.

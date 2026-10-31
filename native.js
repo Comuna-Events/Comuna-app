@@ -45,4 +45,39 @@
     document.querySelectorAll('.screen').forEach(s=>watch.observe(s,{ attributes:true, attributeFilter:['class'] }));
   });
   addEventListener('load',()=>SplashScreen.hide({ fadeOutDuration:250 }).catch(()=>{}));
+
+  /* reminders ("starts in an hour", sent by supabase/functions/send-reminders): iOS asks for permission after
+     someone saves their first plan, when a reminder obviously helps. Every launch re-sends the phone's token,
+     since iOS can change it. `sb` and `openSheet` are the app's own, from index.html. */
+  const Push=cap.registerPlugin('PushNotifications');
+  let token='';
+  Push.addListener('registration',t=>{ token=t.value; saveToken(); });
+  Push.addListener('registrationError',e=>console.warn('Push registration failed',e));
+  const signedIn=async()=>!!(typeof sb!=='undefined' && sb && (await sb.auth.getSession()).data.session);
+  async function saveToken(){
+    if(!token || !(await signedIn())) return;
+    const { error }=await sb.rpc('save_push_token',{ p_token:token });
+    if(error) console.warn('Saving the push token failed',error);
+  }
+  async function register(ask){
+    let p=(await Push.checkPermissions().catch(()=>({}))).receive;
+    if(p!=='granted' && ask && p!=='denied') p=(await Push.requestPermissions().catch(()=>({}))).receive;
+    if(p==='granted') Push.register().catch(()=>{});
+  }
+  // after the "You're in" message has had a moment on screen
+  addEventListener('comuna:plan-saved',()=>setTimeout(()=>register(true),1500));
+  addEventListener('load',async()=>{
+    if(typeof sb==='undefined' || !sb) return;
+    sb.auth.onAuthStateChange(e=>{ if(e==='SIGNED_IN') setTimeout(()=>register(false)); });   // outside the callback, as Supabase asks
+    if(await signedIn()) register(false);
+  });
+  window.comunaSigningOut=async()=>{ if(token && await signedIn()) await sb.rpc('forget_push_token',{ p_token:token }); };
+
+  // tapping a reminder opens its event
+  Push.addListener('pushNotificationActionPerformed',a=>{
+    const d=a.notification?.data||{}, open=()=>{ const ev=typeof events!=='undefined' && events.find(e=>e.eid===d.event_id);
+      if(ev){ openSheet(ev.id,null,'Top 4',d.date||null); return true; } };
+    // straight after launch the events may still be loading
+    if(!open()){ let n=0; const t=setInterval(()=>{ if(open() || ++n>20) clearInterval(t); },500); }
+  });
 })();
