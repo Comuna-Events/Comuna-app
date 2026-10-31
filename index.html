@@ -534,6 +534,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 #homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl{ float:none; clear:none; margin:0 }
 /* Mapbox inserts bottom controls first-in-front, which would put the (i) before the logo: keep it to the logo's right */
 #homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib{ order:1 }
+/* Mapbox gives the logo a -4px bottom margin, which sits it 2px below the (i): drop it so both centre on the Map / List switch */
+#homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-logo{ margin:0 0 0 -4px }
 #homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib.mapboxgl-compact-show{ max-width:calc(100vw - 150px) }
 </style>
 </head>
