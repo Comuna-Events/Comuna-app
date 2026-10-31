@@ -9,6 +9,10 @@
 //   APNS_KEY      the whole .p8 file, including the BEGIN and END lines
 // Until all three are set, each run returns "not configured" and sends nothing.
 //
+// To check the key without waiting for a reminder, call it with ?check (SQL Editor, as in push.sql, with the url
+// ending in send-reminders?check). It sends to a made-up phone: "BadDeviceToken" from both services means Apple
+// accepted the key; "InvalidProviderToken" or "ExpiredProviderToken" means the key ID, team ID or key is wrong.
+//
 // A token from a build run from Xcode only works on Apple's sandbox service, and one from TestFlight or the App Store
 // only on production. A token we haven't sent to yet tries production, then sandbox, and remembers which one worked.
 //
@@ -61,6 +65,14 @@ Deno.serve(async (req) => {
   if (req.headers.get("x-ingest-secret") !== Deno.env.get("INGEST_SECRET")) return new Response("forbidden", { status: 403 });
   const keyId = Deno.env.get("APNS_KEY_ID"), teamId = Deno.env.get("APNS_TEAM_ID"), p8 = Deno.env.get("APNS_KEY");
   if (!keyId || !teamId || !p8) return Response.json({ sent: 0, note: "not configured: set APNS_KEY_ID, APNS_TEAM_ID and APNS_KEY" });
+
+  if (new URL(req.url).searchParams.has("check")) {
+    const jwt = await apnsJwt(keyId, teamId, p8).catch(() => "");
+    if (!jwt) return Response.json({ check: "APNS_KEY isn't a readable .p8 key" });
+    const test = { token: "0".repeat(64), starts_at: new Date().toISOString(), title: "Test", venue: null } as Due;
+    const [production, sandbox] = await Promise.all([send(jwt, "production", test), send(jwt, "sandbox", test)]);
+    return Response.json({ check: { production, sandbox } });
+  }
 
   const { data, error } = await db.rpc("due_push_reminders");
   if (error) return Response.json({ error: error.message }, { status: 500 });
