@@ -319,10 +319,17 @@ img{ max-width:100% }
 .challenge .k{ font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red) }
 .challenge b{ display:block; font-size:15px; margin:2px 0 8px } .challenge span{ display:block; font-size:12px; color:var(--muted); margin-top:6px }
 .cbar{ height:8px; border-radius:6px; background:var(--line); overflow:hidden } .cbar i{ display:block; height:100%; background:var(--green); border-radius:6px }
-/* event photos are never cropped: the frame takes the photo's own shape, between square and 2:1. A photo outside that
-   (a tall flyer, a thin banner) shows whole, over a soft blurred copy of itself that fills the rest of the frame. */
+/* event photos are never cropped: the frame takes the photo's own shape, between 3:2 and 2:1, so it never pushes the
+   event's details off screen. A photo outside that (a tall flyer, a thin banner) shows whole, over a soft blurred copy
+   of itself that fills the rest of the frame. Tap it to see it full screen. */
 .evphoto{ margin:4px 0 14px }
-.evframe{ position:relative; aspect-ratio:16/9; border-radius:16px; overflow:hidden; background:var(--line); isolation:isolate }
+.evframe{ position:relative; aspect-ratio:16/9; border-radius:16px; overflow:hidden; background:var(--line); isolation:isolate; cursor:zoom-in }
+.evframe:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+.photobox{ position:absolute; inset:0; z-index:200; background:rgba(22,20,16,.94); display:grid; place-items:center; padding:24px; cursor:zoom-out; animation:pbIn .18s ease-out }
+.photobox img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:10px }
+.photobox button{ position:absolute; top:max(16px,env(safe-area-inset-top)); right:16px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:22px; line-height:1; display:grid; place-items:center }
+@keyframes pbIn{ from{ opacity:0 } }
+@media (prefers-reduced-motion:reduce){ .photobox{ animation:none } }
 .evframe img{ position:absolute; inset:0; width:100%; height:100%; display:block }
 .evframe .fg{ object-fit:contain }
 .evframe .bg{ object-fit:cover; filter:blur(20px) saturate(1.15); transform:scale(1.2); opacity:.9 }
@@ -2491,7 +2498,7 @@ function photoHtml(ev){
   if(!ev.photo) return '';
   const from=okLink(ev.source)||ev.photo; let site=''; try{ site=new URL(from).hostname.replace(/^www\./,''); }catch(e){}
   const src=escH(ev.photo);
-  return `<figure class="evphoto"><div class="evframe"><img class="bg" src="${src}" alt="" aria-hidden="true" referrerpolicy="no-referrer"><img class="fg" src="${src}" alt="" referrerpolicy="no-referrer"></div><figcaption>Photo: <a href="${escH(from)}" target="_blank" rel="external noopener noreferrer">${escH(site)}</a></figcaption></figure>`;
+  return `<figure class="evphoto"><div class="evframe" role="button" tabindex="0" aria-label="View photo full screen"><img class="bg" src="${src}" alt="" aria-hidden="true" referrerpolicy="no-referrer"><img class="fg" src="${src}" alt="" referrerpolicy="no-referrer"></div><figcaption>Photo: <a href="${escH(from)}" target="_blank" rel="external noopener noreferrer">${escH(site)}</a></figcaption></figure>`;
 }
 // "92% liked it · 12 reviews · Great vibe · Good for groups"
 const reviewLine=ev=>ev.rev? `<div class="evrev"><b>${ev.rev.pct}% liked it</b> · ${ev.rev.n} reviews${ev.rev.tags.map(t=>' · '+escH(t)).join('')}</div>` : '';
@@ -2572,11 +2579,20 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
   const ph=sheet.querySelector('.evphoto .fg');
   if(ph){
     ph.onerror=()=>ph.closest('.evphoto').remove();   // a photo link that stopped working
-    // the frame takes the photo's shape (square to 2:1); outside that it stays at the nearest and the blur fills in
+    // the frame takes the photo's shape (3:2 to 2:1); outside that it stays at the nearest and the blur fills in
     const fit=()=>{ const r=ph.naturalWidth/ph.naturalHeight; if(!r) return;
-      const f=ph.parentNode, cl=Math.min(2,Math.max(1,r));
+      const f=ph.parentNode, cl=Math.min(2,Math.max(1.5,r));
       f.style.aspectRatio=cl.toFixed(3); f.classList.toggle('fits',Math.abs(cl-r)<.02); };
     if(ph.complete) fit(); else ph.addEventListener('load',fit,{once:true});
+    // tap for the whole photo, full screen; tap anywhere, × or Escape closes it
+    const frame=ph.parentNode, open=()=>{
+      const box=document.createElement('div'); box.className='photobox'; box.setAttribute('role','dialog'); box.setAttribute('aria-label','Event photo');
+      box.innerHTML=`<img src="${escH(ph.src)}" alt="" referrerpolicy="no-referrer"><button type="button" aria-label="Close photo">&times;</button>`;
+      const close=()=>{ box.remove(); removeEventListener('keydown',key); frame.focus(); }, key=e=>{ if(e.key==='Escape') close(); };
+      box.onclick=close; addEventListener('keydown',key);
+      document.getElementById('app').appendChild(box); box.querySelector('button').focus();
+    };
+    frame.onclick=open; frame.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } };
   }
   document.getElementById('srcBtn').onclick=()=>openSources(()=>openSheet(id,back,backLabel,occurrenceDate));
   const rb=document.getElementById('reportBtn'); if(rb) rb.onclick=()=>openReport(ev,()=>openSheet(id,back,backLabel,occurrenceDate));
