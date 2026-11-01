@@ -173,18 +173,20 @@ export function inLaCounty(zip: string): boolean {
   return !((z >= 90620 && z <= 90633) || z === 90680 || (z >= 90720 && z <= 90743));
 }
 
-// The app's six categories (see _shared/extract.ts), from keywords: the title first, then the venue, then the
-// start of the description. Within each, the first category that matches wins.
+// The app's six categories (see _shared/extract.ts), from keywords: the title first, then the start of the
+// description, then the venue's name (last, since "Cafe & Market" says little about the event). Within each,
+// the first category that matches wins.
 const CATEGORY_WORDS: [string, RegExp][] = [
-  ["Community & Social", /\b(book club|meetup|meet-up|mixer|hang|friendsgiving|trivia|game night|mahjong|tournament|star party|volunteer\w*|drive)\b/i],
-  ["Markets & Shopping", /\b(market|flea|thrift|swap|closet|vintage|sale|bazaar)\b/i],
-  ["Active & Outdoors", /\b(run|running|5k|10k|hike|hiking|yoga|pilates|walk|stride|cycling|bike|pickleball|surf|swim)\b/i],
-  ["Classes & Workshops", /\b(workshop|class|masterclass|lesson|paint\w*|canvas|candle|craft\w*|knit\w*|stitch|crochet|pottery|ceramics|zine)\b/i],
-  ["Arts & Entertainment", /\b(comedy|comedians?|comics|stand-?up|laugh\w*|show|concert|dj|album|ep\d?|music|karaoke|jazz|folk|disco|gallery|opening|exhibit\w*|film|screening|runway|fashion|theat\w*|dance|band|live|lounge)\b/i],
-  ["Food & Drink", /\b(tasting|coffee|matcha|wine|cuv[ée]e|beer|brew\w*|supper|dinner|brunch|food|potluck|cocktail|bake\w*)\b/i],
+  ["Community & Social", /\b(book club|meetup|meet-up|mixer|hang|friendsgiving|trivia|game night|board games?|ttrpg|mahjong|tournament|star party|pow ?wow|volunteer\w*|drive|co-?working|networking)\b/i],
+  ["Arts & Entertainment", /\b(art ?walk|open studios?|art show|perreo|reggaeton|house music|rooftop|dj|djs|rave|club night|songwriters?)\b/i],
+  ["Markets & Shopping", /\b(market|flea|thrift|swap|closet|vintage|sale|bazaar|makers? fair)\b/i],
+  ["Active & Outdoors", /\b(run|running|5k|10k|hike|hiking|yoga|pilates|walk|stride|cycling|bike|pickleball|surf|swim|sound bath|breathwork)\b/i],
+  ["Classes & Workshops", /\b(workshop|class|masterclass|lesson|paint\w*|canvas|candle|craft\w*|knit\w*|stitch|crochet|pottery|ceramics|zine|plant club|decorating)\b/i],
+  ["Arts & Entertainment", /\b(comedy|comedians?|comics|stand-?up|laugh\w*|show|concert|album|ep\d?|music|karaoke|jazz|folk|disco|gallery|opening|exhibit\w*|film|screening|runway|fashion|theat\w*|dance|band|live|lounge|party)\b/i],
+  ["Food & Drink", /\b(tasting|coffee|matcha|wine|cuv[ée]e|beer|supper|dinner|brunch|food|potluck|cocktail|bake\w*)\b/i],
 ];
 export function guessCategory(title: string, venue: string | null, description: string | null): string {
-  for (const text of [title, venue ?? "", (description ?? "").slice(0, 400)]) {
+  for (const text of [title, (description ?? "").slice(0, 400), venue ?? ""]) {
     const hit = CATEGORY_WORDS.find(([, words]) => words.test(text));
     if (hit) return hit[0];
   }
