@@ -4,7 +4,7 @@
 //     search the web for  site:partiful.com/u <name>.
 //   - a city's Explore page, e.g. https://partiful.com/explore/la: the public events Partiful features there
 //     (about 60-90 at a time, trending and by theme).
-// Everything else (AI reading, saving candidates, the run log) is in ../_shared.
+// Everything else (skipping events already read, saving candidates, the run log) is in ../_shared.
 //
 // Partiful has no public API, but its pages are built with Next.js and carry their data as JSON in the
 // <script id="__NEXT_DATA__"> tag: the profile lists the host's events (initialPublishedEvents), Explore lists
@@ -99,7 +99,8 @@ export function isUpcomingPublic(e: PartifulEvent): boolean {
   return !Number.isNaN(when) && when > Date.now() - 12 * 3_600_000;
 }
 
-// One event page as a post the AI reads: the facts as "Field: value" lines, then the host's description.
+// One event page as a post with its event already filled in (toEvent). The text, "Field: value" lines and then
+// the host's description, is kept with the candidate (raw.text) for review.
 async function eventPost(id: string): Promise<SourcePost | null> {
   const url = `${SITE}/e/${id}`;
   const props = await pageProps(url);
