@@ -1207,7 +1207,7 @@ function youEl(size){ const y=document.createElement('div'); y.className='youmk'
   youSpin(y,true); youSpin(y,false);   // play the loop once as the pin appears
   return y; }
 function youSpin(y,on){ if(!y) return; if(on){ y.dataset.stop=''; y.classList.add('locating'); } else y.dataset.stop='1'; }
-function omark(size,ring,dot){ const r=size/2, sw=Math.max(1.5,size*.085); return `<svg width="${size}" height="${size}" viewBox="${-r} ${-r} ${size} ${size}" aria-hidden="true"><circle r="${r-sw/2}" fill="none" stroke="${ring||C.sun}" stroke-width="${sw}"/><circle r="${r*.42}" fill="none" stroke="${ring||C.sun}" stroke-width="${sw*.8}"/><circle r="${r*.14}" fill="${dot||C.red}"/></svg>`; }
+function omark(size,ring,dot){ const r=size/2, sw=Math.max(1.5,size*.085); return `<svg width="${size}" height="${size}" viewBox="${-r} ${-r} ${size} ${size}" overflow="visible" aria-hidden="true"><circle r="${r-sw/2}" fill="none" stroke="${ring||C.sun}" stroke-width="${sw}"/><circle r="${r*.42}" fill="none" stroke="${ring||C.sun}" stroke-width="${sw*.8}"/><circle r="${r*.14}" fill="${dot||C.red}"/></svg>`; }
 // Loading mark (styles under .cloader). key names what is loading, so re-rendering mid-load keeps the animation's
 // phase instead of restarting it; the mark fades in only once a load has taken 300ms, so quick loads don't flicker.
 const loaderT0={};
