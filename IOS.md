@@ -8,6 +8,9 @@ with [Capacitor](https://capacitorjs.com). Nothing about the web app changes:
 - `ios/` is the Xcode project. Its settings: iPhone only, portrait only, the location prompt's wording, and
   "no special encryption" (so App Store Connect doesn't ask about export compliance).
 - The service worker isn't used in the app; the app's files are already on the phone.
+- The app carries its own copies of the Supabase library and the fonts (the website loads them from the internet), so
+  sign-in and syncing work even if the phone has no signal at launch. When you change the supabase-js version in
+  `index.html`, change it in `package.json` too; `npm run ios` stops with a message if they differ.
 
 The app's files are inside the app, so **a change to `index.html` reaches iPhone users only with a new App Store
 build**. Changes in Supabase (events, badges, rules) show up straight away, as on the web.

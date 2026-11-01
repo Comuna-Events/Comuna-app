@@ -1,7 +1,7 @@
 // Copies the web app into ios-web/, the folder Capacitor packages into the iPhone app (run it with `npm run ios`).
 // The copy of index.html also loads Capacitor and native.js, which switch location and sharing to the native versions;
 // the web app itself is unchanged. Nothing in ios-web/ is committed: it's rebuilt every time.
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,6 +35,39 @@ const token = /^const MAPBOX_TOKEN = ".*";$/m;
 if (!token.test(html)) throw new Error('index.html no longer has its MAPBOX_TOKEN line; update scripts/build-ios.mjs to match');
 if (MAPBOX_IOS_TOKEN) html = html.replace(token, `const MAPBOX_TOKEN = "${MAPBOX_IOS_TOKEN}";`);
 else console.warn('No MAPBOX_IOS_TOKEN in scripts/build-ios.mjs: the app will show the Paper map instead of Mapbox');
+// The website loads the Supabase library and the fonts from the internet. The app carries its own copies, so it
+// starts with sign-in, syncing and the right fonts even when the phone has no signal at launch (a basement venue, a
+// festival crowd). Same versions as the website: keep package.json in step with the links in index.html.
+const supabaseCdn = /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@([\d.]+)\/dist\/umd\/supabase\.min\.js"><\/script>/;
+const cdnVersion = html.match(supabaseCdn)?.[1];
+if (!cdnVersion) throw new Error('index.html no longer loads supabase-js from jsDelivr; update scripts/build-ios.mjs to match');
+const localVersion = JSON.parse(readFileSync(join(root, 'node_modules/@supabase/supabase-js/package.json'), 'utf8')).version;
+if (localVersion !== cdnVersion) throw new Error(`index.html uses supabase-js ${cdnVersion} but package.json has ${localVersion}; make them match`);
+cpSync(join(root, 'node_modules/@supabase/supabase-js/dist/umd/supabase.js'), join(out, 'supabase.js'));
+html = html.replace(supabaseCdn, '<script src="supabase.js"></script>');
+
+// Fonts: the same families and weights as the Google Fonts link, Latin and Latin Extended (accents like "Día")
+const FONTS = { 'big-shoulders-display': [700, 800, 900], 'dm-sans': [400, 500, 700], caveat: [600, 700] };
+const googleFonts = /<link rel="preconnect" href="https:\/\/fonts\.googleapis\.com">\n<link href="https:\/\/fonts\.googleapis\.com\/css2\?[^"]+" rel="stylesheet">/;
+if (!googleFonts.test(html)) throw new Error('index.html no longer has its Google Fonts link; update scripts/build-ios.mjs to match');
+mkdirSync(join(out, 'fonts'));
+let css = '';
+for (const [family, weights] of Object.entries(FONTS)) {
+  const pkg = join(root, 'node_modules/@fontsource', family);
+  for (const w of weights) {
+    // each block in @fontsource's CSS is one subset; keep latin and latin-ext, point them at our copies, woff2 only
+    for (const block of readFileSync(join(pkg, `${w}.css`), 'utf8').split(/(?=\/\* )/)) {
+      const file = block.match(/url\(\.\/files\/([\w-]+-latin(?:-ext)?-\d+-normal\.woff2)\)/)?.[1];
+      if (!file) continue;
+      cpSync(join(pkg, 'files', file), join(out, 'fonts', file));
+      css += block.replace(/src:[^;]+;/, `src: url(fonts/${file}) format('woff2');`).trim() + '\n';
+    }
+  }
+}
+const fontFiles = readdirSync(join(out, 'fonts')).length;
+if (fontFiles !== 2 * Object.values(FONTS).flat().length) throw new Error(`Expected ${2 * Object.values(FONTS).flat().length} font files, copied ${fontFiles}`);
+writeFileSync(join(out, 'fonts.css'), css);
+html = html.replace(googleFonts, '<link href="fonts.css" rel="stylesheet">');
 writeFileSync(join(out, 'index.html'), html);
 
-console.log(`Copied the app into ios-web/ (${files.length + 2} items)`);
+console.log(`Copied the app into ios-web/ (${files.length + 2} items, plus supabase.js and ${fontFiles} font files)`);
