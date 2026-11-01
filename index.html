@@ -80,7 +80,7 @@ img{ max-width:100% }
 .screen{ background-image:var(--grain); background-size:200px }   /* paper grain under everything */
 .screen.on{ display:flex }
 .scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 20px 110px }
-.topbar{ display:flex; align-items:center; justify-content:space-between; padding:20px 20px 8px }
+.topbar{ display:flex; align-items:center; justify-content:space-between; padding:max(6px, calc(20px - env(safe-area-inset-top,0px))) 20px 8px }  /* hug the safe area on notch/Dynamic Island phones (inset already includes breathing room); keep 20px in a plain browser */
 .wm{ font-family:var(--display); font-weight:900; letter-spacing:.04em; line-height:1; display:inline-flex; align-items:center; color:var(--green) }
 .wm svg{ margin-left:.09em; flex:none } /* pin mark trails the name; letter-spacing after the A adds the rest of the gap */
 .h1{ font-family:var(--display); font-weight:800; font-size:34px; line-height:.95; text-transform:uppercase; margin:6px 0 4px; letter-spacing:.2px }
