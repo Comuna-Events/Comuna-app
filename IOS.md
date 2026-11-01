@@ -82,7 +82,8 @@ offered, so never ship Google without it.
    add `https://sjxxiammvvfxcnukkqhg.supabase.co/auth/v1/callback`. Copy its **Client ID** and **Client secret**.
 7. In Supabase > **Authentication** > **Sign In / Providers** > **Google**: turn it on. In **Client IDs**, put the web
    client ID, a comma, then the iOS client ID. Paste the web **Client secret**. Leave **Skip nonce checks** off.
-8. In the code (client IDs aren't secret, so they're fine in the repo):
+8. In the code (already done for Comuna's clients; redo it only if you make new ones. Client IDs aren't secret, so
+   they're fine in the repo; the client secret only ever goes in Supabase):
    - `native.js`: fill in `GOOGLE_IOS_CLIENT_ID` and `GOOGLE_WEB_CLIENT_ID`.
    - `ios/App/App/Info.plist`: add the iOS URL scheme from step 5:
      ```xml
