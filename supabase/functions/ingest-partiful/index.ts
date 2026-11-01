@@ -12,8 +12,13 @@
 // One post per upcoming public event, read from its event page. The id includes the event's updatedAt, so an
 // event is read once and again only when the host edits it. If Partiful changes its pages, the source fails
 // with a clear error in event_sources.last_error rather than quietly finding nothing.
+//
+// No AI: Partiful's data is already structured, so toEvent maps it straight onto a candidate (category from
+// keywords, see guessCategory). Events outside LA County (Explore LA also lists Orange County,
+// the Inland Empire and Ventura) are left out by zip code, see inLaCounty. Vibes are left empty.
 
 import { handleIngestRequest, type Source, type SourcePost } from "../_shared/ingest.ts";
+import type { ExtractedEvent } from "../_shared/extract.ts";
 
 const USER_AGENT = "Mozilla/5.0 (compatible; ComunaEventBot/1.0)";
 const SITE = "https://partiful.com";
@@ -101,6 +106,8 @@ async function eventPost(id: string): Promise<SourcePost | null> {
   const e = props.event;
   if (!isObject(e)) throw new Error("no event data on the page");
   if (!isUpcomingPublic(e as unknown as PartifulEvent)) return null; // made private or moved since it was listed
+  const event = toEvent(e, props);
+  if (event.zip && !inLaCounty(event.zip)) return null;
   return {
     externalId: `partiful:${id}${typeof e.updatedAt === "string" ? `:${e.updatedAt}` : ""}`,
     text: eventText(e, props),
@@ -108,7 +115,107 @@ async function eventPost(id: string): Promise<SourcePost | null> {
     postedAt: str(e.publishedAt) ?? str(e.createdAt),
     imageUrls: isObject(e.image) && str(e.image.url) ? [str(e.image.url)!] : [],
     raw: { event: e, hosts: props.hosts ?? null, offers: props.offersJsonLd ?? null },
+    events: [event],
   };
+}
+
+// The event page as a candidate, field by field. Confidence is high: the date, time and address are the
+// host's own structured data, not read from a caption.
+export function toEvent(e: JsonObject, props: JsonObject): ExtractedEvent {
+  const tz = str(e.timezone) ?? "America/Los_Angeles";
+  const start = localParts(str(e.startDate), tz), end = localParts(str(e.endDate), tz);
+  const info = isObject(e.locationInfo) ? e.locationInfo : {};
+  const maps = isObject(info.mapsInfo) ? info.mapsInfo : {};
+  const address = Array.isArray(maps.addressLines) ? maps.addressLines.filter((l): l is string => typeof l === "string") : [];
+  const cityLine = address.at(-1)?.match(/^(.*?),\s*[A-Z]{2}\b\s*(\d{5})?/);
+  const firstLines = address.length > 1 ? address.slice(0, -1).join(", ") : null;
+  const street = firstLines && /\d/.test(firstLines) ? firstLines : null;
+  const hosts = (Array.isArray(props.hosts) ? props.hosts : []).map((h) => (isObject(h) ? str(h.name) : null))
+    .filter((h): h is string => !!h && h !== "Partiful Picks LA"); // Partiful's own curator account, not the host
+  const { type, detail } = price(props.offersJsonLd);
+  const title = str(e.title) ?? "";
+  const capacity = e.atCapacity === true ? "At capacity on Partiful (waitlist only)" : null;
+
+  return {
+    name: title,
+    description: summary(str(e.description)),
+    category: guessCategory(title, str(maps.name), str(e.description)),
+    tags: [],
+    vibes: [],
+    start_date: start?.date ?? null,
+    end_date: end && end.date !== start?.date ? end.date : null,
+    start_time: start?.time ?? null,
+    end_time: end?.time ?? null,
+    recurrence: "One-off",
+    recurrence_detail: null,
+    venue: str(maps.name),
+    street_address: street,
+    city: cityLine?.[1]?.trim() ?? null,
+    zip: cityLine?.[2] ?? null,
+    neighborhood: str(info.neighborhood),
+    setting: null,
+    price_type: type,
+    price_detail: detail,
+    rsvp_required: true,
+    ticket_url: `${SITE}/e/${str(e.id) ?? ""}`,
+    age: null,
+    host: hosts.join(", ") || null,
+    confidence: street && cityLine?.[2] ? 0.9 : 0.6, // no street address or zip: left for review
+    notes: capacity,
+  };
+}
+
+// LA County zip codes: 900xx-918xx and the Antelope Valley's 935xx, minus the Orange County ones in that range.
+export function inLaCounty(zip: string): boolean {
+  const z = Number(zip);
+  if (!((z >= 90001 && z <= 91899) || (z >= 93510 && z <= 93599))) return false;
+  return !((z >= 90620 && z <= 90633) || z === 90680 || (z >= 90720 && z <= 90743));
+}
+
+// The app's six categories (see _shared/extract.ts), from keywords: the title first, then the venue, then the
+// start of the description. Within each, the first category that matches wins.
+const CATEGORY_WORDS: [string, RegExp][] = [
+  ["Community & Social", /\b(book club|meetup|meet-up|mixer|hang|friendsgiving|trivia|game night|mahjong|tournament|star party|volunteer\w*|drive)\b/i],
+  ["Markets & Shopping", /\b(market|flea|thrift|swap|closet|vintage|sale|bazaar)\b/i],
+  ["Active & Outdoors", /\b(run|running|5k|10k|hike|hiking|yoga|pilates|walk|stride|cycling|bike|pickleball|surf|swim)\b/i],
+  ["Classes & Workshops", /\b(workshop|class|masterclass|lesson|paint\w*|canvas|candle|craft\w*|knit\w*|stitch|crochet|pottery|ceramics|zine)\b/i],
+  ["Arts & Entertainment", /\b(comedy|comedians?|comics|stand-?up|laugh\w*|show|concert|dj|album|ep\d?|music|karaoke|jazz|folk|disco|gallery|opening|exhibit\w*|film|screening|runway|fashion|theat\w*|dance|band|live|lounge)\b/i],
+  ["Food & Drink", /\b(tasting|coffee|matcha|wine|cuv[ée]e|beer|brew\w*|supper|dinner|brunch|food|potluck|cocktail|bake\w*)\b/i],
+];
+export function guessCategory(title: string, venue: string | null, description: string | null): string {
+  for (const text of [title, venue ?? "", (description ?? "").slice(0, 400)]) {
+    const hit = CATEGORY_WORDS.find(([, words]) => words.test(text));
+    if (hit) return hit[0];
+  }
+  return "Community & Social";
+}
+
+// The host's description, kept to its first few sentences (about 300 characters).
+function summary(text: string | null): string | null {
+  if (!text) return null;
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= 320) return flat;
+  const cut = flat.slice(0, 320);
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return end > 120 ? cut.slice(0, end + 1) : `${cut.replace(/\s+\S*$/, "")}…`;
+}
+
+// Ticketed events carry schema.org offers (price 0 for free tickets); events without any are free RSVPs.
+function price(offers: Json | undefined): { type: string; detail: string | null } {
+  const list = (Array.isArray(offers) ? offers : offers ? [offers] : []).filter(isObject);
+  const paid = list.map((o) => Number(o.price)).filter((p) => Number.isFinite(p) && p > 0);
+  if (!paid.length) return { type: "Free", detail: null };
+  const min = Math.min(...paid), max = Math.max(...paid);
+  const money = (p: number) => (Number.isInteger(p) ? String(p) : p.toFixed(2));
+  return { type: "Paid", detail: min === max ? `$${money(min)}` : `$${money(min)}–${money(max)}` };
+}
+
+// An ISO instant as the local date (YYYY-MM-DD) and 24-hour time (HH:MM) in the event's time zone.
+function localParts(iso: string | null, tz: string): { date: string; time: string } | null {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  const s = d.toLocaleString("sv-SE", { timeZone: tz, hourCycle: "h23" }); // "2026-11-08 11:00:00"
+  return { date: s.slice(0, 10), time: s.slice(11, 16) };
 }
 
 export function eventText(e: JsonObject, props: JsonObject): string {

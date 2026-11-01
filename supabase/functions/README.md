@@ -15,7 +15,7 @@ ingest-eventbrite/     Eventbrite search pages for LA (no AI: Eventbrite's own d
 ingest-luma/           Luma's discover search around a point (no AI, see luma.ts)
 ingest-meetup/         Meetup's in-person search around a point (no AI, see meetup.ts)
 _shared/structured.ts  shared helpers for the no-AI platforms (LA County check, local times, prices, categories)
-ingest-partiful/       Partiful hosts and city Explore pages
+ingest-partiful/       Partiful hosts and city Explore pages (no AI needed)
 _shared/vibes.ts       shared: the fixed list of vibes (spooky, date night, live music...) the AI picks from
 ingest-vibes/          picks vibes for events that don't have them (added by hand, or from before vibes)
 ```
@@ -54,6 +54,9 @@ JavaScript. Look for what the page loads them from, and use that as the handle i
 - a city's Explore page, e.g. `https://partiful.com/explore/la`: the ~60-90 public events Partiful features there.
 
 `ingest-partiful` reads each upcoming public event's own page (details, address, hosts, price), one post per event.
+It doesn't use the AI: Partiful's data is already structured, so the fields are copied straight across (category
+from keywords, no vibes). Events outside LA County (by zip code) are skipped, and ones without a street address or
+zip are saved with confidence 0.6, so they wait for review instead of being promoted.
 
 Put `{today}` or `{today+N}` in a handle for APIs that take a date range; it's filled in on every run.
 Anything else needs a special case in `ingest-web/index.ts`.
