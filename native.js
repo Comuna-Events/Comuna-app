@@ -92,8 +92,8 @@
      (signInWithIdToken). The provider gets a SHA-256 of a one-time nonce and Supabase the nonce itself, so a token
      can't be replayed. Google stays hidden until GOOGLE_IOS_CLIENT_ID is filled in: the Google SDK closes the app
      if its URL scheme (the reversed client ID, in ios/App/App/Info.plist) is missing. Setup steps are in IOS.md. */
-  const GOOGLE_IOS_CLIENT_ID='';   // Google Cloud > APIs & Services > Credentials > the iOS OAuth client
-  const GOOGLE_WEB_CLIENT_ID='';   // the Web OAuth client, the same one in Supabase > Authentication > Providers > Google
+  const GOOGLE_IOS_CLIENT_ID='200536928634-4138ggmg4baq14698p2a7bk8tkl1qv1v.apps.googleusercontent.com';   // Google Cloud > Google Auth Platform > Clients > Comuna iPhone
+  const GOOGLE_WEB_CLIENT_ID='200536928634-treibndjl9m1nqajs3ca5ep838uno2te.apps.googleusercontent.com';   // Clients > Comuna Supabase, the same one in Supabase > Authentication > Providers > Google
   const Social=cap.registerPlugin('SocialLogin');
   const providers=['apple'].concat(GOOGLE_IOS_CLIENT_ID && GOOGLE_WEB_CLIENT_ID? ['google'] : []);
   const ready=Social.initialize({ apple:{}, ...(providers.includes('google')? { google:{ iOSClientId:GOOGLE_IOS_CLIENT_ID, iOSServerClientId:GOOGLE_WEB_CLIENT_ID, mode:'online' } } : {}) })
