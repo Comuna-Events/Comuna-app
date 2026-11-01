@@ -15,6 +15,7 @@ ingest-eventbrite/     Eventbrite search pages for LA (no AI: Eventbrite's own d
 ingest-luma/           Luma's discover search around a point (no AI, see luma.ts)
 ingest-meetup/         Meetup's in-person search around a point (no AI, see meetup.ts)
 _shared/structured.ts  shared helpers for the no-AI platforms (LA County check, local times, prices, categories)
+ingest-partiful/       Partiful hosts and city Explore pages
 _shared/vibes.ts       shared: the fixed list of vibes (spooky, date night, live music...) the AI picks from
 ingest-vibes/          picks vibes for events that don't have them (added by hand, or from before vibes)
 ```
@@ -45,6 +46,14 @@ JavaScript. Look for what the page loads them from, and use that as the handle i
 - a JSON feed or API (e.g. `https://www.hollywoodbowl.com/events/feed`): read as one post per event;
 - an RSS / Atom feed (e.g. a city calendar's RSS link): one post per item;
 - schema.org JSON-LD in the page (most Ticketmaster / Live Nation venue pages): add `#jsonld` to the page URL.
+
+**Partiful sources:** add a row with platform `partiful` and as `handle` either
+- a host's profile, e.g. `https://partiful.com/u/wYOYiNfFReumziGUYS56` (goodboybob): every upcoming public event they
+  post. To find a host's link, open one of their events and click their name, or search the web for
+  `site:partiful.com/u <name>`;
+- a city's Explore page, e.g. `https://partiful.com/explore/la`: the ~60-90 public events Partiful features there.
+
+`ingest-partiful` reads each upcoming public event's own page (details, address, hosts, price), one post per event.
 
 Put `{today}` or `{today+N}` in a handle for APIs that take a date range; it's filled in on every run.
 Anything else needs a special case in `ingest-web/index.ts`.
