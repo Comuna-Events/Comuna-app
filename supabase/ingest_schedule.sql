@@ -10,6 +10,7 @@
 -- ingest.ingest_runs and ingest.event_candidates within a couple of minutes:
 --   select ingest.run();                     -- every active web source (ingest-web)
 --   select ingest.run('ingest-web', 1);      -- just event_sources row 1
+--   select ingest.run('ingest-partiful');    -- Partiful hosts and Explore pages
 --   select ingest.run('ingest-instagram');   -- another platform's function, once it's deployed
 --
 -- When a new platform's function is deployed, add it to ingest.run_nightly() below and re-run this file.
@@ -40,6 +41,7 @@ create or replace function ingest.run_nightly() returns void
 language plpgsql security definer set search_path = '' as $$
 begin
   perform ingest.run('ingest-web');
+  perform ingest.run('ingest-partiful'); -- Partiful hosts and Explore pages
   perform ingest.run('ingest-vibes');   -- vibes for events added by hand (each event is read once)
 end $$;
 revoke execute on function ingest.run_nightly() from public, anon, authenticated;
