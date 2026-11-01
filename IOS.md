@@ -42,6 +42,65 @@ event. The database runs it every 10 minutes (`supabase/push.sql`). It needs an 
 
 The Xcode project already has the Push Notifications capability (`ios/App/App/App.entitlements`).
 
+## Sign in with Apple and Google
+
+In the app, the sign-up and sign-in screen offers **Continue with Apple** and **Continue with Google** above the email
+code. They use the phone's own sign-in sheets (Face ID for Apple, Google's account picker) through the
+`@capgo/capacitor-social-login` plugin. `native.js` gets an identity token, and `index.html` hands it to Supabase
+(`signInWithIdToken`). The website keeps the email code only.
+
+Someone who already has an account by email code and picks Apple or Google with the **same email** lands in that same
+account (Supabase links them). Apple's **Hide My Email** gives a private relay address instead, so that person gets a
+new account.
+
+The Apple button works once steps 1–3 are done. The Google button stays hidden until steps 4–8 are done, because the
+Google SDK closes the app if its settings are missing. Apple requires Sign in with Apple whenever Google sign-in is
+offered, so never ship Google without it.
+
+**Apple** (developer.apple.com and Supabase)
+
+1. On developer.apple.com > **Certificates, IDs & Profiles** > **Identifiers** > `com.wearecomuna.app`: tick
+   **Sign in with Apple** > **Save**. The Xcode project already has the capability (`ios/App/App/App.entitlements`).
+   If Xcode then shows a signing error, untick and re-tick **Automatically manage signing** so it fetches a new
+   profile.
+2. In Supabase > **Authentication** > **Sign In / Providers** > **Apple**: turn it on and put `com.wearecomuna.app` in
+   **Client IDs**. Leave the secret key empty: it's only for signing in on a website.
+3. So people using Hide My Email still get Comuna's emails: on developer.apple.com > **Services** > **Sign in with
+   Apple for Email Communication** > **Configure**, add the domain and address Supabase sends from (Supabase >
+   **Authentication** > **Emails** > **SMTP Settings**), and follow Apple's steps to verify the domain (an SPF
+   record).
+
+**Google** (console.cloud.google.com and Supabase)
+
+4. Make a project (or pick one), then go to **Google Auth Platform** > **Branding**: app name `Comuna`, your support
+   email, `wearecomuna.com` under **Authorized domains**, and the privacy policy link
+   (`https://www.wearecomuna.com/privacy`). Under **Audience**, pick **External** and **Publish app**. Until it's
+   published, only listed test users can sign in.
+5. **Clients** > **Create client** > **iOS**, bundle ID `com.wearecomuna.app`. Copy its **Client ID** and **iOS URL
+   scheme** (the client ID reversed, starting `com.googleusercontent.apps.`).
+6. **Clients** > **Create client** > **Web application**, name `Comuna Supabase`, and under **Authorized redirect URIs**
+   add `https://sjxxiammvvfxcnukkqhg.supabase.co/auth/v1/callback`. Copy its **Client ID** and **Client secret**.
+7. In Supabase > **Authentication** > **Sign In / Providers** > **Google**: turn it on. In **Client IDs**, put the web
+   client ID, a comma, then the iOS client ID. Paste the web **Client secret**. Leave **Skip nonce checks** off.
+8. In the code (client IDs aren't secret, so they're fine in the repo):
+   - `native.js`: fill in `GOOGLE_IOS_CLIENT_ID` and `GOOGLE_WEB_CLIENT_ID`.
+   - `ios/App/App/Info.plist`: add the iOS URL scheme from step 5:
+     ```xml
+     <key>CFBundleURLTypes</key>
+     <array>
+       <dict>
+         <key>CFBundleURLSchemes</key>
+         <array>
+           <string>com.googleusercontent.apps.YOUR-IOS-CLIENT-ID</string>
+         </array>
+       </dict>
+     </array>
+     ```
+   Then `npm run ios` and build again.
+
+The first build after adding the plugin downloads Google's sign-in library, so Xcode takes a minute longer. If Xcode
+says a package is missing, use **File > Packages > Reset Package Caches**.
+
 ## App Review sign-in
 
 Apple's reviewers can't receive emailed codes, so `appreview@wearecomuna.com` takes a fixed 8-digit code instead
