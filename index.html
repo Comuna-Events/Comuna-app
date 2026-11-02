@@ -1949,7 +1949,7 @@ function editInterests(){
 // Points stay on the board they were earned on (Supabase stamps each row with your neighborhood at the time).
 function editHood(){
   const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Your neighborhood</div>
-    <h2 style="font-size:28px">Where's home base?</h2><p class="sub">You'll compete on this neighborhood's monthly leaderboard.${S.nb?` Points you've already earned stay on ${S.nb}'s board.`:''}</p>
+    <h2 style="font-size:28px">Where's home base?</h2><p class="sub">You'll compete on this neighborhood's leaderboard.${S.nb?` Points you've already earned stay on ${S.nb}'s board.`:''}</p>
     <input class="field" id="hoodQ" type="search" placeholder="Search within LA County" autocomplete="off" aria-label="Search neighborhoods and cities">
     <div class="picklist" id="hoodList"></div>`;
     // closest first; typing searches all of them
@@ -1968,13 +1968,13 @@ function editHood(){
   draw(); overlay.classList.add('on');
 }
 document.getElementById('pfNbBtn').onclick=editHood;
-// how you appear on the monthly leaderboard (supabase/leaderboard_names.sql): your name by default, a nickname you choose, or hidden
+// how you appear on the leaderboard (supabase/leaderboard_names.sql): your name by default, a nickname you choose, or hidden
 const lbLabel=()=>S.lbShow==='hidden'? 'Hidden' : S.lbShow==='nickname'&&S.nickname? S.nickname : shortName();
 function editLeaderboard(){
   let show=S.lbShow||'name', nick=S.nickname||'';
   const opts=[['name','Your name',shortName()],['nickname','A nickname','One you choose'],['hidden','Hidden','You still earn points']];
   const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Leaderboard</div>
-    <h2 style="font-size:28px">How you appear</h2><p class="sub">On ${escH(S.nb||'your neighborhood')}'s monthly Top 5.</p>
+    <h2 style="font-size:28px">How you appear</h2><p class="sub">On ${escH(S.nb||'your neighborhood')}'s Top 5.</p>
     <div class="picklist" id="lbOpts">${opts.map(([k,l,sub])=>`<button class="popt ${k===show?'on':''}" data-show="${k}" aria-pressed="${k===show}"><span>${l}<small>${escH(sub)}</small></span>${k===show?'<em>✓</em>':''}</button>`).join('')}</div>
     <div ${show==='nickname'?'':'hidden'}><label class="flabel" for="nickQ">Your nickname</label><input class="field" id="nickQ" maxlength="24" autocomplete="off" value="${escH(nick)}"></div>
     <button class="btn primary" id="lbSave" style="margin-top:16px">Save</button>`;
@@ -2845,16 +2845,17 @@ function showRsvp(ev,pts=0){
   document.getElementById('rsvpInvite').onclick=()=>{ m.classList.remove('on'); openSheet(ev.id,null,'Top 4',ev.occurrenceDate); setTimeout(()=>document.getElementById('shareBtn')?.click(),50); };
 }
 
-// your points this month, from the same Supabase view as the leaderboard (so both always match)
+// your points, from the same Supabase view as the leaderboard (so both always match; all time until
+// leaderboard_start() in supabase/leaderboard_all_time.sql goes back to monthly)
 let myPtsAt=0;
 async function loadMyPoints(){
   if(!sb || Date.now()-myPtsAt<60000) return; myPtsAt=Date.now();
   try{ const u=(await sb.auth.getSession()).data.session?.user; if(!u) return;
-    // total across every board you earned on this month (supabase/security_hardening.sql)
+    // total across every board you earned on (supabase/security_hardening.sql)
     const { data, error } = await sb.rpc('my_points_this_month'); if(error) throw error;
     const n=+data||0; if(S.monthPts!==n){ S.monthPts=n; save(); }
     const el=document.getElementById('psPts'); if(el) el.textContent=n.toLocaleString();
-    const lab=document.getElementById('psPtsLab'); if(lab) lab.textContent='points this month';
+    const lab=document.getElementById('psPtsLab'); if(lab) lab.textContent='points';
   }catch(e){ console.warn('Supabase my points failed', e); }
 }
 /* ---------- badges and titles (supabase/achievements.sql) ---------- */
@@ -3016,15 +3017,15 @@ async function wearTitle(key,button){
   return true;
 }
 
-/* ---------- neighborhood leaderboard (real points this month, from Supabase) ---------- */
+/* ---------- neighborhood leaderboard (real points, from Supabase) ---------- */
 async function loadLeaderboard(){
   const el=document.getElementById('lbList'), me=shortName();
-  const empty=`<div class="empty">No points in ${escH(S.nb||'your neighborhood')} yet this month. Save, check in or add an event to get on the board.</div>`;
+  const empty=`<div class="empty">No points in ${escH(S.nb||'your neighborhood')} yet. Save, check in or add an event to get on the board.</div>`;
   // guests aren't on the board: show where they'd land, and how to get on it
   const guestBoard=(rows,data,known=true)=>{
     const mine=S.points||0, rank=data.filter(r=>(+r.points||0)>mine).length+1;
     if(mine && known) rows.splice(Math.min(rank-1,rows.length),0,`<div class="lbrow guest"><div class="r">${rank<=5?rank:''}</div><div>You'd be ${rank<=5?ordinal(rank):'on the board'}<small>with your ${mine.toLocaleString()} points</small></div><div></div></div>`);
-    el.innerHTML=(rows.length? rows.join('') : empty)+`<p class="lbcta">Guests aren't on the board. Create an account to ${mine?'claim your spot':'join in'} and compete for ${escH(S.nb||'your neighborhood')} this month.</p><button class="btn primary" id="lbClaim">${mine?'Claim my spot':'Create account'}</button>`;
+    el.innerHTML=(rows.length? rows.join('') : empty)+`<p class="lbcta">Guests aren't on the board. Create an account to ${mine?'claim your spot':'join in'} and compete for ${escH(S.nb||'your neighborhood')}.</p><button class="btn primary" id="lbClaim">${mine?'Claim my spot':'Create account'}</button>`;
     document.getElementById('lbClaim').onclick=()=>openAuth('signup');
   };
   if(!sb){ if(S.guest) guestBoard([],[],false); else el.innerHTML=empty; return; }

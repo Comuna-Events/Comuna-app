@@ -5,6 +5,7 @@
 --  Share it: approved event you added +100 (first 3 each week),
 --              plus +25 for each other person who checks in to it (max 500 per event).
 --  Duplicates: set status = 'duplicate' (or 'rejected') instead of 'approved'; they earn nothing.
+--  Window: the board counts points earned since leaderboard_start() (all time for now; see leaderboard_all_time.sql).
 --  Boards: points count toward the home neighborhood you had when you earned them. Change it in Profile and
 --          new points go to the new board; what you already earned stays where it was.
 
@@ -36,10 +37,17 @@ update checkins c          set board = p.neighborhood from profiles p where p.id
 update feedback f          set board = p.neighborhood from profiles p where p.id = f.user_id and f.board is null;
 update event_submissions s set board = p.neighborhood from profiles p where p.id = s.user_id and s.board is null;
 
+-- when the leaderboard's points start counting from. '-infinity' = all time, so the board never resets.
+-- To go back to monthly boards later, swap the body for: select date_trunc('month', now())
+create or replace function public.leaderboard_start() returns timestamptz
+language sql stable set search_path = pg_catalog as $$
+  select '-infinity'::timestamptz
+$$;
+
 -- drop first: create or replace can't remove a column from an existing view
 drop view if exists leaderboard_month;
 create view leaderboard_month with (security_invoker = true) as
-with m as (select date_trunc('month', now()) as start),
+with m as (select public.leaderboard_start() as start),
 saves as (
   select user_id, board,
          row_number() over (partition by user_id, (created_at at time zone 'America/Los_Angeles')::date order by created_at) as n
@@ -83,7 +91,7 @@ pts as (
   union all
   select user_id, board, p, 0 from turnout where p > 0
 ),
-boards as (     -- one row per person per board they earned on this month
+boards as (     -- one row per person per board they earned on since leaderboard_start()
   select pts.user_id, coalesce(pts.board, pr.neighborhood) as board, sum(pts.p)::int as points, sum(pts.ci)::int as ci
   from pts join profiles pr on pr.id = pts.user_id
   group by 1, 2
@@ -98,4 +106,4 @@ from boards b join profiles pr on pr.id = b.user_id;
 
 -- not readable from the app's API: it reads leaderboard_top() and my_points_this_month() (security_hardening.sql)
 revoke all on leaderboard_month from anon, authenticated;
-comment on view leaderboard_month is '[App users] This month''s points per person, built from rsvps, checkins, feedback and submissions.';
+comment on view leaderboard_month is '[App users] Points per person since leaderboard_start() (all time for now), built from rsvps, checkins, feedback and submissions.';

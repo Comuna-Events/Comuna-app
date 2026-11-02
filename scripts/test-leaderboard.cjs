@@ -12,7 +12,7 @@ const els=new Map(),el=id=>{if(!els.has(id))els.set(id,{innerHTML:'',textContent
    from:()=>{throw new Error('the views are no longer read directly');}}};
  vm.createContext(c);for(const n of ['loadMyPoints','loadLeaderboard','loadGoing','loadCheckedIn','loadReviews']) vm.runInContext(fn(n).replace('async function '+n,'this.'+n+'=async function'),c);
  await c.loadMyPoints();
- assert.equal(c.S.monthPts,440,'points this month are the total across boards');assert.equal(el('psPts').textContent,'440');
+ assert.equal(c.S.monthPts,440,'points are the total across boards');assert.equal(el('psPts').textContent,'440');
  await c.loadLeaderboard();
  assert.deepEqual(calls.find(x=>x.name==='leaderboard_top').args,{p_board:'Santa Monica',p_limit:5});
  assert.match(el('lbList').innerHTML,/class="lbrow "><div class="r">1<\/div><div>Ana R\./);
