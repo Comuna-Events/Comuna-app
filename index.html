@@ -2815,7 +2815,7 @@ function checkIn(ev,dist,pos){
     <h3>${firstPlace?`Stamped: ${escH(ev.venue)}`:`Back at ${escH(ev.venue)}`}</h3>
     <p>${escH(ev.title)}. <b>+${total} points</b> (${earned.map(x=>`+${x[0]} ${x[1]}`).join(', ')}), and ${escH(ev.venue)} knows you came.</p>
     ${un.length?`<div class="unlocks">${un.map(u=>`<span>${u}</span>`).join('')}</div>`:''}
-    ${nudge? `<div class="keepcard"><b>Keep this stamp</b><p>It's saved on this phone for now. Add your email so it's safe if you switch phones or clear your browser.</p>
+    ${nudge? `<div class="keepcard"><b>Keep this stamp</b><p>It's saved on this phone for now. ${window.comunaSocial?.providers?.length? 'Create an account so it\'s safe if you switch phones. It takes one tap with Apple'+(window.comunaSocial.providers.includes('google')?' or Google':'')+'.' : 'Add your email so it\'s safe if you switch phones or clear your browser.'}</p>
       <button class="btn primary" id="keepSave">Create account</button><button id="closeStamp">Not now</button></div>`
     : '<button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>'}`;
   m.classList.add('on','wait');
