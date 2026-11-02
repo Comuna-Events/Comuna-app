@@ -18,7 +18,7 @@ comment on table  public.search_queries    is '[App users] Every search run from
 comment on view   public.search_terms      is '[App users] Last 30 days of searches, most common first, with how often each found nothing.';
 comment on table  public.guest_sessions    is '[App users] One row per guest install (skipped sign-up): neighborhood, interests, opens, and the account they made later, if any.';
 comment on view   public.guest_funnel      is '[App users] Guests per week: how many came back and how many made an account.';
-comment on view   public.leaderboard_month is '[App users] This month''s points per person, built from rsvps, checkins, feedback and submissions. The app reads it through leaderboard_top() and my_points_this_month().';
+comment on view   public.leaderboard_month is '[App users] Points per person since leaderboard_start() (all time for now), built from rsvps, checkins, feedback and submissions. The app reads it through leaderboard_top() and my_points_this_month().';
 
 -- [We manage]
 comment on table  public.events            is '[We manage] The event inventory the app shows. Add and edit here; nightly finds arrive via ingest.promote_candidate.';
