@@ -2356,12 +2356,25 @@ if(SKETCH){ document.documentElement.classList.add('sketch');
   window.HAND_READY=new Promise(r=>{ l.onload=r; l.onerror=r; setTimeout(r,4000); }).then(()=>document.fonts.load("20px 'Patrick Hand SC'")).catch(()=>{}); }
 const INK='#353A32', SK={ land:'#F2EADA', road:'#FBF7EE', major:'#FFFDF8', water:'#BCD0D6', waterInk:'#6F8E99', park:'#CDD6B8', parkInk:'#7D9468' };
 const HAND_FONT="'Patrick Hand SC', 'Caveat', cursive";
+// watercolor mottle over a tile: soft blotches of a darker and a lighter tone, each drawn at every wrap offset so the
+// tile repeats without seams, then a fine granulation like pigment settling in the paper's grain
+function washTile(g,s,R,dark,light,n=26){
+  for(let i=0;i<n;i++){ const x=R()*s, y=R()*s, r=s*(.1+R()*.24), col=R()<.55? dark : light, a=.1+R()*.16;
+    [-s,0,s].forEach(ox=>[-s,0,s].forEach(oy=>{ const gr=g.createRadialGradient(x+ox,y+oy,0,x+ox,y+oy,r);
+      gr.addColorStop(0,`rgba(${col},${a})`); gr.addColorStop(.6,`rgba(${col},${a*.55})`); gr.addColorStop(1,`rgba(${col},0)`); g.fillStyle=gr; g.fillRect(x+ox-r,y+oy-r,r*2,r*2); })); }
+  for(let i=0;i<s*s/30;i++){ g.fillStyle=`rgba(${dark},${.05+R()*.07})`; g.fillRect(R()*s,R()*s,.7,.7); }
+}
+function waterTile(){
+  const s=256, k=2, c=document.createElement('canvas'); c.width=c.height=s*k; const g=c.getContext('2d'); g.scale(k,k); const R=rng(23);
+  g.fillStyle=SK.water; g.fillRect(0,0,s,s); washTile(g,s,R,'126,160,174','226,236,236',30);
+  return { width:s*k, height:s*k, data:new Uint8Array(g.getImageData(0,0,s*k,s*k).data.buffer) };
+}
 // a small seamless tile drawn on a canvas: grass, stipple and (kind 'park') tree clumps for park fills
 function sketchTile(kind){
-  const s=160, k=2, c=document.createElement('canvas'); c.width=c.height=s*k; const g=c.getContext('2d'); g.scale(k,k);
+  const s=kind==='grass'?256:160, k=2, c=document.createElement('canvas'); c.width=c.height=s*k; const g=c.getContext('2d'); g.scale(k,k);
   const R=rng(kind==='park'||kind==='grass'?11:5); g.lineCap='round'; g.lineJoin='round';
   if(kind==='park'||kind==='grass'){
-    g.fillStyle=SK.park; g.fillRect(0,0,s,s);
+    g.fillStyle=SK.park; g.fillRect(0,0,s,s); if(kind==='grass') washTile(g,s,R,'150,170,122','226,232,206',30);
     // a few clumps of overlapping trees, drawn at every wrap offset so the tile repeats without seams
     const trees=[]; [[30,34,5],[104,22,3],[120,104,5],[46,118,4],[86,72,2],[150,150,3],[8,84,2]].forEach(([cx,cy,n])=>{
       for(let i=0;i<n;i++) trees.push([cx+(R()-.5)*20,cy+(R()-.5)*16,5+R()*3.5,R()]); });
@@ -2372,8 +2385,8 @@ function sketchTile(kind){
       g.beginPath(); g.arc(x-r*.15,y-r*.1,r*.5,Math.PI*1.1,Math.PI*1.7); g.strokeStyle='rgba(53,58,50,.3)'; g.lineWidth=.6; g.stroke();   // a shading curl
       g.beginPath(); g.moveTo(x,y+r*.85); g.lineTo(x+.4,y+r+3); g.strokeStyle='rgba(53,58,50,.6)'; g.lineWidth=.8; g.stroke(); };
     if(kind==='park') [-s,0,s].forEach(ox=>[-s,0,s].forEach(oy=>trees.forEach(([x,y,r,t])=>tree(x+ox,y+oy,r,t))));
-    g.fillStyle='rgba(53,58,50,.28)'; for(let i=0;i<60;i++){ g.beginPath(); g.arc(R()*s,R()*s,.45,0,7); g.fill(); }   // stipple
-    g.strokeStyle='rgba(53,58,50,.22)'; g.lineWidth=.6; for(let i=0;i<10;i++){ const x=R()*s, y=R()*s; g.beginPath(); g.moveTo(x,y); g.lineTo(x+1.5,y-2.5); g.moveTo(x+3,y); g.lineTo(x+3.6,y-2.8); g.stroke(); }   // grass tufts
+    g.fillStyle='rgba(53,58,50,.28)'; for(let i=0;i<(kind==='grass'?150:60);i++){ g.beginPath(); g.arc(R()*s,R()*s,.45,0,7); g.fill(); }   // stipple
+    g.strokeStyle='rgba(53,58,50,.22)'; g.lineWidth=.6; for(let i=0;i<(kind==='grass'?25:10);i++){ const x=R()*s, y=R()*s; g.beginPath(); g.moveTo(x,y); g.lineTo(x+1.5,y-2.5); g.moveTo(x+3,y); g.lineTo(x+3.6,y-2.8); g.stroke(); }   // grass tufts
   }
   return { width:s*k, height:s*k, data:new Uint8Array(g.getImageData(0,0,s*k,s*k).data.buffer) };
 }
@@ -2516,7 +2529,7 @@ function sketchMapbox(m){
   const L=m.getStyle().layers||[], set=(id,k,v)=>{ try{ m.setPaintProperty(id,k,v); }catch(e){} };
   L.forEach(l=>{ const id=l.id;
     if(l.type==='background') set(id,'background-color',SK.land);
-    else if(l.type==='fill' && /water/.test(id)) set(id,'fill-color',SK.water);
+    else if(l.type==='fill' && /water/.test(id)){ set(id,'fill-color',SK.water); if(id==='water') set(id,'fill-pattern','sk-water'); }
     else if(l.type==='fill' && /building/.test(id)){ set(id,'fill-color',SK.land); set(id,'fill-outline-color','rgba(53,58,50,.28)'); }
     else if(l.type==='line' && /^(road|bridge|tunnel)/.test(id) && !/path|steps|pedestrian|rail|construction/.test(id)){
       // 1: the road's edge is the ink line and its middle is paper, like a pen-drawn street
@@ -2533,6 +2546,8 @@ function sketchMapbox(m){
   }catch(e){ console.warn('sketch roads',e); } });
   // 2: parks as drawn tree clumps with an ink edge, hill shadows hatched in pencil, lakes with a drawn shoreline
   if(!m.hasImage('sk-park')) m.addImage('sk-park',sketchTile('grass'),{pixelRatio:2});
+  if(!m.hasImage('sk-water')) m.addImage('sk-water',waterTile(),{pixelRatio:2});
+  try{ m.setPaintProperty('water','fill-pattern','sk-water'); }catch(e){}
   for(let v=0;v<4;v++) if(!m.hasImage('sk-tree'+v)) m.addImage('sk-tree'+v,treeClump(v),{pixelRatio:2});
   for(let v=0;v<2;v++){ if(!m.hasImage('sk-palm'+v)) m.addImage('sk-palm'+v,palm(v),{pixelRatio:2}); if(!m.hasImage('sk-ripple'+v)) m.addImage('sk-ripple'+v,ripple(v),{pixelRatio:2}); }
   const ids=L.map(l=>l.id), firstWater=ids.find(id=>/^water/.test(id)), afterWater=ids[ids.lastIndexOf('water')+1];
@@ -2555,7 +2570,11 @@ function sketchMapbox(m){
   }catch(e){ console.warn('sketch hills',e); }
   try{
     m.addLayer({id:'sk-parks',type:'fill',source:'composite','source-layer':'landuse',filter:parkF,paint:{'fill-pattern':'sk-park'}},firstWater);
-    m.addLayer({id:'sk-parks-edge',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':SK.parkInk,'line-width':['interpolate',['linear'],['zoom'],11,.5,15,1.2],'line-opacity':.7}},firstWater);
+    // watercolor: pigment pools at the edge of each park, a soft darker band just inside it, and the drawn edge stays faint
+    m.addLayer({id:'sk-parks-pool',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':'#97AC7C',
+      'line-width':['interpolate',['linear'],['zoom'],11,3,14,8,17,16],'line-blur':['interpolate',['linear'],['zoom'],11,3,14,7,17,14],
+      'line-offset':['interpolate',['linear'],['zoom'],11,1.5,14,4,17,8],'line-opacity':.45}},firstWater);
+    m.addLayer({id:'sk-parks-edge',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':SK.parkInk,'line-width':['interpolate',['linear'],['zoom'],11,.5,15,1.1],'line-opacity':.32}},firstWater);
     m.addLayer({id:'sk-natpark',type:'fill',source:'composite','source-layer':'landuse_overlay',filter:['==',['get','class'],'national_park'],paint:{'fill-pattern':'sk-park','fill-opacity':.7}},firstWater);
     // the hill wash goes over the park greens too, so Griffith and Elysian keep their shape
     ['sk-hills','sk-hills-pigment','sk-hills-light'].forEach(id=>m.getLayer(id)&&m.moveLayer(id,firstWater));
@@ -2568,6 +2587,10 @@ function sketchMapbox(m){
     m.on('moveend',()=>m.once('idle',again)); m.once('idle',again);
   }catch(e){ console.warn('sketch parks',e); }
   try{
+    // the same pooling inside every lake and the ocean's edge: a soft, darker blue band along the shore
+    m.addLayer({id:'sk-water-pool',type:'line',source:'composite','source-layer':'water',paint:{'line-color':'#88A9B5',
+      'line-width':['interpolate',['linear'],['zoom'],10,3,14,8,17,16],'line-blur':['interpolate',['linear'],['zoom'],10,3,14,7,17,14],
+      'line-offset':['interpolate',['linear'],['zoom'],10,1.5,14,4,17,8],'line-opacity':.38}},afterWater);
     m.addLayer({id:'sk-shore',type:'line',source:'composite','source-layer':'water',paint:{'line-color':SK.waterInk,'line-width':['interpolate',['linear'],['zoom'],10,.6,15,1.6]}},afterWater);
     // a second, fainter line just inside the shore: the ripple a pen leaves going round twice
     m.addLayer({id:'sk-shore-ripple',type:'line',source:'composite','source-layer':'water',minzoom:12,paint:{'line-color':SK.waterInk,'line-width':.8,'line-opacity':.4,'line-offset':['interpolate',['linear'],['zoom'],12,2,16,5]}},afterWater);
