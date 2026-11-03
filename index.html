@@ -2347,7 +2347,7 @@ function styleMapbox(m=map){
   if(SKETCH) sketchMapbox(m);
 }
 /* ---------- MOCKUP (?sketch): a hand-drawn map, after the illustrated LA maps ----------
-   1 roads drawn as ink outlines, 2 sketched parks, hatched hills and inked lake edges,
+   1 roads drawn as ink outlines, 2 sketched parks and trees, watercolor hills, inked lake edges and ripples,
    3 hand-lettered neighborhood labels, 4 paper grain over the map (CSS above). */
 const SKETCH=/[?&]sketch\b/.test(location.search);
 if(SKETCH){ document.documentElement.classList.add('sketch');
@@ -2356,9 +2356,9 @@ if(SKETCH){ document.documentElement.classList.add('sketch');
   window.HAND_READY=new Promise(r=>{ l.onload=r; l.onerror=r; setTimeout(r,4000); }).then(()=>document.fonts.load("20px 'Patrick Hand SC'")).catch(()=>{}); }
 const INK='#353A32', SK={ land:'#F2EADA', road:'#FBF7EE', major:'#FFFDF8', water:'#BCD0D6', waterInk:'#6F8E99', park:'#CDD6B8', parkInk:'#7D9468' };
 const HAND_FONT="'Patrick Hand SC', 'Caveat', cursive";
-// small seamless tiles drawn on a canvas: tree clumps for parks, pencil hatching for hill shadows
+// a small seamless tile drawn on a canvas: grass, stipple and (kind 'park') tree clumps for park fills
 function sketchTile(kind){
-  const s=kind==='park'||kind==='grass'?160:kind==='stipple'?64:48, k=2, c=document.createElement('canvas'); c.width=c.height=s*k; const g=c.getContext('2d'); g.scale(k,k);
+  const s=160, k=2, c=document.createElement('canvas'); c.width=c.height=s*k; const g=c.getContext('2d'); g.scale(k,k);
   const R=rng(kind==='park'||kind==='grass'?11:5); g.lineCap='round'; g.lineJoin='round';
   if(kind==='park'||kind==='grass'){
     g.fillStyle=SK.park; g.fillRect(0,0,s,s);
@@ -2374,13 +2374,6 @@ function sketchTile(kind){
     if(kind==='park') [-s,0,s].forEach(ox=>[-s,0,s].forEach(oy=>trees.forEach(([x,y,r,t])=>tree(x+ox,y+oy,r,t))));
     g.fillStyle='rgba(53,58,50,.28)'; for(let i=0;i<60;i++){ g.beginPath(); g.arc(R()*s,R()*s,.45,0,7); g.fill(); }   // stipple
     g.strokeStyle='rgba(53,58,50,.22)'; g.lineWidth=.6; for(let i=0;i<10;i++){ const x=R()*s, y=R()*s; g.beginPath(); g.moveTo(x,y); g.lineTo(x+1.5,y-2.5); g.moveTo(x+3,y); g.lineTo(x+3.6,y-2.8); g.stroke(); }   // grass tufts
-  } else if(kind==='stipple'){
-    // pen stipple: dots scattered like shading done with a fine nib, seamless because each dot wraps
-    g.fillStyle='rgba(53,58,50,.5)'; for(let i=0;i<55;i++){ const x=R()*s, y=R()*s, r=.35+R()*.35; [-s,0,s].forEach(ox=>[-s,0,s].forEach(oy=>{ g.beginPath(); g.arc(x+ox,y+oy,r,0,7); g.fill(); })); }
-  } else {
-    // pencil hatching at 45°, spaced to divide the tile so it repeats cleanly
-    g.strokeStyle='rgba(53,58,50,.45)'; g.lineWidth=.6;
-    for(let i=-s;i<=s;i+=6){ g.beginPath(); g.moveTo(i,s); g.lineTo(i+s,0); g.stroke(); }
   }
   return { width:s*k, height:s*k, data:new Uint8Array(g.getImageData(0,0,s*k,s*k).data.buffer) };
 }
@@ -2410,29 +2403,33 @@ function treeClump(v){
     g.beginPath(); g.arc(x-r*.15,y-r*.1,r*.5,Math.PI*1.1,Math.PI*1.7); g.strokeStyle='rgba(53,58,50,.3)'; g.lineWidth=.6; g.stroke(); });
   return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) };
 }
-// palms in pen and ink, after the illustrated LA maps: a tall, thin, slightly bowed trunk and a dense crown of
-// drooping fronds, each a curved spine with short leaflets along both sides. v0 one tall palm, v1 a tall and a short one.
+// palms in pen and ink, after the illustrated LA maps: a tall, thin, near-straight trunk shaded down one side, and a
+// dense crown of solid black spiky fronds fanning up and out, each tapered to a point with a jagged edge.
+// v0 one tall palm, v1 a tall one with a shorter, bushier one in front.
 function palm(v){
-  const k=2, w=40, h=62, c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k); g.lineCap='round'; g.lineJoin='round';
-  const R=rng(57+v*13), ink='rgba(53,58,50,.9)';
-  const frond=(x,y,ang,L,droop)=>{   // spine from the crown out, bending down toward its tip
-    const ex=x+Math.cos(ang)*L, ey=y+Math.sin(ang)*L+droop, cx=x+Math.cos(ang)*L*.55, cy=y+Math.sin(ang)*L*.55-droop*.25;
-    const at=t=>[(1-t)*(1-t)*x+2*(1-t)*t*cx+t*t*ex,(1-t)*(1-t)*y+2*(1-t)*t*cy+t*t*ey];
-    g.beginPath(); g.moveTo(x,y); g.quadraticCurveTo(cx,cy,ex,ey); g.strokeStyle=ink; g.lineWidth=.9; g.stroke();
-    g.lineWidth=.65; for(let t=.2;t<.98;t+=.14){ const [px,py]=at(t), [qx,qy]=at(Math.min(1,t+.05)), dx=qx-px, dy=qy-py, d=Math.hypot(dx,dy)||1, nx=-dy/d, ny=dx/d, len=3.6*(1.15-t);
-      [1,-1].forEach(sd=>{ g.beginPath(); g.moveTo(px,py); g.lineTo(px+nx*len*sd+dx/d*len*.5, py+ny*len*sd+dy/d*len*.5+len*.55); g.stroke(); }); } };
-  const one=(bx,lean,tall,size)=>{ const tx=bx+lean, ty=h-3-tall;
-    // trunk: two close ink lines, a touch wider at the base
-    g.beginPath(); g.moveTo(bx-1.3,h-3); g.quadraticCurveTo(bx+lean*.15-.9,h-3-tall*.5,tx-.6,ty+2); g.lineTo(tx+.6,ty+2); g.quadraticCurveTo(bx+lean*.15+.9,h-3-tall*.5,bx+1.3,h-3); g.closePath();
-    g.fillStyle='#E9DFC9'; g.fill(); g.strokeStyle=ink; g.lineWidth=.8; g.stroke();
-    // crown: fronds all round, the side ones longest and drooping most, a few short ones up top
-    const fr=[-90,-58,-122,-30,-150,-5,-175,25,155]; fr.forEach(a=>{ const ang=(a+(R()-.5)*12)*Math.PI/180, side=Math.abs(Math.cos(ang));
-      frond(tx,ty,ang,size*(.65+side*.45)*(.9+R()*.2),size*side*.55+(Math.sin(ang)>0?size*.2:0)); });
-    g.beginPath(); g.ellipse(tx,ty+.5,2.2,1.6,0,0,7); g.fillStyle=ink; g.fill(); };   // the dark heart of the crown
-  // a few scribbled grass marks at the foot
-  const grass=(x)=>{ g.strokeStyle='rgba(53,58,50,.45)'; g.lineWidth=.6; for(let i=0;i<5;i++){ const gx=x-6+i*3+R(); g.beginPath(); g.moveTo(gx,h-2); g.lineTo(gx+(R()-.5)*1.5,h-4.5-R()*1.5); g.stroke(); } };
-  if(v===0){ grass(w/2); one(w/2,2.5,44,11); }
-  else { grass(w/2-6); grass(w/2+7); one(w/2+6,1.5,46,11); one(w/2-8,-1.5,26,8.5); }
+  const k=2, w=44, h=64, c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k); g.lineCap='round'; g.lineJoin='round';
+  const R=rng(57+v*13), INKC='#2E322B';
+  // one frond: a spike from the crown, widest a third of the way out, its edges serrated, bending down a little at the end
+  const frond=(x,y,ang,L,W,bend)=>{ const n=9, left=[], right=[];
+    for(let i=0;i<=n;i++){ const t=i/n, a=ang+bend*t*t, d=L*t, px=x+Math.cos(ang)*d*.6+Math.cos(a)*d*.4, py=y+Math.sin(ang)*d*.6+Math.sin(a)*d*.4;
+      const wt=W*Math.pow(Math.sin(Math.PI*Math.min(1,t*1.35)),.7)*(1-t*.55)*(i%2?1.45:.75)*(.85+R()*.3), nx=-Math.sin(a), ny=Math.cos(a);
+      left.push([px+nx*wt,py+ny*wt]); right.push([px-nx*wt*(i%2?.7:1.25),py-ny*wt*(i%2?.7:1.25)]); }
+    g.beginPath(); g.moveTo(x,y); left.forEach(q=>g.lineTo(q[0],q[1])); right.reverse().forEach(q=>g.lineTo(q[0],q[1])); g.closePath(); g.fill(); };
+  const one=(bx,lean,tall,size,fronds)=>{ const tx=bx+lean, ty=h-3-tall;
+    // trunk: cream between two ink lines, shaded on the right, a touch wider at the foot
+    g.beginPath(); g.moveTo(bx-1.2,h-3); g.lineTo(tx-.6,ty+3); g.lineTo(tx+.6,ty+3); g.lineTo(bx+1.2,h-3); g.closePath();
+    g.fillStyle='#EFE7D6'; g.fill(); g.strokeStyle=INKC; g.lineWidth=.6; g.stroke();
+    g.beginPath(); g.moveTo(bx+.6,h-3.5); g.lineTo(tx+.3,ty+4); g.lineWidth=.55; g.stroke();
+    // crown: fronds all the way round but mostly up and out; the side ones longest and bending down at the tips
+    g.fillStyle=INKC;
+    for(let i=0;i<fronds;i++){ const a=(-180-12+i*(204/(fronds-1))+(R()-.5)*10)*Math.PI/180, side=Math.abs(Math.cos(a)), up=-Math.sin(a);
+      frond(tx,ty,a,size*(.72+up*.38+side*.22+R()*.18),size*.085,(Math.cos(a)>0?1:-1)*side*.75*(up>0?1:.3)); }
+    [[-.5,.9],[.5,.9],[-.15,1.05],[.2,1]].forEach(([dx,sc])=>frond(tx,ty+.5,Math.PI/2+dx,size*.5*sc,size*.08,dx*.6));   // a few short ones hanging under the crown
+  };
+  // a soft grass scribble at the foot
+  const grass=(x,n)=>{ g.strokeStyle='rgba(53,58,50,.5)'; g.lineWidth=.6; for(let i=0;i<n;i++){ const gx=x-n*1.4+i*2.8+R(); g.beginPath(); g.moveTo(gx,h-2); g.quadraticCurveTo(gx+.4,h-3.5,gx+(R()-.3)*1.8,h-5-R()*1.5); g.stroke(); } };
+  if(v===0){ grass(w/2,5); one(w/2,1,42,13,17); }
+  else { grass(w/2+6,4); grass(w/2-9,5); one(w/2+7,1,44,13,17); one(w/2-9,-.5,24,10.5,15); }
   return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) };
 }
 // a few short ripple strokes, drawn with the shoreline's blue ink
@@ -2496,26 +2493,26 @@ function sketchMapbox(m){
   if(!m.hasImage('sk-park')) m.addImage('sk-park',sketchTile('grass'),{pixelRatio:2});
   for(let v=0;v<4;v++) if(!m.hasImage('sk-tree'+v)) m.addImage('sk-tree'+v,treeClump(v),{pixelRatio:2});
   for(let v=0;v<2;v++){ if(!m.hasImage('sk-palm'+v)) m.addImage('sk-palm'+v,palm(v),{pixelRatio:2}); if(!m.hasImage('sk-ripple'+v)) m.addImage('sk-ripple'+v,ripple(v),{pixelRatio:2}); }
-  if(!m.hasImage('sk-hatch')) m.addImage('sk-hatch',sketchTile('hatch'),{pixelRatio:2});
-  if(!m.hasImage('sk-stipple')) m.addImage('sk-stipple',sketchTile('stipple'),{pixelRatio:2});
   const ids=L.map(l=>l.id), firstWater=ids.find(id=>/^water/.test(id)), afterWater=ids[ids.lastIndexOf('water')+1];
   const parkF=['match',['get','class'],['park','wood','scrub','grass','cemetery','golf_course','pitch'],true,false];
   try{
     // hill shadows hatched in pencil, and faint contour lines, from the terrain data already in the map's source
-    // MOCKUP: ?hills=tint (default) | contour | stipple | hatch, to compare ways of drawing the hills
-    const HILLS=(location.search.match(/hills=(\w+)/)||[])[1]||'tint', shadow=['==',['get','class'],'shadow'];
-    // darker shadow levels are steeper slopes: let them show more
-    const lvl=(lo,hi)=>['interpolate',['linear'],['get','level'],56,lo,94,hi];
-    if(HILLS==='tint') m.addLayer({id:'sk-hills',type:'fill',source:'composite','source-layer':'hillshade',filter:shadow,maxzoom:16,paint:{'fill-color':'#B9A988','fill-antialias':false,'fill-opacity':['interpolate',['linear'],['zoom'],10,lvl(.1,.32),15,lvl(.06,.2)]}},firstWater);
-    if(HILLS==='stipple') m.addLayer({id:'sk-hills',type:'fill',source:'composite','source-layer':'hillshade',filter:shadow,maxzoom:16,paint:{'fill-pattern':'sk-stipple','fill-antialias':false,'fill-opacity':['interpolate',['linear'],['zoom'],10,.8,15,.55]}},firstWater);
-    if(HILLS==='hatch') m.addLayer({id:'sk-hills',type:'fill',source:'composite','source-layer':'hillshade',filter:shadow,maxzoom:16,paint:{'fill-pattern':'sk-hatch','fill-opacity':['interpolate',['linear'],['zoom'],10,.6,15,.35]}},firstWater);
-    const strong=HILLS==='contour';
-    m.addLayer({id:'sk-contours',type:'line',source:'composite','source-layer':'contour',minzoom:12,layout:{'line-join':'round'},paint:{'line-color':strong?'#7A6E58':INK,'line-opacity':['interpolate',['linear'],['zoom'],12,strong?.22:.07,15,strong?.32:.12],'line-width':['match',['get','index'],[5,10],strong?1.1:.8,strong?.6:.45]}},firstWater);
+    // hills as a watercolor wash in warm umber: a broad soft wash over every shadow, then a second, darker pass on the
+    // steepest slopes, nudged a pixel so its edge pools like paint drying. No lines.
+    const shadow=['==',['get','class'],'shadow'], lvl=(lo,hi)=>['interpolate',['linear'],['get','level'],56,lo,94,hi];
+    m.addLayer({id:'sk-hills',type:'fill',source:'composite','source-layer':'hillshade',filter:shadow,maxzoom:17,paint:{'fill-color':'#B09A72','fill-antialias':false,
+      'fill-opacity':['interpolate',['linear'],['zoom'],10,lvl(.14,.42),14,lvl(.12,.36),16,lvl(.08,.24)]}},firstWater);
+    m.addLayer({id:'sk-hills-pigment',type:'fill',source:'composite','source-layer':'hillshade',filter:['all',shadow,['>=',['get','level'],78]],maxzoom:17,paint:{'fill-color':'#8F7A55','fill-antialias':false,'fill-translate':[1,1.2],
+      'fill-opacity':['interpolate',['linear'],['zoom'],10,lvl(0,.28),14,lvl(0,.24),16,lvl(0,.15)]}},firstWater);
+    // the sunny sides a shade lighter than the paper, so the wash has light as well as shade
+    m.addLayer({id:'sk-hills-light',type:'fill',source:'composite','source-layer':'hillshade',filter:['==',['get','class'],'highlight'],maxzoom:17,paint:{'fill-color':'#FBF6EA','fill-antialias':false,'fill-opacity':['interpolate',['linear'],['get','level'],90,.25,94,.4]}},firstWater);
   }catch(e){ console.warn('sketch hills',e); }
   try{
     m.addLayer({id:'sk-parks',type:'fill',source:'composite','source-layer':'landuse',filter:parkF,paint:{'fill-pattern':'sk-park'}},firstWater);
     m.addLayer({id:'sk-parks-edge',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':SK.parkInk,'line-width':['interpolate',['linear'],['zoom'],11,.5,15,1.2],'line-opacity':.7}},firstWater);
     m.addLayer({id:'sk-natpark',type:'fill',source:'composite','source-layer':'landuse_overlay',filter:['==',['get','class'],'national_park'],paint:{'fill-pattern':'sk-park','fill-opacity':.7}},firstWater);
+    // the hill wash goes over the park greens too, so Griffith and Elysian keep their shape
+    ['sk-hills','sk-hills-pigment','sk-hills-light'].forEach(id=>m.getLayer(id)&&m.moveLayer(id,firstWater));
     m.addSource('sk-trees',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     const firstRoad=ids.find(id=>/^(tunnel|road|bridge)-/.test(id));
     m.addLayer({id:'sk-trees',type:'symbol',source:'sk-trees',minzoom:12.5,layout:{'icon-image':['get','v'],'icon-anchor':['case',['has','w'],'center','bottom'],'icon-allow-overlap':true,'icon-ignore-placement':true,
