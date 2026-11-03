@@ -16,7 +16,17 @@ const server=http.createServer((req,res)=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
  try{
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',timezoneId:'America/Los_Angeles'});
-  await context.route('**/*',route=>new URL(route.request().url()).origin===url?route.continue():route.abort());
+  // a stand-in for supabase-js: everything resolves empty, the events read never resolves (the test sets events itself),
+  // and inserts go to window.__sbInsert when a check sets it
+  const stub=`(()=>{ const chain=st=>new Proxy(function(){},{
+     get(_,k){ if(k==='then'){ if(st.table==='events') return ()=>{}; return (ok,bad)=>Promise.resolve({data:null,error:null}).then(ok,bad); }
+       if(k==='insert' && window.__sbInsert) return rows=>window.__sbInsert(rows);
+       return (...a)=>chain(k==='from'? {table:a[0]} : st); },
+     apply(){ return chain(st); } });
+   window.supabase={ createClient:()=>chain({}) }; })();`;
+  await context.route('**/*',route=>{ const u=route.request().url();
+   if(/supabase-js@[^/]+\/dist\/umd\/supabase\.min\.js/.test(u)) return route.fulfill({contentType:'text/javascript',body:stub});
+   return new URL(u).origin===url?route.continue():route.abort(); });
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(url,{waitUntil:'load'});
   await page.waitForFunction(()=>typeof window.__comunaTestEval==='function');
@@ -116,6 +126,38 @@ const server=http.createServer((req,res)=>{
   assert.ok(await run(id=>!dailyPicks().some(e=>e.id===id) && S.pickNope[id]!=null,before[0]),'it stays gone');
   assert.ok(await run(id=>{ const ev=events.find(e=>e.id===id); return tastePenalty(ev)>0; },before[0]),'its category and vibes count against similar ones');
   assert.ok(await run(()=>JSON.parse(localStorage.getItem('comuna_v3')).pickNope),'saved on the phone');
+  // measuring: each pick shown is recorded once per card with its reason, slot and mood; Not for me and taps carry the reason
+  await run(()=>{ window.__ins=[]; S.guest=true; dbUser=async()=>null; clearTimeout(trackT); trackQ=[];
+   window.__sbInsert=async rows=>{ window.__ins.push(rows); return { error:null }; };
+   S.pickNope={}; S.pickTaste=null; showPicks(dailyPicks()); renderPicks(dailyPicks()); });
+  await page.waitForSelector('#recModal.on');
+  const q=await run(()=>trackQ.map(r=>({a:r.action,id:r.event_id,why:r.pick_reason,slot:r.pick_slot,mood:r.pick_mood})));
+  const shownQ=q.filter(r=>r.a==='pick_shown');
+  assert.equal(shownQ.length,4,'four pick_shown rows, not repeated when the card re-renders');
+  assert.deepEqual(shownQ.map(r=>r.slot),[1,2,3,4]);
+  const labels=await run(()=>[...document.querySelectorAll('#recList .pickhd span')].map(e=>e.textContent));
+  assert.deepEqual(shownQ.map(r=>r.why),labels,'the recorded reason is the one on the card');
+  assert.ok(shownQ.every(r=>r.mood===null));
+  await page.click('#recMoods [data-mood="chill"]');
+  assert.ok(await run(()=>trackQ.some(r=>r.action==='pick_shown' && r.pick_mood==='chill')),'a mood re-render records its picks with the mood');
+  await page.click('#recMoods [data-mood=""]');
+  const firstId=await run(()=>+document.querySelector('#recList [data-rec]').dataset.rec);
+  const firstWhy=await run(()=>document.querySelector('#recList .pickhd span').textContent);
+  await page.click(`#recList [data-nope="${firstId}"]`);
+  assert.ok(await run(([id,why])=>trackQ.some(r=>r.action==='pick_nope' && r.event_id===events.find(e=>e.id===id).eid && r.pick_reason===why && r.pick_slot===1),[firstId,firstWhy]),'Not for me is recorded with its reason and slot');
+  await page.waitForFunction(id=>!document.querySelector(`#recList [data-rec="${id}"]`),firstId);
+  const tapWhy=await run(()=>document.querySelector('#recList .pickhd span').textContent);
+  await run(()=>{ openSheet=(id)=>{ sheetCtx={ placement:sheetFrom, query:null, pick:sheetPick }; sheetFrom=null; track(events.find(e=>e.id===id),'view'); }; });
+  await page.click('#recList [data-rec]');
+  assert.ok(await run(why=>trackQ.some(r=>r.action==='view' && r.placement==='picks' && r.pick_reason===why && r.pick_slot===1),tapWhy),'a tap from the card carries its reason');
+  // before supabase/pick_stats.sql: the pick rows are refused, so the rest go without them
+  await run(()=>{ window.__sbInsert=async rows=>{ window.__ins.push(rows);
+    return rows.some(r=>/^pick_/.test(r.action)||'pick_reason' in r)? { error:{ message:'new row for relation "event_actions" violates check constraint "event_actions_action_check"' } } : { error:null }; }; window.__ins=[]; });
+  await run(()=>flushTrack());
+  const sent=await run(()=>window.__ins);
+  assert.equal(sent.length,2,'one retry');
+  assert.ok(sent[1].length>0 && sent[1].every(r=>!/^pick_/.test(r.action) && !('pick_reason' in r)),'views and taps still go, without the pick fields');
+  await run(()=>{ recModal.classList.add('on'); });
   await page.click('#recClose');
   assert.equal(await page.locator('#recModal.on').count(),0,'× goes back to the map');
   assert.ok(!errors.length,errors.join('\n'));
