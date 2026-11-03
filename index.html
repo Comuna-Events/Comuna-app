@@ -2495,34 +2495,42 @@ function ripple(v){
   if(v===0){ wave(3,4,4); wave(9,9,3); } else { wave(6,5,3); }
   return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) };
 }
-// Trees stand only on open park ground: a fixed grid of spots (so they don't swim as you pan), each kept only if it's
-// inside a park and its clump wouldn't touch a road, path, building or lake. Redone whenever the map settles.
+// Trees stand only on open park ground. Every possible spot is a fixed point on the ground (a 20 m grid, the same at
+// every zoom) with a fixed rank; a zoom shows the spots whose rank is under a threshold that rises as you zoom in, so
+// zooming only adds or removes trees, never moves them. Whether a spot is open ground is checked once and remembered.
+const TREE_M=20, LAT_M=111320, LNG_M=111320*Math.cos(34.05*Math.PI/180);
+function spotHash(i,j,salt){ let x=(i*73856093)^(j*19349663)^(salt*83492791); x=Math.imul(x^(x>>>13),1274126177); return ((x^(x>>>16))>>>0)/4294967296; }
 function placeTrees(m){
   const src=m.getSource('sk-trees'); if(!src) return; const z=m.getZoom();
   if(z<12.5){ src.setData({type:'FeatureCollection',features:[]}); return; }
-  const Z=Math.floor(z), step=(z<15?26:38)*360/(512*2**Z), b=m.getBounds(), lat0=b.getCenter().lat, stepLat=step*Math.cos(lat0*Math.PI/180);
-  // zoomed out, trails are hair-thin and trees may stand over them; up close they keep clear of every path too
-  const block=m.getStyle().layers.filter(l=>/^(road|bridge|tunnel)-|^water$|^building|^sk-shore$/.test(l.id) && !(z<15 && /path|trail|steps|pedestrian|cycleway|label/.test(l.id)) && m.getLayer(l.id)).map(l=>l.id);
-  const parks=['sk-parks','sk-natpark'].filter(id=>m.getLayer(id));
-  const f=[], hash=(i,j)=>{ let x=(i*73856093)^(j*19349663); x=(x^(x>>>13))*1274126177; return ((x^(x>>>16))>>>0)/4294967296; };
+  const memo=m._spotMemo||(m._spotMemo=new Map()), b=m.getBounds(), f=[];
+  // metres per screen pixel here, and how many grid spots to show per spot: about one tree every ~30-40 px
+  const mpp=40075016*Math.cos(b.getCenter().lat*Math.PI/180)/(512*2**z), gridPx=TREE_M/mpp, want=30+Math.max(0,Math.min(4,z-13))*2.5;
+  const keep=Math.min(1,(gridPx/want)**2)*.48;
+  // a tree's footprint in pixels at this zoom (it's drawn bottom-anchored), for the clearance check
   const scale=z<15? .45+(z-12.5)*.08 : .65+(z-15)*.1, hw=14*scale, hh=26*scale;
-  for(let i=Math.floor(b.getWest()/step)-1;i<=b.getEast()/step+1;i++) for(let j=Math.floor(b.getSouth()/stepLat)-1;j<=b.getNorth()/stepLat+1;j++){
-    const r1=hash(i,j), r2=hash(j+7,i-3); if(r1<.35) continue;   // about a third of the spots stay open   // leave some gaps, like a hand would
-    const lng=(i+r1)*step, lat=(j+r2)*stepLat, p=m.project([lng,lat]);
-    if(!m.queryRenderedFeatures(p,{layers:parks}).length) continue;
-    const r3=hash(i+11,j+5), isPalm=r3<.18, top=isPalm? hh*2.2 : hh;
-    if(m.queryRenderedFeatures([[p.x-hw,p.y-top],[p.x+hw,p.y+3]],{layers:block}).some(f=>!(z<15 && /track|service|path/.test(f.properties.class||'')))) continue;
-    f.push({type:'Feature',properties:{v:isPalm? 'sk-palm'+(r3<.1?0:1) : 'sk-tree'+Math.floor(hash(i+5,j+11)*4)},geometry:{type:'Point',coordinates:[lng,lat]}});
-  }
-  // ripples: a sparser grid, kept only where the whole stroke sits on open water, clear of shores and bridges
-  const wstep=step*.85, wstepLat=stepLat*.85, rw=12*scale/.85, water=['water'].filter(id=>m.getLayer(id)), dry=block.filter(id=>id!=="water"&&id!=="sk-shore");
-  for(let i=Math.floor(b.getWest()/wstep)-1;i<=b.getEast()/wstep+1;i++) for(let j=Math.floor(b.getSouth()/wstepLat)-1;j<=b.getNorth()/wstepLat+1;j++){
-    const r1=hash(i+101,j-7), r2=hash(j+3,i+29); if(r1<.2) continue;
-    const lng=(i+r1)*wstep, lat=(j+r2)*wstepLat, p=m.project([lng,lat]);
-    if(![[-rw,-6],[rw,-6],[-rw,6],[rw,6],[0,0]].every(([dx,dy])=>m.queryRenderedFeatures([p.x+dx,p.y+dy],{layers:water}).length)) continue;
-    if(m.queryRenderedFeatures([[p.x-rw,p.y-6],[p.x+rw,p.y+6]],{layers:dry}).length) continue;
-    f.push({type:'Feature',properties:{v:'sk-ripple'+(hash(i,j+1)<.5?0:1),w:1},geometry:{type:'Point',coordinates:[lng,lat]}});
-  }
+  // only streets, buildings and water keep trees away; footpaths, trails and dirt tracks may run under them
+  const block=m.getStyle().layers.filter(l=>/^(road|bridge|tunnel)-|^water$|^building|^sk-shore$/.test(l.id) && !/path|trail|steps|pedestrian|cycleway|label/.test(l.id) && m.getLayer(l.id)).map(l=>l.id);
+  const parks=['sk-parks','sk-natpark'].filter(id=>m.getLayer(id));
+  const spots=(salt,stepM,frac,test)=>{ const dLa=stepM/LAT_M, dLo=stepM/LNG_M;
+    for(let i=Math.floor(b.getWest()/dLo);i<=b.getEast()/dLo;i++) for(let j=Math.floor(b.getSouth()/dLa);j<=b.getNorth()/dLa;j++){
+      if(spotHash(i,j,salt)>=frac) continue;
+      const key=salt+':'+i+','+j; let v=memo.get(key);
+      if(v===undefined){ const lng=(i+spotHash(i,j,salt+1))*dLo, lat=(j+spotHash(i,j,salt+2))*dLa; v=test(lng,lat,i,j); if(v!=='retry') memo.set(key,v); }
+      if(v && v!=='retry') f.push(v); } };
+  spots(1,TREE_M,keep,(lng,lat,i,j)=>{ const p=m.project([lng,lat]);
+    if(p.x<-20||p.y<-40||p.x>m.getCanvas().clientWidth+20||p.y>m.getCanvas().clientHeight+20) return 'retry';   // only judge spots on screen
+    if(!m.queryRenderedFeatures(p,{layers:parks}).length) return null;
+    const r3=spotHash(i,j,7), isPalm=r3<.18, top=isPalm? hh*2.2 : hh;
+    if(m.queryRenderedFeatures([[p.x-hw,p.y-top],[p.x+hw,p.y+3]],{layers:block}).some(f=>!/track|service|path/.test(f.properties.class||''))) return null;
+    return {type:'Feature',properties:{v:isPalm? 'sk-palm'+(r3<.1?0:1) : 'sk-tree'+Math.floor(spotHash(i,j,9)*4)},geometry:{type:'Point',coordinates:[lng,lat]}}; });
+  // ripples: the same idea on open water, a little sparser, kept clear of shores and bridges
+  const rw=12*scale/.85, water=['water'].filter(id=>m.getLayer(id)), dry=block.filter(id=>id!=='water'&&id!=='sk-shore');
+  spots(11,TREE_M,keep*.8,(lng,lat,i,j)=>{ const p=m.project([lng,lat]);
+    if(p.x<-20||p.y<-20||p.x>m.getCanvas().clientWidth+20||p.y>m.getCanvas().clientHeight+20) return 'retry';
+    if(![[-rw,-6],[rw,-6],[-rw,6],[rw,6],[0,0]].every(([dx,dy])=>m.queryRenderedFeatures([p.x+dx,p.y+dy],{layers:water}).length)) return null;
+    if(m.queryRenderedFeatures([[p.x-rw,p.y-6],[p.x+rw,p.y+6]],{layers:dry}).length) return null;
+    return {type:'Feature',properties:{v:'sk-ripple'+(spotHash(i,j,13)<.5?0:1),w:1},geometry:{type:'Point',coordinates:[lng,lat]}}; });
   src.setData({type:'FeatureCollection',features:f});
 }
 function sketchMapbox(m){
@@ -2570,10 +2578,6 @@ function sketchMapbox(m){
   }catch(e){ console.warn('sketch hills',e); }
   try{
     m.addLayer({id:'sk-parks',type:'fill',source:'composite','source-layer':'landuse',filter:parkF,paint:{'fill-pattern':'sk-park'}},firstWater);
-    // watercolor: pigment pools at the edge of each park, a soft darker band just inside it, and the drawn edge stays faint
-    m.addLayer({id:'sk-parks-pool',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':'#A3B68A',
-      'line-width':['interpolate',['linear'],['zoom'],11,2,14,5,17,10],'line-blur':['interpolate',['linear'],['zoom'],11,2,14,5,17,9],
-      'line-offset':['interpolate',['linear'],['zoom'],11,1,14,2.5,17,5],'line-opacity':.22}},firstWater);
     m.addLayer({id:'sk-parks-edge',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':SK.parkInk,'line-width':['interpolate',['linear'],['zoom'],11,.5,15,1.1],'line-opacity':.32}},firstWater);
     m.addLayer({id:'sk-natpark',type:'fill',source:'composite','source-layer':'landuse_overlay',filter:['==',['get','class'],'national_park'],paint:{'fill-pattern':'sk-park','fill-opacity':.7}},firstWater);
     // the hill wash goes over the park greens too, so Griffith and Elysian keep their shape
@@ -2587,10 +2591,6 @@ function sketchMapbox(m){
     m.on('moveend',()=>m.once('idle',again)); m.once('idle',again);
   }catch(e){ console.warn('sketch parks',e); }
   try{
-    // the same pooling inside every lake and the ocean's edge: a soft, darker blue band along the shore
-    m.addLayer({id:'sk-water-pool',type:'line',source:'composite','source-layer':'water',paint:{'line-color':'#93B1BC',
-      'line-width':['interpolate',['linear'],['zoom'],10,2,14,5,17,10],'line-blur':['interpolate',['linear'],['zoom'],10,2,14,5,17,9],
-      'line-offset':['interpolate',['linear'],['zoom'],10,1,14,2.5,17,5],'line-opacity':.22}},afterWater);
     // the dark blue line that hugs the land
     m.addLayer({id:'sk-shore',type:'line',source:'composite','source-layer':'water',paint:{'line-color':SK.waterInk,'line-width':['interpolate',['linear'],['zoom'],10,.6,15,1.6]}},afterWater);
   }catch(e){ console.warn('sketch water',e); }
