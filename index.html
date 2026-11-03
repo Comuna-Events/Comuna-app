@@ -2403,33 +2403,68 @@ function treeClump(v){
     g.beginPath(); g.arc(x-r*.15,y-r*.1,r*.5,Math.PI*1.1,Math.PI*1.7); g.strokeStyle='rgba(53,58,50,.3)'; g.lineWidth=.6; g.stroke(); });
   return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) };
 }
-// palms in pen and ink, after the illustrated LA maps: a tall, thin, near-straight trunk shaded down one side, and a
-// dense crown of solid black spiky fronds fanning up and out, each tapered to a point with a jagged edge.
-// v0 one tall palm, v1 a tall one with a shorter, bushier one in front.
+// Pen-and-ink palms after the illustrated LA map. palmArt(g, x, groundY, o) draws one palm standing at (x, groundY).
+// o: { style:'ink'|'silhouette'|'outline', tall, crown (frond length), lean, bushy, seed }
+function palmRng(seed){ return ()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }; }
+function palmArt(g,x,gy,o){
+  const R=palmRng(o.seed||7), st=o.style, INKC=st==='silhouette'?'#22281F':'#262A24', PAPER='#F4EEE2', LEAF='#B7C49C';
+  const tx=x+(o.lean||0), ty=gy-o.tall, C=o.crown;
+  const pt=(t,P)=>{ const u=1-t; return [u*u*u*P[0][0]+3*u*u*t*P[1][0]+3*u*t*t*P[2][0]+t*t*t*P[3][0], u*u*u*P[0][1]+3*u*u*t*P[1][1]+3*u*t*t*P[2][1]+t*t*t*P[3][1]]; };
+  // ---- trunk ----
+  const tw0=Math.max(1,C*.075), tw1=Math.max(.7,C*.05);
+  g.beginPath(); g.moveTo(x-tw0,gy); g.quadraticCurveTo((x+tx)/2-tw0*.9+(o.lean||0)*.1,(gy+ty)/2,tx-tw1,ty+C*.15); g.lineTo(tx+tw1,ty+C*.15); g.quadraticCurveTo((x+tx)/2+tw0*.9+(o.lean||0)*.1,(gy+ty)/2,x+tw0,gy); g.closePath();
+  if(st==='outline'){ g.fillStyle=PAPER; g.fill(); g.strokeStyle=INKC; g.lineWidth=Math.max(.6,C*.05); g.stroke(); }
+  else { g.fillStyle=INKC; g.fill(); }
+  // ring marks down the trunk: little paper flecks on the ink ones, ink ticks on the outline one
+  const rings=Math.floor(o.tall/(C*.22));
+  for(let i=1;i<rings;i++){ const t=i/rings, cx=x+(tx-x)*t, cy=gy+(ty-gy)*t, w=tw0+(tw1-tw0)*t;
+    g.beginPath(); g.moveTo(cx-w*.55,cy); g.lineTo(cx+w*(st==='outline'?.9:.05),cy-w*.25);
+    g.strokeStyle=st==='outline'?INKC:'rgba(244,238,226,.55)'; g.lineWidth=Math.max(.35,C*.025); g.stroke(); }
+  // ---- crown ----
+  // fronds: angle (deg, 0 = right, -90 = up), length, droop (radians the tip turns toward the ground), drawn back to front.
+  // Upper fronds make a loose V; side fronds arch out and fall below the heart, one or two hang almost straight down.
+  const bushy=o.bushy||0;
+  let F=[[-108,.8,.3],[-66,.82,.35],[-140,.95,1],[-35,.98,1.05],[-165,1,1.85],[-10,1.02,1.9],[145,.78,1.9],[35,.75,2.1],[-90,.6,.05]];
+  if(bushy) F=[[-112,.8,.4],[-70,.78,.45],[-138,.9,1.1],[-42,.9,1.1],[-162,.95,1.7],[-16,.95,1.75],[162,.85,2],[18,.85,2],[120,.65,1.5],[60,.62,1.6],[-90,.65,.15],[95,.5,.8]];
+  const fronds=F.map(([a,l,d])=>{ const ang=(a+(R()-.5)*16)*Math.PI/180, L=C*l*(.85+R()*.3), side=Math.cos(ang)>=0?1:-1, droop=d*(.8+R()*.4);
+    const a1=ang+side*droop;
+    const P=[[tx,ty],[tx+Math.cos(ang)*L*.45,ty+Math.sin(ang)*L*.45],[tx+Math.cos(ang)*L*.7+Math.cos(a1)*L*.1,ty+Math.sin(ang)*L*.7+Math.sin(a1)*L*.1],[0,0]];
+    P[3]=[P[2][0]+Math.cos(a1)*L*.4,P[2][1]+Math.sin(a1)*L*.4]; return {P,L,a1,side,seed:R()}; });
+  const W=C*(bushy?.12:.11);
+  const leafPath=(pts)=>{ g.beginPath(); pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1])); g.closePath(); };
+  fronds.forEach(f=>{
+    const n=34, left=[], right=[], fr=palmRng(Math.floor(f.seed*1e6)+3);
+    // the leaf: a narrow stalk, widest past the middle, closing to the tip
+    for(let i=0;i<=n;i++){ const t=i/n, [px,py]=pt(t,f.P), [qx,qy]=pt(Math.min(1,t+.01),f.P), dx=qx-px, dy=qy-py, d=Math.hypot(dx,dy)||1, nx=-dy/d, ny=dx/d;
+      const w=W*Math.pow(Math.sin(Math.PI*Math.min(1,t)),1.3)*(t<.6?1:1-(t-.6)*.9);
+      left.push([px+nx*w,py+ny*w]); right.push([px-nx*w,py-ny*w]); }
+    const shape=[[tx,ty],...left,...right.reverse()];
+    // fingers: pointed leaflets that splay from the outer half, each side, swept toward the tip and the ground
+    const fingers=[]; const k=2+Math.floor(fr()*2);
+    for(let sd of [1,-1]) for(let i=0;i<k;i++){ const t0=.42+i*.13+fr()*.05, [px,py]=pt(t0,f.P), [qx,qy]=pt(t0+.01,f.P), dx=qx-px, dy=qy-py, d=Math.hypot(dx,dy)||1;
+      const base=Math.atan2(dy,dx), spread=(.32+fr()*.25)*sd, a=base+spread+f.side*.25*(1+i*.3), len=f.L*(.32+fr()*.12)*(1-i*.12), fw=W*.55*(1-i*.1);
+      const nx=-Math.sin(a), ny=Math.cos(a), ex=px+Math.cos(a)*len, ey=py+Math.sin(a)*len+len*.15, mx=px+Math.cos(a)*len*.5, my=py+Math.sin(a)*len*.5;
+      fingers.push([[px+nx*fw,py+ny*fw],[mx+nx*fw*.6,my+ny*fw*.6],[ex,ey],[mx-nx*fw*.6,my-ny*fw*.6],[px-nx*fw,py-ny*fw]]); }
+    const ink=()=>{ if(st==='outline'){ g.fillStyle=LEAF; g.fill(); g.strokeStyle=INKC; g.lineWidth=Math.max(.55,C*.028); g.stroke(); } else { g.fillStyle=INKC; g.fill(); } };
+    fingers.forEach(q=>{ leafPath(q); ink(); }); leafPath(shape); ink();
+    // the reference's pale streak along each ink frond, a little to its upper side; an ink rib on the outlined ones
+    g.beginPath(); for(let i=5;i<=Math.floor(n*.72);i++){ const [px,py]=pt(i/n,f.P); i===5?g.moveTo(px,py-W*.12):g.lineTo(px,py-W*.12); }
+    if(st==='ink'){ g.strokeStyle='rgba(244,238,226,.85)'; g.lineWidth=Math.max(.45,W*.24); g.stroke(); }
+    else if(st==='outline'){ g.strokeStyle=INKC; g.lineWidth=Math.max(.4,C*.02); g.stroke(); }
+  });
+  // the dark heart where the fronds meet
+  g.beginPath(); g.ellipse(tx,ty+C*.05,C*.14,C*.11,0,0,7); g.fillStyle=INKC; g.fill();
+}
+// a soft grey patch of ground with a few scribbles, like the reference
+function palmGround(g,x,gy,w){ g.fillStyle='rgba(120,118,104,.16)'; g.beginPath(); g.ellipse(x,gy-1,w,w*.18,0,0,7); g.fill();
+  g.strokeStyle='rgba(53,58,50,.35)'; g.lineWidth=.6; const R=palmRng(Math.floor(x*13)+5); for(let i=0;i<5;i++){ const sx=x-w*.7+R()*w*1.4; g.beginPath(); g.moveTo(sx,gy-.5); g.quadraticCurveTo(sx+1.5,gy-2.5,sx+3,gy-.8); g.stroke(); } }
+// MOCKUP: three palm styles to compare, ?palm=a (ink with a pale streak, default) | b (solid silhouette) | c (outlined sage)
+const PALM_STYLE={a:'ink',b:'silhouette',c:'outline'}[(location.search.match(/palm=([abc])/)||[])[1]||'a'];
+// a palm image for the map: v0 one tall palm, v1 a tall one with a short, bushy one beside it on a patch of ground
 function palm(v){
-  const k=2, w=44, h=64, c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k); g.lineCap='round'; g.lineJoin='round';
-  const R=rng(57+v*13), INKC='#2E322B';
-  // one frond: a spike from the crown, widest a third of the way out, its edges serrated, bending down a little at the end
-  const frond=(x,y,ang,L,W,bend)=>{ const n=9, left=[], right=[];
-    for(let i=0;i<=n;i++){ const t=i/n, a=ang+bend*t*t, d=L*t, px=x+Math.cos(ang)*d*.6+Math.cos(a)*d*.4, py=y+Math.sin(ang)*d*.6+Math.sin(a)*d*.4;
-      const wt=W*Math.pow(Math.sin(Math.PI*Math.min(1,t*1.35)),.7)*(1-t*.55)*(i%2?1.45:.75)*(.85+R()*.3), nx=-Math.sin(a), ny=Math.cos(a);
-      left.push([px+nx*wt,py+ny*wt]); right.push([px-nx*wt*(i%2?.7:1.25),py-ny*wt*(i%2?.7:1.25)]); }
-    g.beginPath(); g.moveTo(x,y); left.forEach(q=>g.lineTo(q[0],q[1])); right.reverse().forEach(q=>g.lineTo(q[0],q[1])); g.closePath(); g.fill(); };
-  const one=(bx,lean,tall,size,fronds)=>{ const tx=bx+lean, ty=h-3-tall;
-    // trunk: cream between two ink lines, shaded on the right, a touch wider at the foot
-    g.beginPath(); g.moveTo(bx-1.2,h-3); g.lineTo(tx-.6,ty+3); g.lineTo(tx+.6,ty+3); g.lineTo(bx+1.2,h-3); g.closePath();
-    g.fillStyle='#EFE7D6'; g.fill(); g.strokeStyle=INKC; g.lineWidth=.6; g.stroke();
-    g.beginPath(); g.moveTo(bx+.6,h-3.5); g.lineTo(tx+.3,ty+4); g.lineWidth=.55; g.stroke();
-    // crown: fronds all the way round but mostly up and out; the side ones longest and bending down at the tips
-    g.fillStyle=INKC;
-    for(let i=0;i<fronds;i++){ const a=(-180-12+i*(204/(fronds-1))+(R()-.5)*10)*Math.PI/180, side=Math.abs(Math.cos(a)), up=-Math.sin(a);
-      frond(tx,ty,a,size*(.72+up*.38+side*.22+R()*.18),size*.085,(Math.cos(a)>0?1:-1)*side*.75*(up>0?1:.3)); }
-    [[-.5,.9],[.5,.9],[-.15,1.05],[.2,1]].forEach(([dx,sc])=>frond(tx,ty+.5,Math.PI/2+dx,size*.5*sc,size*.08,dx*.6));   // a few short ones hanging under the crown
-  };
-  // a soft grass scribble at the foot
-  const grass=(x,n)=>{ g.strokeStyle='rgba(53,58,50,.5)'; g.lineWidth=.6; for(let i=0;i<n;i++){ const gx=x-n*1.4+i*2.8+R(); g.beginPath(); g.moveTo(gx,h-2); g.quadraticCurveTo(gx+.4,h-3.5,gx+(R()-.3)*1.8,h-5-R()*1.5); g.stroke(); } };
-  if(v===0){ grass(w/2,5); one(w/2,1,42,13,17); }
-  else { grass(w/2+6,4); grass(w/2-9,5); one(w/2+7,1,44,13,17); one(w/2-9,-.5,24,10.5,15); }
+  const k=2, w=48, h=66, c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k); g.lineCap='round'; g.lineJoin='round';
+  if(v===0){ palmGround(g,w/2,h-1,9); palmArt(g,w/2,h-2,{style:PALM_STYLE,tall:46,crown:15,lean:1,seed:5}); }
+  else { palmGround(g,w/2,h-1,15); palmArt(g,w/2+8,h-2,{style:PALM_STYLE,tall:46,crown:14,lean:1.5,seed:9}); palmArt(g,w/2-9,h-1,{style:PALM_STYLE,tall:22,crown:11,lean:-1,bushy:1,seed:23}); }
   return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) };
 }
 // a few short ripple strokes, drawn with the shoreline's blue ink
@@ -2499,6 +2534,9 @@ function sketchMapbox(m){
     // hill shadows hatched in pencil, and faint contour lines, from the terrain data already in the map's source
     // hills as a watercolor wash in warm umber: a broad soft wash over every shadow, then a second, darker pass on the
     // steepest slopes, nudged a pixel so its edge pools like paint drying. No lines.
+    // switched off for now (too busy); flip HILL_WASH to bring the hills back
+    const HILL_WASH=false;
+    if(HILL_WASH){
     const shadow=['==',['get','class'],'shadow'], lvl=(lo,hi)=>['interpolate',['linear'],['get','level'],56,lo,94,hi];
     m.addLayer({id:'sk-hills',type:'fill',source:'composite','source-layer':'hillshade',filter:shadow,maxzoom:17,paint:{'fill-color':'#B09A72','fill-antialias':false,
       'fill-opacity':['interpolate',['linear'],['zoom'],10,lvl(.14,.42),14,lvl(.12,.36),16,lvl(.08,.24)]}},firstWater);
@@ -2506,6 +2544,7 @@ function sketchMapbox(m){
       'fill-opacity':['interpolate',['linear'],['zoom'],10,lvl(0,.28),14,lvl(0,.24),16,lvl(0,.15)]}},firstWater);
     // the sunny sides a shade lighter than the paper, so the wash has light as well as shade
     m.addLayer({id:'sk-hills-light',type:'fill',source:'composite','source-layer':'hillshade',filter:['==',['get','class'],'highlight'],maxzoom:17,paint:{'fill-color':'#FBF6EA','fill-antialias':false,'fill-opacity':['interpolate',['linear'],['get','level'],90,.25,94,.4]}},firstWater);
+    }
   }catch(e){ console.warn('sketch hills',e); }
   try{
     m.addLayer({id:'sk-parks',type:'fill',source:'composite','source-layer':'landuse',filter:parkF,paint:{'fill-pattern':'sk-park'}},firstWater);
