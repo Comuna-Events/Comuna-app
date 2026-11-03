@@ -77,5 +77,5 @@ revoke all on public.events from anon, authenticated;
 grant select (event_id, name, category, tier, tags, vibes, description, start_date, end_date, start_time, end_time,
               recurrence, recurrence_detail, venue, street_address, city, zip, neighborhood, setting,
               parking_transit, price_type, rsvp_required, ticket_url, capacity, age, host, source, source_url,
-              image_url, status, verified, lat, lng, updated_at)
+              image_url, status, verified, lat, lng, updated_at, created_at)
   on public.events to anon, authenticated;

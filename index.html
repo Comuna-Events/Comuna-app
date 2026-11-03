@@ -415,6 +415,11 @@ img{ max-width:100% }
 .recmodal .pick .sig{ font-size:12px; font-weight:700; color:var(--green); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .recmodal .pick .dist{ color:var(--ink) }
 .recmodal .recnone{ font-size:14px; color:var(--muted); margin:18px 4px 4px }
+.recmodal .pickhd{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-right:0 }
+.recmodal .pickhd .nope{ font-size:12px; font-weight:500; letter-spacing:0; text-transform:none; color:var(--muted); min-height:32px; padding:0 4px; margin:-8px -4px -8px 0; text-decoration:underline; text-underline-offset:2px }
+.recmodal .pickrow{ transition:opacity .2s, transform .2s }
+.recmodal .pickrow.gone{ opacity:0; transform:translateX(24px) }
+@media (prefers-reduced-motion:reduce){ .recmodal .pickrow{ transition:none } }
 /* neighborhood starter kit: shown once, right after sign-up */
 .kitstats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 6px }
 .kitstat{ background:var(--card); border-radius:16px; padding:14px } .kitstat b{ display:block; font-family:var(--display); font-weight:900; font-size:40px; line-height:1; color:var(--green) } .kitstat span{ font-size:12.5px; color:var(--muted) }
@@ -1709,11 +1714,32 @@ function lastChance(ev,t0=today0()){ return !!(ev.end && ev.start && ev.start<t0
 function newStampFor(ev){ const H=visitedHoods(); return Object.keys(H).length>0 && !!ev.hood && !H[ev.hood]; }
 function pickDay(ev){ return ev.start? nextDate(ev) : evDate(ev); }
 const pickToday=ev=>{ const d=pickDay(ev); return !!d && d<=today0(); };
+// added to Comuna in the last two days (the nightly import, or by hand)
+const JUST_DROPPED_MS=48*36e5;
+const justDropped=ev=>!!ev.added && Date.now()-ev.added>=0 && Date.now()-ev.added<JUST_DROPPED_MS;
+function addedAgo(ev){ const h=Math.floor((Date.now()-ev.added)/36e5);
+  return h<1? 'Added just now' : h<24? `Added ${h} hour${h===1?'':'s'} ago` : 'Added yesterday'; }
+// "Not for me": that event never comes back, and what it was (its category and vibes) counts against similar ones.
+// Kept on the phone; each tap is a little evidence, so the penalty grows slowly and is capped.
+function pickNope(ev){
+  const day=pickDayNum(); S.pickNope=S.pickNope||{}; S.pickNope[ev.id]=day;
+  const t=S.pickTaste=S.pickTaste||{cat:{},vibe:{}};
+  t.cat[ev.category]=(t.cat[ev.category]||0)+1;
+  (ev.vibes||[]).forEach(v=>{ t.vibe[v]=(t.vibe[v]||0)+1; });
+}
+function tastePenalty(ev){
+  const t=S.pickTaste; if(!t) return 0;
+  const c=Math.min(1.6,0.4*((t.cat||{})[ev.category]||0));
+  const v=Math.min(1.2,(ev.vibes||[]).reduce((n,x)=>n+0.3*((t.vibe||{})[x]||0),0));
+  return c+v;
+}
 function pickScore(ev,day,want){
   const shown=(S.pickShown||{})[ev.id], tapped=(S.pickTapped||{})[ev.id];
   let s=ev.mi*(want.includes(ev.category)?0.6:1);
   if(pickToday(ev)) s-=1.5;                                       // "Tonight in…" leads with tonight
   if(newStampFor(ev)) s-=0.8;                                     // a stamp you don't have yet
+  if(justDropped(ev)) s-=1.2;                                     // new on Comuna
+  s+=tastePenalty(ev);                                            // like things you said "Not for me" to
   if(kindOf(ev)==='popup' || /one-off/i.test(ev.rec||'')) s-=1.5; // only happens once
   if(lastChance(ev)) s-=2.5;                                      // a run that ends in the next few days
   if(recursOften(ev)) s+=1;                                       // will be there next week too
@@ -1734,7 +1760,8 @@ function dailyPicks(mood){
   // only things happening in the next 7 days (today included), so daily picks stay timely
   const t0=today0(), soon=ev=>{ const d=ev.start? nextDate(ev) : evDate(ev); return !!d && d>=t0 && d-t0<7*864e5; };
   const moodOK=PICK_MOODS[mood]? PICK_MOODS[mood].ok : ()=>true;
-  const open=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && ev.mi!=null && ev.mi<=PICK_WILD_MI && soon(ev) && moodOK(ev));
+  const nope=S.pickNope||{};
+  const open=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && nope[ev.id]==null && ev.mi!=null && ev.mi<=PICK_WILD_MI && soon(ev) && moodOK(ev));
   const thisWeek=ev=>recursOften(ev) && shown[ev.id]!=null && day-shown[ev.id]<7 && day-shown[ev.id]>0;   // weekly: once a week
   const pool=open.filter(ev=>!thisWeek(ev)), score=new Map(open.map(ev=>[ev,pickScore(ev,day,want)]));
   const byScore=(x,y)=>score.get(x)-score.get(y), order=['cornerstone','regular','niche','popup'];
@@ -1754,7 +1781,8 @@ function dailyPicks(mood){
   for(const ev of near){ if(picks.length>=slots) break; if(!picks.includes(ev) && ev!==wild) picks.push(ev); }
   for(const ev of ranked){ if(picks.length>=slots) break; if(!picks.includes(ev) && ev!==wild) picks.push(ev); }   // a quiet area: farther ones fill in
   picks.sort((x,y)=>order.indexOf(kindOf(x))-order.indexOf(kindOf(y)) || byScore(x,y));
-  if(wild){ wild.pickWhy=wild.mi>PICK_MAX_MI? 'Worth the drive' : 'Out of your lane'; picks.push(wild); }
+  // the wildcard says why it's here, unless it's about to end or brand new (those say more)
+  if(wild){ wild.pickWhy=lastChance(wild)||justDropped(wild)? pickReason(wild) : wild.mi>PICK_MAX_MI? 'Worth the drive' : 'Out of your lane'; picks.push(wild); }
   picks.forEach(ev=>{ if(ev!==wild) ev.pickWhy=pickReason(ev); });
   return picks.slice(0,4);
 }
@@ -1766,14 +1794,16 @@ function logPicks(picks){
 }
 function pickReason(ev){
   if(lastChance(ev)) return 'Last chance';
+  if(justDropped(ev)) return 'Just dropped';
   if(newStampFor(ev)) return 'New stamp for you';
   if(ev.mi>PICK_MAX_MI) return 'Worth the drive';
   if(kindOf(ev)==='popup' || /one-off/i.test(ev.rec||'')) return 'One night only';
   if(pickToday(ev) && ev.t0 && ev.t0<'12:00' && new Date().getHours()<12) return 'This morning';
   return KINDS[kindOf(ev)].label;
 }
-// the green line under a pick: the stamp it earns, else up to two vibes from the listing
+// the green line under a pick: when it was added (Just dropped), the stamp it earns, else up to two vibes from the listing
 function pickSignal(ev){
+  if(ev.pickWhy==='Just dropped') return addedAgo(ev);
   if(newStampFor(ev)) return `Your first ${ev.hood} stamp`;
   return (ev.vibes||[]).slice(0,2).map(v=>v[0].toUpperCase()+v.slice(1)).join(' · ');
 }
@@ -1801,9 +1831,9 @@ function renderPicks(picks){
   document.getElementById('recMoods').innerHTML=moods.length? [['','Anything'],...moods.map(([k,m])=>[k,m.label])]
     .map(([k,l])=>`<button class="chip${k===pickMood?' on':''}" data-mood="${k}" aria-pressed="${k===pickMood}">${l}</button>`).join('') : '';
   const row=ev=>{ const when=(ev.start? nextWhen(ev) : ev.time||'').replace(/^Today · /,''), sig=pickSignal(ev);
-    return `<div class="pickhd">${escH(ev.pickWhy||KINDS[kindOf(ev)].label)}</div><button class="pick" data-rec="${ev.id}">
+    return `<div class="pickrow"><div class="pickhd"><span>${escH(ev.pickWhy||KINDS[kindOf(ev)].label)}</span><button class="nope" data-nope="${ev.id}" aria-label="Not for me: ${escH(ev.title)}">Not for me</button></div><button class="pick" data-rec="${ev.id}">
     <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${[escH(ev.venue),escH(when),escH(priceTag(ev))].filter(Boolean).join(' · ')}</div>${sig?`<div class="sig">${escH(sig)}</div>`:''}</div>
-    <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; };
+    <div class="dist">${mins(ev.mi)}<small>min away</small></div></button></div>`; };
   document.getElementById('recList').innerHTML=picks.length? picks.map(row).join('') : '<p class="recnone">Nothing nearby fits that this week. Try another one.</p>';
 }
 // shrink a heading until it fits on one line (long neighborhood names make "Tonight in …" longer)
@@ -1850,6 +1880,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && kitModal.classLi
 const recModal=document.getElementById('recModal');
 document.getElementById('recClose').onclick=()=>recModal.classList.remove('on');
 recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; }
+  const no=e.target.closest('[data-nope]');
+  if(no){ const ev=events.find(x=>x.id===+no.dataset.nope); if(!ev) return;
+    pickNope(ev); const picks=dailyPicks(pickMood); logPicks(picks); save();
+    const rowEl=no.closest('.pickrow'); rowEl.classList.add('gone');
+    setTimeout(()=>{ renderPicks(picks); fitLine(document.getElementById('recTitle')); },220);
+    toast('Got it. Fewer like that.'); return; }
   const md=e.target.closest('[data-mood]'); if(md){ pickMood=md.dataset.mood; renderPicks(dailyPicks(pickMood)); fitLine(document.getElementById('recTitle')); return; } const r=e.target.closest('[data-rec]'); if(r){ (S.pickTapped=S.pickTapped||{})[+r.dataset.rec]=pickDayNum(); save(); recModal.classList.remove('on'); sheetFrom='picks'; openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList.remove('on'); });
 
@@ -3909,7 +3945,7 @@ function whenText(r){
 }
 async function mapLimit(items,n,fn){ let i=0; await Promise.all(Array.from({length:n},async()=>{ while(i<items.length){ const k=i++; await fn(items[k],k); } })); }
 // Only these columns are readable from the app (see the grants in supabase/events.sql).
-const EVENT_COLS='event_id,name,category,tier,tags,vibes,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,price_detail,rsvp_required,ticket_url,age,host,source_url,image_url,status,verified,lat,lng';
+const EVENT_COLS='event_id,name,category,tier,tags,vibes,description,start_date,end_date,start_time,end_time,recurrence,recurrence_detail,venue,street_address,city,zip,neighborhood,setting,parking_transit,price_type,price_detail,rsvp_required,ticket_url,age,host,source_url,image_url,status,verified,lat,lng,created_at';
 async function loadEvents(){
   if(!sb){ eventsState='error'; return; }
   eventsState=events.length?'live':'loading';
@@ -3922,11 +3958,17 @@ async function loadEvents(){
         if(!data || !data.length) return { data:rows, error:null };
         rows.push(...data);
       } };
-    let { data, error } = await readAll(EVENT_COLS);
-    // until events.sql adds the vibes column, load without it
-    if(error && /vibes/.test(error.message||'')) ({ data, error } = await readAll(EVENT_COLS.replace(',vibes','')));
-    // until supabase/price_detail.sql adds the price amounts, load without them
-    if(error && /price_detail/.test(error.message||'')) ({ data, error } = await readAll(EVENT_COLS.replace(',price_detail','')));
+    // columns added after the first version: until their SQL has run, leave each one out and read again
+    // (vibes: events.sql; price_detail: price_detail.sql; created_at, for "Just dropped": just_dropped.sql)
+    let cols=EVENT_COLS, { data, error } = await readAll(cols);
+    for(let tries=0; error && tries<3; tries++){
+      // a missing column is named in the error; a column not granted yet only says "permission denied" (42501)
+      const denied=error.code==='42501' || /permission denied/i.test(error.message||'');
+      const miss=['vibes','price_detail','created_at'].find(x=>cols.includes(','+x) && new RegExp(x).test(error.message||''))
+        || (denied && cols.includes(',created_at')? 'created_at' : null);
+      if(!miss) break;
+      cols=cols.replace(','+miss,''); ({ data, error } = await readAll(cols));
+    }
     if(error) throw error;
     let rows=data
       .filter(r=>r.name && String(r.street_address).trim())                     // no address yet → not shown
@@ -3942,7 +3984,7 @@ async function loadEvents(){
       t=tags.map(x=>Object.keys(SUBCATS).find(k=>SUBCATS[k].label.toLowerCase()===String(x).toLowerCase())).find(Boolean)||catMap(tags.join(' ')); return { category:g, sub: SUB_GROUP[t]===g && !CATS[t]? t : '' }; };
     events=rows.map((r,i)=>({ id:(parseInt(String(r.event_id||'').replace(/\D/g,''))||0)? 100000+parseInt(String(r.event_id).replace(/\D/g,'')) : 100+i, eid:r.event_id||'', title:r.name, venue:r.venue||'', lat:r.lat, lng:r.lng, area:r.neighborhood||'', time:whenText(r), live:false, startsIn:'', going:0, fromGroup:0, host:r.host||'', desc:r.description||'', tags:Array.isArray(r.tags)? r.tags : [], vibes:Array.isArray(r.vibes)? r.vibes.filter(v=>VIBE_WORDS[v]) : [], ...subOf(r), kind:tierKey(r.tier), parking:r.parking_transit||'', alcohol:undefined,
       address:[r.street_address,r.city,r.zip].filter(Boolean).join(', '), zip:r.zip||'', price:r.price_type||'', priceAmt:String(r.price_detail||'').trim().slice(0,30), photo:okLink(r.image_url), age:r.age||'', setting:r.setting||'', rsvpReq:!!r.rsvp_required, verified:!!r.verified,
-      ticket:okLink(r.ticket_url), source:okLink(r.source_url), rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'' }));
+      ticket:okLink(r.ticket_url), source:okLink(r.source_url), rec:r.recurrence||'', recDetail:r.recurrence_detail||'', start:parseDay(r.start_date), end:parseDay(r.end_date), t0:r.start_time||'', t1:r.end_time||'', added:r.created_at? Date.parse(r.created_at)||0 : 0 }));
     eventsState='live'; if(current==='home') renderHome(); if(current==='onb1') buildOnb(); loadGoing(); loadSubmissions();
   }catch(e){ console.warn('Events failed to load', e); if(eventsState!=='live'){ eventsState='error'; if(current==='home') renderHome(); } }
 }

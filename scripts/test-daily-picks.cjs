@@ -46,7 +46,7 @@ const server=http.createServer((req,res)=>{
   assert.ok(ids[0].includes(51),'a run ending in the next few days makes the first day');
   assert.match(days[0].find(x=>x.id===51).why,/Last chance|Out of your lane/,'labelled Last chance (or as the wildcard)');
   // one wildcard a day, last, labelled
-  for(const p of days) assert.match(p[3].why,/Worth the drive|Out of your lane/,'slot 4 is the wildcard');
+  for(const p of days) assert.match(p[3].why,/Worth the drive|Out of your lane|Last chance|Just dropped/,'slot 4 is the wildcard');
   // no two of the same category among the nearby three
   for(const p of days){ const c=p.slice(0,3).map(x=>x.cat); assert.equal(new Set(c).size,c.length,'nearby picks differ in category'); }
   // consecutive days barely overlap; a daily event untapped isn't back within the week
@@ -97,6 +97,25 @@ const server=http.createServer((req,res)=>{
   await run(()=>{ S.places={'Somewhere':{n:1,lat:34.2,lng:-118.6}}; renderPicks(dailyPicks()); });
   assert.match(await page.textContent('#recList'),/New stamp for you/);
   assert.match(await page.textContent('#recList'),/Your first .+ stamp/);
+  // Just dropped: added in the last two days, labelled with when
+  await run(()=>{ S.places={}; const e=events.find(x=>x.id===203); e.added=Date.now()-6*36e5; renderPicks(dailyPicks()); });
+  assert.match(await page.textContent('#recList'),/Just dropped/);
+  assert.match(await page.textContent('#recList'),/Added 6 hours ago/);
+  await run(()=>{ events.find(x=>x.id===203).added=Date.now()-3*864e5; renderPicks(dailyPicks()); });
+  assert.doesNotMatch(await page.textContent('#recList'),/Just dropped/,'three days old is not new');
+  // Not for me: the pick goes, a different one takes its place, and it never comes back
+  await run(()=>{ const t=new Date();t.setHours(0,0,0,0);
+   events.push({...events[0],id:205,eid:'EVT-205',title:'Spare comedy',category:'community',vibes:['late night'],lat:S.loc.lat+0.01,added:0});
+   S.pickNope={}; S.pickTaste=null; renderPicks(dailyPicks()); });
+  const before=await run(()=>[...document.querySelectorAll('#recList [data-rec]')].map(b=>+b.dataset.rec));
+  await page.click(`#recList [data-nope="${before[0]}"]`);
+  await page.waitForFunction(id=>!document.querySelector(`#recList [data-rec="${id}"]`),before[0]);
+  const after=await run(()=>[...document.querySelectorAll('#recList [data-rec]')].map(b=>+b.dataset.rec));
+  assert.ok(!after.includes(before[0]),'the dismissed pick is gone');
+  assert.equal(after.length,4,'another pick takes its place');
+  assert.ok(await run(id=>!dailyPicks().some(e=>e.id===id) && S.pickNope[id]!=null,before[0]),'it stays gone');
+  assert.ok(await run(id=>{ const ev=events.find(e=>e.id===id); return tastePenalty(ev)>0; },before[0]),'its category and vibes count against similar ones');
+  assert.ok(await run(()=>JSON.parse(localStorage.getItem('comuna_v3')).pickNope),'saved on the phone');
   await page.click('#recClose');
   assert.equal(await page.locator('#recModal.on').count(),0,'× goes back to the map');
   assert.ok(!errors.length,errors.join('\n'));
