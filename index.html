@@ -1814,9 +1814,10 @@ function maybeDailyPicks(){
   S.lastPicksDay=today; logPicks(picks); save();
   showPicks(picks);
 }
-let pickMood='';
+let pickMood='', pickSeen=new Set();
+const pickInfo=(ev,i)=>({ pick_reason:ev.pickWhy||KINDS[kindOf(ev)].label, pick_slot:i+1, pick_mood:pickMood||null });
 function showPicks(picks){
-  pickMood='';
+  pickMood=''; pickSeen=new Set();
   renderPicks(picks);
   setTimeout(()=>{ document.getElementById('recModal').classList.add('on'); fitLine(document.getElementById('recTitle')); },350);
 }
@@ -1827,7 +1828,10 @@ function renderPicks(picks){
   document.getElementById('recKicker').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})+' · '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   document.getElementById('recTitle').textContent=`${span[0].toUpperCase()+span.slice(1)} in ${hood}`;
   document.getElementById('recSum').textContent=picks.length? `${picks.length} ${picks.length===1?'pick':'picks'} for ${span}.` : '';
+  // checking which moods have something re-runs dailyPicks, which relabels events: keep these picks' reasons
+  const why=picks.map(ev=>ev.pickWhy);
   const moods=Object.entries(PICK_MOODS).filter(([k])=>k===pickMood || dailyPicks(k).length);
+  picks.forEach((ev,i)=>{ ev.pickWhy=why[i]; });
   document.getElementById('recMoods').innerHTML=moods.length? [['','Anything'],...moods.map(([k,m])=>[k,m.label])]
     .map(([k,l])=>`<button class="chip${k===pickMood?' on':''}" data-mood="${k}" aria-pressed="${k===pickMood}">${l}</button>`).join('') : '';
   const row=ev=>{ const when=(ev.start? nextWhen(ev) : ev.time||'').replace(/^Today · /,''), sig=pickSignal(ev);
@@ -1835,6 +1839,9 @@ function renderPicks(picks){
     <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${[escH(ev.venue),escH(when),escH(priceTag(ev))].filter(Boolean).join(' · ')}</div>${sig?`<div class="sig">${escH(sig)}</div>`:''}</div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button></div>`; };
   document.getElementById('recList').innerHTML=picks.length? picks.map(row).join('') : '<p class="recnone">Nothing nearby fits that this week. Try another one.</p>';
+  // measuring (supabase/pick_stats.sql): each pick once per card and mood, with why it's here and where
+  picks.forEach((ev,i)=>{ const k=ev.id+'|'+pickMood; if(pickSeen.has(k)) return; pickSeen.add(k);
+    track(ev,'pick_shown',pickInfo(ev,i)); });
 }
 // shrink a heading until it fits on one line (long neighborhood names make "Tonight in …" longer)
 function fitLine(el,min=18){ el.style.fontSize=''; let fs=parseFloat(getComputedStyle(el).fontSize); while(el.scrollWidth>el.clientWidth && fs>min){ fs--; el.style.fontSize=fs+'px'; } }
@@ -1882,11 +1889,14 @@ document.getElementById('recClose').onclick=()=>recModal.classList.remove('on');
 recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; }
   const no=e.target.closest('[data-nope]');
   if(no){ const ev=events.find(x=>x.id===+no.dataset.nope); if(!ev) return;
+    const slot=[...document.querySelectorAll('#recList [data-rec]')].findIndex(b=>+b.dataset.rec===ev.id);
+    track(ev,'pick_nope',pickInfo(ev,slot));
     pickNope(ev); const picks=dailyPicks(pickMood); logPicks(picks); save();
     const rowEl=no.closest('.pickrow'); rowEl.classList.add('gone');
     setTimeout(()=>{ renderPicks(picks); fitLine(document.getElementById('recTitle')); },220);
     toast('Got it. Fewer like that.'); return; }
-  const md=e.target.closest('[data-mood]'); if(md){ pickMood=md.dataset.mood; renderPicks(dailyPicks(pickMood)); fitLine(document.getElementById('recTitle')); return; } const r=e.target.closest('[data-rec]'); if(r){ (S.pickTapped=S.pickTapped||{})[+r.dataset.rec]=pickDayNum(); save(); recModal.classList.remove('on'); sheetFrom='picks'; openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
+  const md=e.target.closest('[data-mood]'); if(md){ pickMood=md.dataset.mood; renderPicks(dailyPicks(pickMood)); fitLine(document.getElementById('recTitle')); return; } const r=e.target.closest('[data-rec]'); if(r){ (S.pickTapped=S.pickTapped||{})[+r.dataset.rec]=pickDayNum(); save();
+    const pev=events.find(x=>x.id===+r.dataset.rec); sheetPick=pev? pickInfo(pev,[...document.querySelectorAll('#recList [data-rec]')].indexOf(r)) : null; recModal.classList.remove('on'); sheetFrom='picks'; openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList.remove('on'); });
 
 /* ---------- home ---------- */
@@ -3103,7 +3113,7 @@ const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
 function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   // back: optional, adds a back button (its aria-label names backLabel) that returns to where you came from
   const base=events.find(e=>e.id===id); if(!base) return;
   const ev=occurrenceDate?{...base,occurrenceDate}:base; enrich();
-  sheetCtx={ placement:sheetFrom||placementNow(), query:searchQ||null }; sheetFrom=null;
+  sheetCtx={ placement:sheetFrom||placementNow(), query:searchQ||null, pick:sheetFrom==='picks'? sheetPick : null }; sheetFrom=null;
   const inn=hasPlan(ev), done=S.checked.includes(id);
   const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
   const link=(()=>{ const ticket=okLink(ev.ticket), source=okLink(ev.source); const u=(ticket&&!isRoundup(ticket))?ticket:(source&&!isRoundup(source))?source:(ticket||source);
@@ -3764,12 +3774,13 @@ async function dbRsvp(ev){
 }
 // what people look at and tap, per event, for host stats. Batched, sent quietly (no error toasts), never blocks the app.
 // placement: where the event was opened from (map, list, search, search_suggestion, picks...), so ads and search can be measured.
-let trackQ=[], trackT=null, sheetFrom=null, sheetCtx={};
+let trackQ=[], trackT=null, sheetFrom=null, sheetCtx={}, sheetPick=null;
 const placementNow=()=> current!=='home'? current : searchQ? 'search' : document.getElementById('homeScreen').classList.contains('home-list')? 'list' : 'map';
-function track(ev,action){
+// extra: pick_reason / pick_slot / pick_mood for today's picks (supabase/pick_stats.sql); a sheet opened from a pick carries them
+function track(ev,action,extra){
   if(!ev||!sb) return;
   trackQ.push({ event_id:eidOf(ev), event_title:ev.title||null, action, neighborhood:ev.area||ev.hood||null, category:ev.category||null,
-    placement:sheetCtx.placement||null, search_query:sheetCtx.query||null });
+    placement:sheetCtx.placement||null, search_query:sheetCtx.query||null, ...(sheetCtx.placement==='picks'? sheetCtx.pick : null), ...extra });
   clearTimeout(trackT); trackT=setTimeout(flushTrack,4000);
 }
 async function flushTrack(){
@@ -3780,6 +3791,9 @@ async function flushTrack(){
   let { error } = await sb.from('event_actions').insert(rows);
   // until supabase/guests.sql adds device_id, save signed-in rows without it (guest rows wait for it)
   if(error && u && /device_id/.test(error.message||'')) ({ error } = await sb.from('event_actions').insert(rows.map(({device_id,...r})=>r)));
+  // until supabase/pick_stats.sql runs: no pick_* actions or columns yet, so send the rest without them
+  if(error && /pick_|action_check/.test(error.message||'')){ const plain=rows.filter(r=>!/^pick_/.test(r.action)).map(({pick_reason,pick_slot,pick_mood,...r})=>r);
+    error=null; if(plain.length) ({ error } = await sb.from('event_actions').insert(plain)); }
   if(error) console.warn('Supabase tracking save failed', error);
 }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushTrack(); });
