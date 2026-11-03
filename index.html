@@ -2369,9 +2369,13 @@ function styleMapbox(m=map){
    1 roads drawn as ink outlines, 2 sketched parks and trees, watercolor hills, inked lake edges and ripples,
    3 hand-lettered neighborhood labels, 4 paper grain over the map (CSS above). */
 if(SKETCH){ document.documentElement.classList.add('sketch');
-  const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&display=swap'; document.head.appendChild(l);
-  // the names are drawn once, so wait for the font's stylesheet and then the font itself, never the fallback
-  window.HAND_READY=new Promise(r=>{ l.onload=r; l.onerror=r; setTimeout(r,4000); }).then(()=>document.fonts.load("20px 'Patrick Hand SC'")).catch(()=>{}); }
+  // the names are drawn once, so wait for the font's stylesheet and then the font itself, never the fallback.
+  // The iPhone app carries its own copy of the font (fonts.css); the website loads it from Google Fonts.
+  const bundled=[...document.fonts].some(f=>/Patrick Hand SC/.test(f.family));
+  let ready=Promise.resolve();
+  if(!bundled){ const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&display=swap'; document.head.appendChild(l);
+    ready=new Promise(r=>{ l.onload=r; l.onerror=r; setTimeout(r,4000); }); }
+  window.HAND_READY=ready.then(()=>document.fonts.load("20px 'Patrick Hand SC'")).catch(()=>{}); }
 const INK='#353A32', SK={ land:'#F2EADA', road:'#FBF7EE', major:'#FFFDF8', water:'#BCD0D6', waterInk:'#6F8E99', park:'#CDD6B8', parkInk:'#7D9468' };
 const HAND_FONT="'Patrick Hand SC', 'Caveat', cursive";
 // watercolor mottle over a tile: soft blotches of a darker and a lighter tone, each drawn at every wrap offset so the

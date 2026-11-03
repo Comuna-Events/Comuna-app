@@ -47,7 +47,8 @@ cpSync(join(root, 'node_modules/@supabase/supabase-js/dist/umd/supabase.js'), jo
 html = html.replace(supabaseCdn, '<script src="supabase.js"></script>');
 
 // Fonts: the same families and weights as the Google Fonts link, Latin and Latin Extended (accents like "Día")
-const FONTS = { 'big-shoulders-display': [700, 800, 900], 'dm-sans': [400, 500, 700], caveat: [600, 700] };
+// patrick-hand-sc: the map's hand-lettered neighborhood names (the website loads it from Google Fonts when the map draws)
+const FONTS = { 'big-shoulders-display': [700, 800, 900], 'dm-sans': [400, 500, 700], caveat: [600, 700], 'patrick-hand-sc': [400] };
 const googleFonts = /<link rel="preconnect" href="https:\/\/fonts\.googleapis\.com">\n<link href="https:\/\/fonts\.googleapis\.com\/css2\?[^"]+" rel="stylesheet">/;
 if (!googleFonts.test(html)) throw new Error('index.html no longer has its Google Fonts link; update scripts/build-ios.mjs to match');
 mkdirSync(join(out, 'fonts'));
