@@ -169,7 +169,11 @@ img{ max-width:100% }
 .sketch .pin.sel > svg{ transform:translateY(-18px) scale(1.15) } .sketch .pin.sel .tag{ top:calc(50% - 18px); left:calc(100% + 12px) }
 .sketch .pin.sel .chk, .sketch .pin.sel .cnt{ top:-30px }
 /* name tag: an ink-outlined pill lettered by hand */
-.sketch .pin .tag{ position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%); white-space:nowrap; pointer-events:none; background:var(--card); color:var(--ink); border:1.6px solid var(--ink); border-radius:9px; padding:1px 9px 0; font:17px/1.25 'Patrick Hand SC','Caveat',cursive; letter-spacing:.06em; box-shadow:1.5px 2px 0 rgba(53,58,50,.7) }
+.sketch .pin .tag{ position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%); white-space:normal; width:max-content; max-width:150px; line-height:1.05; padding-top:3px; padding-bottom:2px; pointer-events:none; background:var(--card); color:var(--ink); border:1.6px solid var(--ink); border-radius:9px; padding:1px 9px 0; font:17px/1.25 'Patrick Hand SC','Caveat',cursive; letter-spacing:.06em; box-shadow:1.5px 2px 0 rgba(53,58,50,.7) }
+/* a tag that would run off the right edge sits on the pin's left instead */
+.sketch .pin .tag.flip{ left:auto; right:calc(100% + 7px); text-align:right } .sketch .pin.sel .tag.flip{ left:auto; right:calc(100% + 12px) }
+/* cluster: a thin ring of the event types inside, between the ink outline and the cream middle */
+.sketch #map .cluster{ background:radial-gradient(circle, var(--card) 0 61%, transparent 62%), var(--mix, var(--card)) }
 .sketch .cluster{ background:var(--card); color:var(--ink); border:1.7px solid var(--ink); box-shadow:1.5px 2px 0 rgba(53,58,50,.75); font:20px/1 'Patrick Hand SC','Caveat',cursive; border-radius:52% 47% 50% 48% / 48% 53% 47% 52% }
 .sketch #map .mapboxgl-canvas-container::after{ content:''; position:absolute; inset:0; background:var(--grain); mix-blend-mode:multiply; pointer-events:none }
 .mapwrap .toggle{ position:absolute; right:10px; top:10px; z-index:5; background:var(--card); border-radius:30px; display:flex; padding:3px; box-shadow:0 2px 8px rgba(0,0,0,.12) }
@@ -2181,16 +2185,19 @@ let map=null, markers=[], paperDrawn=false;
 // small tier glyph for tabs, badges and the legend
 function tierIcon(k,size=14){ return k==='cornerstone'? `<span class="ticon"><i style="width:${size*.8}px;height:${size*.8}px;border-radius:50%;background:${C.green};box-shadow:0 0 0 2px ${C.sun}"></i></span>` : `<span class="ticon"></span>`; }
 // MOCKUP (?sketch): the name on a pin's tag: the venue as a stamp names it, else the event
-function pinTag(ev){ const t=stampPlaceName(ev.venue||'')||ev.title||''; return t.length>20? t.slice(0,19).trim()+"…" : t; }
+function pinTag(ev){ const t=stampPlaceName(ev.venue||'')||ev.title||''; return t.length>40? t.slice(0,39).trim()+"…" : t; }
+// once a tag is on the map: if it would run past the map's right edge, put it on the pin's left
+function fitTag(el){ const t=el.querySelector('.tag'), mapEl=document.getElementById('map'); if(!t||!mapEl) return; t.classList.remove('flip');
+  if(t.getBoundingClientRect().right>mapEl.getBoundingClientRect().right-6) t.classList.add('flip'); }
 function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev), big=k==='cornerstone';
   el.className='pin'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,15)+(done?CHK_BADGE:'');
   if(SKETCH) el.style.setProperty('--pc',CATS[catKey(ev.category)].bg);
-  if(SKETCH && ev.id===selId) el.insertAdjacentHTML('beforeend',`<span class="tag">${escH(pinTag(ev))}</span>`);
+  if(SKETCH && ev.id===selId){ el.insertAdjacentHTML('beforeend',`<span class="tag">${escH(pinTag(ev))}</span>`); requestAnimationFrame(()=>fitTag(el)); }
   el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+CATS[catKey(ev.category)].label+(big?', Headliner':'')); el.tabIndex=0;
   el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); };
   if(SKETCH){
     // pointing at a pin shows its name tag; tapping one selects it (drawn pin and tag) as well as opening it
-    el.addEventListener('mouseenter',()=>{ if(!el.querySelector('.tag')) el.insertAdjacentHTML('beforeend',`<span class="tag">${escH(pinTag(ev))}</span>`); el.style.zIndex=30; });
+    el.addEventListener('mouseenter',()=>{ if(!el.querySelector('.tag')) el.insertAdjacentHTML('beforeend',`<span class="tag">${escH(pinTag(ev))}</span>`); fitTag(el); el.style.zIndex=30; });
     el.addEventListener('mouseleave',()=>{ if(ev.id!==selId) el.querySelector('.tag')?.remove(); el.style.zIndex=''; });
     el.onclick=e=>{ e.stopPropagation(); if(map && selId!==ev.id){ selId=ev.id; drawClusters(); } openSheet(ev.id); };
   }
@@ -2224,7 +2231,9 @@ function drawClusters(){
   setDots(groups.filter(g=>g.list.length===1).map(g=>g.list[0]));
   groups.filter(g=>g.list.length>1).forEach(g=>{
     const n=g.list.length;
-    const el=document.createElement('div'); el.className='cluster'; el.textContent=n>20?'20+':n; const d=Math.min(40,26+Math.sqrt(n)*3); el.style.width=el.style.height=d+'px';
+    const el=document.createElement('div'); el.className='cluster'; el.textContent=n>20?'20+':n;
+    if(SKETCH){ const tally={}; g.list.forEach(e=>{ const k=catKey(e.category); tally[k]=(tally[k]||0)+1; }); let at=0;
+      el.style.setProperty('--mix','conic-gradient('+Object.keys(tally).sort((a,b)=>tally[b]-tally[a]).map(k=>{ const from=at; at+=tally[k]/n*100; return `${CATS[k].bg} ${from}% ${at}%`; }).join(',')+')'); } const d=Math.min(40,26+Math.sqrt(n)*3); el.style.width=el.style.height=d+'px';
     el.setAttribute('role','button'); el.setAttribute('aria-label',n+' events here, zoom in'); el.tabIndex=0;
     // tap a bubble: zoom in to its neighborhood, where its events show as dots
     const zoomIn=e=>{ e&&e.stopPropagation(); userMoved=true; const b=new mapboxgl.LngLatBounds(); g.list.forEach(ev=>b.extend([ev.lng,ev.lat]));
@@ -2291,7 +2300,9 @@ function setDots(list){
   const data={ type:'FeatureCollection', features:list.map(ev=>({ type:'Feature', properties:{ id:ev.id, c:CATS[catKey(ev.category)].bg }, geometry:{ type:'Point', coordinates:[ev.lng,ev.lat] } })) };
   if(!map.getSource('focus-dots')){
     map.addSource('focus-dots',{ type:'geojson', data });
-    map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':.85, 'circle-stroke-color':SKETCH?'#353A32':'#F3E7D1', 'circle-stroke-width':SKETCH?1.2:1.5 } });
+    // sketch: a hard ink shadow under each dot, offset like the pins'
+    if(SKETCH) map.addLayer({ id:'focus-dots-shadow', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':'#353A32', 'circle-opacity':.7, 'circle-translate':[1.5,2] } });
+    map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':SKETCH?1:.85, 'circle-stroke-color':SKETCH?'#353A32':'#F3E7D1', 'circle-stroke-width':SKETCH?1.2:1.5 } });
     // dots are 9px but a fingertip isn't: a tap anywhere within ~22px opens the closest dot's event
     map.on('click',e=>{ if(!map.getLayer('focus-dots')) return; const p=e.point, r=22;
       const fs=map.queryRenderedFeatures([[p.x-r,p.y-r],[p.x+r,p.y+r]],{layers:['focus-dots']}); if(!fs.length) return;
