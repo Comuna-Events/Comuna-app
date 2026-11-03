@@ -1,4 +1,4 @@
-// Local browser regression: today's Top 4 changes from day to day.
+// Local browser regression: today's picks ("Tonight in <neighborhood>") change from day to day, and the card shows them.
 // Run: node scripts/test-daily-picks.cjs   (CHROMIUM_PATH=/path/to/chromium if it isn't at /usr/bin/chromium)
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
@@ -29,12 +29,12 @@ const server=http.createServer((req,res)=>{
    const cats=Object.keys(CATS);
    events=[];
    for(let i=0;i<24;i++) events.push({...base,id:1+i,eid:'EVT-'+(1+i),title:'Daily '+i,category:cats[i%cats.length],kind:['regular','niche','cornerstone'][i%3],lat:S.loc.lat+0.002*(i+1)});
-   events.push({...base,id:50,eid:'EVT-50',title:'One night only',kind:'popup',rec:'One-off',start:at(2),category:cats[1],lat:S.loc.lat+0.03});
+   events.push({...base,id:50,eid:'EVT-50',title:'One night only',kind:'popup',rec:'One-off',start:at(0),category:cats[1],lat:S.loc.lat+0.03});
    events.push({...base,id:51,eid:'EVT-51',title:'Closing weekend',kind:'regular',rec:'',start:at(-20),end:at(1),category:cats[2],lat:S.loc.lat+0.035});
    events.push({...base,id:52,eid:'EVT-52',title:'Far festival',kind:'cornerstone',rec:'One-off',start:at(3),category:cats[0],lat:S.loc.lat+0.12});
    eventsState='live';
   });
-  const noon=new Date();noon.setHours(12,0,0,0);
+  const noon=await run(()=>{ const d=new Date(); d.setHours(12,0,0,0); return +d; });   // the phone's noon (Los Angeles)
   const pick=async dayOffset=>{ await page.clock.setFixedTime(new Date(+noon+dayOffset*864e5));
    return run(()=>{ const p=dailyPicks(); logPicks(p); return p.map(ev=>({id:ev.id,cat:ev.category,why:ev.pickWhy||'',mi:ev.mi})); }); };
   const days=[];
@@ -65,6 +65,40 @@ const server=http.createServer((req,res)=>{
   const q0=(await pick(30)).map(x=>x.id), q1=(await pick(31)).map(x=>x.id);
   assert.equal(q0.length,4); assert.equal(q1.length,4,'still four picks when there are only five events');
   assert.ok(q1.includes([1,2,3,4,5].find(id=>!q0.includes(id))),'the one not shown yesterday leads');
+  // the card: "Today/Tonight/This week in <neighborhood>", reasons, no category icons, no buttons but the ×, mood row
+  await run(()=>{ S.pickShown={}; S.pickTapped={}; S.nb='Silver Lake'; S.places={};
+   const t=new Date();t.setHours(0,0,0,0);
+   const base={venue:'Bar',area:'',time:'',desc:'',host:'',tags:[],recDetail:'',end:null,t0:'21:00',t1:'23:30',lng:S.loc.lng,kind:'regular',sub:'',rec:'One-off',start:t,price:'Free'};
+   events=[
+    {...base,id:201,eid:'EVT-201',title:'Late jazz',category:'arts',vibes:['live music','late night'],lat:S.loc.lat+0.004},
+    {...base,id:202,eid:'EVT-202',title:'Supper club',category:'food',vibes:['date night'],price:'Paid',lat:S.loc.lat+0.006},
+    {...base,id:203,eid:'EVT-203',title:'Pottery hour',category:'classes',vibes:['chill','creative'],t0:'18:00',lat:S.loc.lat+0.008},
+    {...base,id:204,eid:'EVT-204',title:'Far fair',category:'markets',vibes:['festive'],lat:S.loc.lat+0.11}];
+  });
+  await page.clock.setFixedTime(noon+40*864e5+7*36e5);   // 7 PM
+  await run(()=>{ const t=new Date();t.setHours(0,0,0,0); events.forEach(e=>{e.start=t;}); showPicks(dailyPicks()); });
+  await page.waitForSelector('#recModal.on');
+  assert.equal(await page.textContent('#recTitle'),'Tonight in Silver Lake');
+  assert.equal(await page.textContent('#recSum'),'4 picks for tonight.');
+  assert.equal(await page.locator('#recList .pick .n').count(),0,'no category icons');
+  assert.equal(await page.locator('#recModal .btn').count(),0,'no buttons under the picks');
+  assert.match(await page.textContent('#recList'),/One night only/);
+  assert.match(await page.textContent('#recList'),/Worth the drive|Out of your lane/);
+  assert.match(await page.textContent('#recList'),/Live music · Late night/,'vibes as the signal line');
+  assert.doesNotMatch(await page.textContent('#recList'),/going|liked|checked in/i,'nothing that needs other users');
+  if(process.env.SHOT) await page.screenshot({path:process.env.SHOT});
+  const moods=await page.locator('#recMoods .chip').allTextContents();
+  assert.deepEqual(moods,['Anything','Chill','Social','Out late','Cheap']);
+  await page.click('#recMoods [data-mood="chill"]');
+  assert.deepEqual(await run(()=>[...document.querySelectorAll('#recList [data-rec]')].map(b=>+b.dataset.rec)),[203],'Chill keeps the chill ones');
+  await page.click('#recMoods [data-mood=""]');
+  assert.equal(await page.locator('#recList .pick').count(),4);
+  // once you have a stamp, an unstamped neighborhood is a "New stamp for you"
+  await run(()=>{ S.places={'Somewhere':{n:1,lat:34.2,lng:-118.6}}; renderPicks(dailyPicks()); });
+  assert.match(await page.textContent('#recList'),/New stamp for you/);
+  assert.match(await page.textContent('#recList'),/Your first .+ stamp/);
+  await page.click('#recClose');
+  assert.equal(await page.locator('#recModal.on').count(),0,'× goes back to the map');
   assert.ok(!errors.length,errors.join('\n'));
   console.log('daily picks: ok');
   console.log(ids.map((p,d)=>`day ${d}: ${p.join(', ')}`).join('\n'));
