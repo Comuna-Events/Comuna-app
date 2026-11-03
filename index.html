@@ -1675,32 +1675,71 @@ function forgetPlan(ev,day){
   if(!S.rsvpDates[ev.id].length) S.rsvp=S.rsvp.filter(id=>id!==ev.id);
 }
 
-/* ---------- daily Top 4: up to four events within 5 miles, once a day ---------- */
-const PICK_MAX_MI=5;   // ~18 "min away"; anything farther never makes the Top 4
+/* ---------- daily Top 4: up to four events, once a day, different from the days before ---------- */
+// Closest used to win outright, so the same few venues (and every weekly event) came back daily. Now:
+// - anything shown in the last few days and not tapped is pushed down, and a weekly event shows at most once a week;
+// - one-time and last-chance events beat things that happen every week ("rare beats close");
+// - no two picks share a category; one slot is a wildcard from outside your interests or a bit farther away.
+const PICK_MAX_MI=5;        // ~18 "min away": the usual limit
+const PICK_WILD_MI=12;      // the wildcard ("Worth the drive") can come from up to here
+const PICK_FORGET_DAYS=5;   // a pick you didn't tap stays pushed down this long
+const PICK_KEEP_DAYS=14;    // how long the shown/tapped log is kept
+const pickDayNum=()=>Math.round(today0().getTime()/864e5);
+const recursOften=ev=>!ev.start || /daily|weekly|biweekly/i.test(ev.rec||'');   // weekday-only listings repeat weekly
+function lastChance(ev,t0=today0()){ return !!(ev.end && ev.start && ev.start<t0 && ev.end>=t0 && ev.end-t0<3*864e5); }
+function pickScore(ev,day,want){
+  const shown=(S.pickShown||{})[ev.id], tapped=(S.pickTapped||{})[ev.id];
+  let s=ev.mi*(want.includes(ev.category)?0.6:1);
+  if(kindOf(ev)==='popup' || /one-off/i.test(ev.rec||'')) s-=1.5; // only happens once
+  if(lastChance(ev)) s-=2.5;                                      // a run that ends in the next few days
+  if(recursOften(ev)) s+=1;                                       // will be there next week too
+  if(ev.rev && ev.rev.pct>=85) s-=0.5;       // people who went loved it
+  if(shown!=null && tapped==null){ const age=day-shown; if(age>=1 && age<PICK_FORGET_DAYS) s+=3*(1-age/PICK_FORGET_DAYS); }
+  return s+((ev.id*7919+day*104729)%97)/97*0.8;                   // a daily shuffle big enough to reorder near-ties
+}
 function dailyPicks(){
   enrich();
-  const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label));
+  const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label)), day=pickDayNum(), shown=S.pickShown||{};
   // only things happening in the next 7 days (today included), so daily picks stay timely
   const t0=today0(), soon=ev=>{ const d=ev.start? nextDate(ev) : evDate(ev); return !!d && d>=t0 && d-t0<7*864e5; };
-  const pool=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && ev.mi!=null && ev.mi<=PICK_MAX_MI && soon(ev));
-  // closest first, with a nudge toward what you're into; the day number rotates ties so picks change daily
-  const day=Math.floor(Date.now()/864e5);
-  const score=ev=>ev.mi*(want.includes(ev.category)?0.6:1)+((ev.id*7+day)%5)*0.05;
-  const ranked=pool.sort((x,y)=>score(x)-score(y)), order=['cornerstone','regular','niche','popup'];
-  // the best of each type that has one nearby, then the next best of any type, so two Pop-ups and no Headliner is fine
-  const picks=order.map(k=>ranked.find(ev=>kindOf(ev)===k)).filter(Boolean);
-  for(const ev of ranked){ if(picks.length>=4) break; if(!picks.includes(ev)) picks.push(ev); }
-  return picks.slice(0,4).sort((x,y)=>order.indexOf(kindOf(x))-order.indexOf(kindOf(y)) || score(x)-score(y));
+  const open=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && ev.mi!=null && ev.mi<=PICK_WILD_MI && soon(ev));
+  const thisWeek=ev=>recursOften(ev) && shown[ev.id]!=null && day-shown[ev.id]<7 && day-shown[ev.id]>0;   // weekly: once a week
+  const pool=open.filter(ev=>!thisWeek(ev)), score=new Map(open.map(ev=>[ev,pickScore(ev,day,want)]));
+  const byScore=(x,y)=>score.get(x)-score.get(y), order=['cornerstone','regular','niche','popup'];
+  // if there aren't enough fresh ones nearby, the weekly repeats come back after everything else (oldest shown first)
+  const ranked=[...pool].sort(byScore).concat(open.filter(thisWeek).sort((x,y)=>shown[x.id]-shown[y.id]||byScore(x,y)));
+  const near=ranked.filter(ev=>ev.mi<=PICK_MAX_MI);
+  // the wildcard: outside your interests (when you picked some) or past the usual 5 miles, picked for rarity, not distance
+  const wildOK=ev=>ev.mi>PICK_MAX_MI || (want.length && !want.includes(ev.category));
+  const wildScore=ev=>score.get(ev)-ev.mi*(want.includes(ev.category)?0.6:1)+ev.mi*0.15;
+  const wild=pool.filter(wildOK).sort((x,y)=>wildScore(x)-wildScore(y))[0];   // never a repeat from this week
+  // three from nearby: the best of each type first, never two of the same category, then relax the category rule if short
+  const picks=[], cats=()=>picks.map(ev=>ev.category), slots=wild? 3 : 4;
+  // the best of each type, most urgent type first (so a last-chance event isn't beaten to its category by a weekly one)
+  const fresh=near.filter(e=>pool.includes(e) && e!==wild);
+  for(const ev of order.map(k=>fresh.find(e=>kindOf(e)===k)).filter(Boolean).sort(byScore)){ if(picks.length>=slots) break; if(!cats().includes(ev.category)) picks.push(ev); }
+  for(const ev of near){ if(picks.length>=slots) break; if(!picks.includes(ev) && ev!==wild && !cats().includes(ev.category)) picks.push(ev); }
+  for(const ev of near){ if(picks.length>=slots) break; if(!picks.includes(ev) && ev!==wild) picks.push(ev); }
+  picks.sort((x,y)=>order.indexOf(kindOf(x))-order.indexOf(kindOf(y)) || byScore(x,y));
+  if(wild){ wild.pickWhy=wild.mi>PICK_MAX_MI? 'Worth the drive' : 'Out of your lane'; picks.push(wild); }
+  picks.forEach(ev=>{ if(ev!==wild) ev.pickWhy=lastChance(ev)? 'Last chance' : ''; });
+  return picks.slice(0,4);
+}
+// remember what was shown (and tapped), so tomorrow's picks are different; old entries drop off after two weeks
+function logPicks(picks){
+  const day=pickDayNum(), prune=o=>Object.fromEntries(Object.entries(o||{}).filter(([,d])=>day-d<PICK_KEEP_DAYS));
+  S.pickShown=prune(S.pickShown); S.pickTapped=prune(S.pickTapped);
+  picks.forEach(ev=>{ S.pickShown[ev.id]=day; });
 }
 function maybeDailyPicks(){
   if(S.kitSeen===false) return;   // the starter kit goes first; it hands off to these picks when closed
   const today=new Date().toDateString(); if(S.lastPicksDay===today) return;
   const picks=dailyPicks(); if(!picks.length) return;
-  S.lastPicksDay=today; save();
+  S.lastPicksDay=today; logPicks(picks); save();
   showPicks(picks);
 }
 function showPicks(picks){
-  const row=ev=>`<div class="pickhd">${KINDS[kindOf(ev)].label}</div><button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
+  const row=ev=>`<div class="pickhd">${escH(ev.pickWhy||KINDS[kindOf(ev)].label)}</div><button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
     <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}${priceTag(ev)?' · '+escH(priceTag(ev)):''}${socialText(ev)?' · '+socialText(ev):''}</div></div>
     <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
   const first=(S.name||'').split(' ')[0];
@@ -1751,7 +1790,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && kitModal.classLi
 
 const recModal=document.getElementById('recModal');
 document.getElementById('recClose').onclick=()=>recModal.classList.remove('on');
-recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; } const r=e.target.closest('[data-rec]'); if(r){ recModal.classList.remove('on'); sheetFrom='picks'; openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
+recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; } const r=e.target.closest('[data-rec]'); if(r){ (S.pickTapped=S.pickTapped||{})[+r.dataset.rec]=pickDayNum(); save(); recModal.classList.remove('on'); sheetFrom='picks'; openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList.remove('on'); });
 
 /* ---------- home ---------- */
