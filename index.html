@@ -902,6 +902,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
    (offline, or a sandboxed preview), the app falls back to a hand-drawn "Paper" map
    and the demo events below, so nothing breaks.
 ============================================ */
+// MOCKUP: the hand-drawn map style, on when the link ends in ?sketch (defined first: pins read it as they're drawn)
+const SKETCH=/[?&]sketch\b/.test(location.search);
 const MAPBOX_TOKEN = "pk.eyJ1IjoiY3BpY2tlMjEiLCJhIjoiY212OGxveTQ1MDZ2MTJ5b2pxanM1Nzh2cCJ9.rfY6jqvu9LHbmGCx_rrGKw";
 // Supabase: accounts, RSVPs, check-ins, points. The publishable key is safe in the page; row-level security protects the data.
 const SUPABASE_URL = "https://sjxxiammvvfxcnukkqhg.supabase.co";
@@ -2185,7 +2187,14 @@ function pinEl(ev,i){ const el=document.createElement('div'); const done=S.check
   if(SKETCH) el.style.setProperty('--pc',CATS[catKey(ev.category)].bg);
   if(SKETCH && ev.id===selId) el.insertAdjacentHTML('beforeend',`<span class="tag">${escH(pinTag(ev))}</span>`);
   el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+CATS[catKey(ev.category)].label+(big?', Headliner':'')); el.tabIndex=0;
-  el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
+  el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); };
+  if(SKETCH){
+    // pointing at a pin shows its name tag; tapping one selects it (drawn pin and tag) as well as opening it
+    el.addEventListener('mouseenter',()=>{ if(!el.querySelector('.tag')) el.insertAdjacentHTML('beforeend',`<span class="tag">${escH(pinTag(ev))}</span>`); el.style.zIndex=30; });
+    el.addEventListener('mouseleave',()=>{ if(ev.id!==selId) el.querySelector('.tag')?.remove(); el.style.zIndex=''; });
+    el.onclick=e=>{ e.stopPropagation(); if(map && selId!==ev.id){ selId=ev.id; drawClusters(); } openSheet(ev.id); };
+  }
+  return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
    Recomputed after every pan/zoom, so bubbles split apart as you zoom. At street level (zoom 15+) nothing
    clusters; an address with more than one event shows as one venue pin with a count that opens its list, and
@@ -2349,7 +2358,6 @@ function styleMapbox(m=map){
 /* ---------- MOCKUP (?sketch): a hand-drawn map, after the illustrated LA maps ----------
    1 roads drawn as ink outlines, 2 sketched parks and trees, watercolor hills, inked lake edges and ripples,
    3 hand-lettered neighborhood labels, 4 paper grain over the map (CSS above). */
-const SKETCH=/[?&]sketch\b/.test(location.search);
 if(SKETCH){ document.documentElement.classList.add('sketch');
   const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&display=swap'; document.head.appendChild(l);
   // the names are drawn once, so wait for the font's stylesheet and then the font itself, never the fallback
@@ -2506,24 +2514,27 @@ function placeTrees(m){
   const memo=m._spotMemo||(m._spotMemo=new Map()), b=m.getBounds(), f=[];
   // metres per screen pixel here, and how many grid spots to show per spot: about one tree every ~30-40 px
   const mpp=40075016*Math.cos(b.getCenter().lat*Math.PI/180)/(512*2**z), gridPx=TREE_M/mpp, want=30+Math.max(0,Math.min(4,z-13))*2.5;
-  const keep=Math.min(1,(gridPx/want)**2)*.48;
+  const keep=Math.min(1,(gridPx/want)**2)*.4;
   // a tree's footprint in pixels at this zoom (it's drawn bottom-anchored), for the clearance check
   const scale=z<15? .45+(z-12.5)*.08 : .65+(z-15)*.1, hw=14*scale, hh=26*scale;
-  // only streets, buildings and water keep trees away; footpaths, trails and dirt tracks may run under them
-  const block=m.getStyle().layers.filter(l=>/^(road|bridge|tunnel)-|^water$|^building|^sk-shore$/.test(l.id) && !/path|trail|steps|pedestrian|cycleway|label/.test(l.id) && m.getLayer(l.id)).map(l=>l.id);
+  // trees keep clear of every road, footpath, trail, track and set of steps, and of buildings and water
+  const block=m.getStyle().layers.filter(l=>/^(road|bridge|tunnel)-|^water$|^building|^sk-shore$/.test(l.id) && !/label/.test(l.id) && m.getLayer(l.id)).map(l=>l.id);
   const parks=['sk-parks','sk-natpark'].filter(id=>m.getLayer(id));
   const spots=(salt,stepM,frac,test)=>{ const dLa=stepM/LAT_M, dLo=stepM/LNG_M;
     for(let i=Math.floor(b.getWest()/dLo);i<=b.getEast()/dLo;i++) for(let j=Math.floor(b.getSouth()/dLa);j<=b.getNorth()/dLa;j++){
       if(spotHash(i,j,salt)>=frac) continue;
-      const key=salt+':'+i+','+j; let v=memo.get(key);
-      if(v===undefined){ const lng=(i+spotHash(i,j,salt+1))*dLo, lat=(j+spotHash(i,j,salt+2))*dLa; v=test(lng,lat,i,j); if(v!=='retry') memo.set(key,v); }
-      if(v && v!=='retry') f.push(v); } };
+      // each spot's answer is remembered with the zoom it was judged at, and judged again once the zoom has moved
+      // half a step (roads and paths widen at a different rate from the palms). Trees come and go, they never move.
+      const key=salt+':'+i+','+j; let e=memo.get(key);
+      if(!e || Math.abs(z-e.z)>.5){ const lng=(i+spotHash(i,j,salt+1))*dLo, lat=(j+spotHash(i,j,salt+2))*dLa, r=test(lng,lat,i,j);
+        if(r!=='retry'){ e={r,z}; memo.set(key,e); } }
+      if(e && e.r) f.push(e.r); } };
   spots(1,TREE_M,keep,(lng,lat,i,j)=>{ const p=m.project([lng,lat]);
     if(p.x<-20||p.y<-40||p.x>m.getCanvas().clientWidth+20||p.y>m.getCanvas().clientHeight+20) return 'retry';   // only judge spots on screen
     if(!m.queryRenderedFeatures(p,{layers:parks}).length) return null;
-    const r3=spotHash(i,j,7), isPalm=r3<.18, top=isPalm? hh*2.2 : hh;
-    if(m.queryRenderedFeatures([[p.x-hw,p.y-top],[p.x+hw,p.y+3]],{layers:block}).some(f=>!/track|service|path/.test(f.properties.class||''))) return null;
-    return {type:'Feature',properties:{v:isPalm? 'sk-palm'+(r3<.1?0:1) : 'sk-tree'+Math.floor(spotHash(i,j,9)*4)},geometry:{type:'Point',coordinates:[lng,lat]}}; });
+    const r3=spotHash(i,j,7), isPalm=true, top=hh*2.2, pw=hw*1.3;   // palms only: this is LA
+    if(m.queryRenderedFeatures([[p.x-pw,p.y-top],[p.x+pw,p.y+3]],{layers:block}).length) return null;
+    return {type:'Feature',properties:{v:isPalm? 'sk-palm'+(r3<.55?0:1) : 'sk-tree'+Math.floor(spotHash(i,j,9)*4)},geometry:{type:'Point',coordinates:[lng,lat]}}; });
   // ripples: the same idea on open water, a little sparser, kept clear of shores and bridges
   const rw=12*scale/.85, water=['water'].filter(id=>m.getLayer(id)), dry=block.filter(id=>id!=='water'&&id!=='sk-shore');
   spots(11,TREE_M,keep*.8,(lng,lat,i,j)=>{ const p=m.project([lng,lat]);
@@ -2544,7 +2555,7 @@ function sketchMapbox(m){
       if(/case/.test(id)){ set(id,'line-color',INK); set(id,'line-opacity',/motorway|trunk|primary/.test(id)?.62:.5); }
       else set(id,'line-color',/motorway|trunk|primary/.test(id)?SK.major:SK.road);
     }
-    else if(l.type==='line' && /path|pedestrian|steps/.test(id)) set(id,'line-color','rgba(53,58,50,.35)');
+    else if(l.type==='line' && /path|pedestrian|steps/.test(id)) set(id,'line-color','rgba(250,246,238,.75)');   // footpaths: soft paper, not ink
     else if(l.type==='symbol' && /road/.test(id)) { set(id,'text-color','#5E6157'); set(id,'text-halo-color',SK.land); }
   });
   // 1b: the style draws each road as one line, so add the pen outline ourselves: two thin ink lines with a gap as wide as the road
@@ -2578,7 +2589,8 @@ function sketchMapbox(m){
   }catch(e){ console.warn('sketch hills',e); }
   try{
     m.addLayer({id:'sk-parks',type:'fill',source:'composite','source-layer':'landuse',filter:parkF,paint:{'fill-pattern':'sk-park'}},firstWater);
-    m.addLayer({id:'sk-parks-edge',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':SK.parkInk,'line-width':['interpolate',['linear'],['zoom'],11,.5,15,1.1],'line-opacity':.32}},firstWater);
+    // a faint edge round whole parks, golf courses and cemeteries only, not every lawn and planting bed inside them
+    m.addLayer({id:'sk-parks-edge',type:'line',source:'composite','source-layer':'landuse',filter:['match',['get','class'],['park','cemetery','golf_course'],true,false],minzoom:11,paint:{'line-color':SK.parkInk,'line-width':['interpolate',['linear'],['zoom'],11,.5,15,1.1],'line-opacity':.32}},firstWater);
     m.addLayer({id:'sk-natpark',type:'fill',source:'composite','source-layer':'landuse_overlay',filter:['==',['get','class'],'national_park'],paint:{'fill-pattern':'sk-park','fill-opacity':.7}},firstWater);
     // the hill wash goes over the park greens too, so Griffith and Elysian keep their shape
     ['sk-hills','sk-hills-pigment','sk-hills-light'].forEach(id=>m.getLayer(id)&&m.moveLayer(id,firstWater));
