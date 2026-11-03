@@ -2460,6 +2460,25 @@ function palmGround(g,x,gy,w){ g.fillStyle='rgba(120,118,104,.16)'; g.beginPath(
   g.strokeStyle='rgba(53,58,50,.35)'; g.lineWidth=.6; const R=palmRng(Math.floor(x*13)+5); for(let i=0;i<5;i++){ const sx=x-w*.7+R()*w*1.4; g.beginPath(); g.moveTo(sx,gy-.5); g.quadraticCurveTo(sx+1.5,gy-2.5,sx+3,gy-.8); g.stroke(); } }
 // MOCKUP: three palm styles to compare, ?palm=a (ink with a pale streak, default) | b (solid silhouette) | c (outlined sage)
 const PALM_STYLE={a:'ink',b:'silhouette',c:'outline'}[(location.search.match(/palm=([abc])/)||[])[1]||'a'];
+// If map/palm.png exists (a hand-drawn palm on white), use it instead of the drawn palms: its white is turned
+// transparent, v0 is the palm on its own, v1 a mirrored copy beside a smaller one. Same size as palm(v), so it swaps in place.
+function usePalmArt(m){
+  const img=new Image(); img.onload=()=>{ try{
+    const k=2, w=48, h=66;
+    // clean the drawing once: paper white becomes see-through, ink stays (alpha from how dark each pixel is)
+    const src=document.createElement('canvas'); src.width=img.width; src.height=img.height; const sg=src.getContext('2d'); sg.drawImage(img,0,0);
+    const sd=sg.getImageData(0,0,src.width,src.height), sp=sd.data;
+    for(let i=0;i<sp.length;i+=4){ const lum=sp[i]*.3+sp[i+1]*.59+sp[i+2]*.11; if(lum>150) sp[i+3]=Math.round(sp[i+3]*Math.max(0,Math.min(1,(235-lum)/85))); }
+    sg.putImageData(sd,0,0);
+    const make=(v)=>{ const c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k);
+      const put=(x,tall,flip)=>{ const ww=tall*img.width/img.height; g.save(); g.translate(x,h-1); if(flip) g.scale(-1,1); g.drawImage(src,-ww/2,-tall,ww,tall); g.restore(); };
+      palmGround(g,w/2,h-1,v?15:9);
+      if(v===0) put(w/2,64,false); else { put(w/2+7,64,true); put(w/2-11,36,false); }
+      return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) }; };
+    [0,1].forEach(v=>{ const id='sk-palm'+v, im=make(v); m.hasImage(id)? m.updateImage(id,im) : m.addImage(id,im,{pixelRatio:2}); });
+  }catch(e){ console.warn('palm art',e); } };
+  img.src='map/palm.png';   // missing file: onload never fires and the drawn palms stay
+}
 // a palm image for the map: v0 one tall palm, v1 a tall one with a short, bushy one beside it on a patch of ground
 function palm(v){
   const k=2, w=48, h=66, c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k); g.lineCap='round'; g.lineJoin='round';
@@ -2527,6 +2546,7 @@ function sketchMapbox(m){
   // 2: parks as drawn tree clumps with an ink edge, hill shadows hatched in pencil, lakes with a drawn shoreline
   if(!m.hasImage('sk-park')) m.addImage('sk-park',sketchTile('grass'),{pixelRatio:2});
   for(let v=0;v<4;v++) if(!m.hasImage('sk-tree'+v)) m.addImage('sk-tree'+v,treeClump(v),{pixelRatio:2});
+  usePalmArt(m);
   for(let v=0;v<2;v++){ if(!m.hasImage('sk-palm'+v)) m.addImage('sk-palm'+v,palm(v),{pixelRatio:2}); if(!m.hasImage('sk-ripple'+v)) m.addImage('sk-ripple'+v,ripple(v),{pixelRatio:2}); }
   const ids=L.map(l=>l.id), firstWater=ids.find(id=>/^water/.test(id)), afterWater=ids[ids.lastIndexOf('water')+1];
   const parkF=['match',['get','class'],['park','wood','scrub','grass','cemetery','golf_course','pitch'],true,false];
