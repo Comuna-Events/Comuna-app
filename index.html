@@ -154,6 +154,9 @@ img{ max-width:100% }
 #map, .paper-map{ position:absolute; inset:0 }
 /* markers stack among themselves inside the map, never above the header, filters or cards that float over it */
 #map{ isolation:isolate; z-index:0 }
+/* MOCKUP (?sketch): print the map on the passport's paper, under the pins */
+.sketch #map .mapboxgl-canvas-container{ position:absolute; inset:0 }
+.sketch #map .mapboxgl-canvas-container::after{ content:''; position:absolute; inset:0; background:var(--grain); mix-blend-mode:multiply; pointer-events:none }
 .mapwrap .toggle{ position:absolute; right:10px; top:10px; z-index:5; background:var(--card); border-radius:30px; display:flex; padding:3px; box-shadow:0 2px 8px rgba(0,0,0,.12) }
 .mapwrap .toggle button{ padding:6px 12px; border-radius:30px; font-size:12.5px; font-weight:700 }
 .mapwrap .toggle button.on{ background:var(--paper-2); color:var(--ink) } .mapwrap .toggle button{ color:var(--muted) }
@@ -2322,6 +2325,95 @@ function styleMapbox(m=map){
     m.addLayer({id:'comuna-hood-labels',type:'symbol',source:'comuna-hoods',minzoom:11,filter:['==',['get','city'],1],layout:{'symbol-sort-key':['-',['get','size']],'text-field':['get','name'],'text-font':['DIN Pro Bold','Arial Unicode MS Bold'],'text-size':['interpolate',['linear'],['zoom'],11,11,15,15],'text-letter-spacing':.25,'text-offset':[0,-2.2]},paint:{'text-color':MAPCOL.label,'text-opacity':.55,'text-halo-color':MAPCOL.halo,'text-halo-width':1.5}});
     m.addLayer({id:'comuna-hood-labels-hoods',type:'symbol',source:'comuna-hoods',minzoom:12,filter:['==',['get','city'],0],layout:{'symbol-sort-key':['-',['get','size']],'text-field':['get','name'],'text-font':['DIN Pro Bold','Arial Unicode MS Bold'],'text-size':['interpolate',['linear'],['zoom'],11,11,15,15],'text-letter-spacing':.25,'text-offset':[0,-2.2]},paint:{'text-color':MAPCOL.label,'text-opacity':.55,'text-halo-color':MAPCOL.halo,'text-halo-width':1.5}});
   }catch(e){}
+  if(SKETCH) sketchMapbox(m);
+}
+/* ---------- MOCKUP (?sketch): a hand-drawn map, after the illustrated LA maps ----------
+   1 roads drawn as ink outlines, 2 sketched parks, hatched hills and inked lake edges,
+   3 hand-lettered neighborhood labels, 4 paper grain over the map (CSS above). */
+const SKETCH=/[?&]sketch\b/.test(location.search);
+if(SKETCH){ document.documentElement.classList.add('sketch');
+  const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&display=swap'; document.head.appendChild(l); }
+const INK='#353A32', SK={ land:'#F2EADA', road:'#FBF7EE', major:'#FFFDF8', water:'#BCD0D6', waterInk:'#6F8E99', park:'#CDD6B8', parkInk:'#7D9468' };
+const HAND_FONT="'Patrick Hand SC', 'Caveat', cursive";
+// small seamless tiles drawn on a canvas: tree clumps for parks, pencil hatching for hill shadows
+function sketchTile(kind){
+  const s=kind==='park'?160:48, k=2, c=document.createElement('canvas'); c.width=c.height=s*k; const g=c.getContext('2d'); g.scale(k,k);
+  const R=rng(kind==='park'?11:5); g.lineCap='round'; g.lineJoin='round';
+  if(kind==='park'){
+    g.fillStyle=SK.park; g.fillRect(0,0,s,s);
+    // a few clumps of overlapping trees, drawn at every wrap offset so the tile repeats without seams
+    const trees=[]; [[30,34,5],[104,22,3],[120,104,5],[46,118,4],[86,72,2],[150,150,3],[8,84,2]].forEach(([cx,cy,n])=>{
+      for(let i=0;i<n;i++) trees.push([cx+(R()-.5)*20,cy+(R()-.5)*16,5+R()*3.5,R()]); });
+    trees.sort((a,b)=>a[1]-b[1]);
+    const tree=(x,y,r,t)=>{ const pts=[]; for(let a=0;a<Math.PI*2;a+=Math.PI/6){ const rr=r*(.82+((t*97+a*13)%1)*.3); pts.push([x+rr*Math.cos(a),y+rr*.92*Math.sin(a)]); }
+      g.beginPath(); pts.forEach(([px,py],i)=>{ const [qx,qy]=pts[(i+1)%pts.length]; i?0:g.moveTo((px+qx)/2,(py+qy)/2); g.quadraticCurveTo(qx,qy,(qx+pts[(i+2)%pts.length][0])/2,(qy+pts[(i+2)%pts.length][1])/2); }); g.closePath();
+      g.fillStyle=t>.5?'#A7BB8C':'#B7C79D'; g.fill(); g.strokeStyle='rgba(53,58,50,.62)'; g.lineWidth=.8; g.stroke();
+      g.beginPath(); g.arc(x-r*.15,y-r*.1,r*.5,Math.PI*1.1,Math.PI*1.7); g.strokeStyle='rgba(53,58,50,.3)'; g.lineWidth=.6; g.stroke();   // a shading curl
+      g.beginPath(); g.moveTo(x,y+r*.85); g.lineTo(x+.4,y+r+3); g.strokeStyle='rgba(53,58,50,.6)'; g.lineWidth=.8; g.stroke(); };
+    [-s,0,s].forEach(ox=>[-s,0,s].forEach(oy=>trees.forEach(([x,y,r,t])=>tree(x+ox,y+oy,r,t))));
+    g.fillStyle='rgba(53,58,50,.28)'; for(let i=0;i<60;i++){ g.beginPath(); g.arc(R()*s,R()*s,.45,0,7); g.fill(); }   // stipple
+    g.strokeStyle='rgba(53,58,50,.22)'; g.lineWidth=.6; for(let i=0;i<10;i++){ const x=R()*s, y=R()*s; g.beginPath(); g.moveTo(x,y); g.lineTo(x+1.5,y-2.5); g.moveTo(x+3,y); g.lineTo(x+3.6,y-2.8); g.stroke(); }   // grass tufts
+  } else {
+    // pencil hatching at 45°, spaced to divide the tile so it repeats cleanly
+    g.strokeStyle='rgba(53,58,50,.45)'; g.lineWidth=.6;
+    for(let i=-s;i<=s;i+=6){ g.beginPath(); g.moveTo(i,s); g.lineTo(i+s,0); g.stroke(); }
+  }
+  return { width:s*k, height:s*k, data:new Uint8Array(g.getImageData(0,0,s*k,s*k).data.buffer) };
+}
+// a neighborhood name lettered by hand: each letter nudged and tilted a little, with a cream halo so it reads over roads
+function handLabel(text,city){
+  const k=2, fs=(city?21:16.5)*k, pad=6*k, R=rng([...text].reduce((a,ch)=>a*31+ch.charCodeAt(0)>>>0,7)%2147483646+1);
+  const c=document.createElement('canvas'), g=c.getContext('2d'); g.font=`${fs}px ${HAND_FONT}`;
+  const sp=(city?2.4:1.6)*k, ws=[...text].map(ch=>g.measureText(ch).width), w=Math.ceil(ws.reduce((a,b)=>a+b+sp,0)+pad*2), h=Math.ceil(fs*1.3+pad*2);
+  c.width=w; c.height=h; g.font=`${fs}px ${HAND_FONT}`; g.textBaseline='middle'; g.lineJoin='round';
+  const jit=[...text].map(()=>[(R()-.5)*1.6*k,(R()-.5)*.09]);   // the same wobble for the halo, the ink and its edge
+  const draw=(stroke)=>{ let x=pad; [...text].forEach((ch,i)=>{ g.save(); g.translate(x+ws[i]/2,h/2+jit[i][0]); g.rotate(jit[i][1]);
+      stroke? g.strokeText(ch,-ws[i]/2,0) : g.fillText(ch,-ws[i]/2,0); g.restore(); x+=ws[i]+sp; }); };
+  g.strokeStyle='rgba(242,234,218,.92)'; g.lineWidth=5*k; draw(true);
+  g.fillStyle=INK; g.globalAlpha=city?.92:.82; draw(false); g.strokeStyle=INK; g.lineWidth=.55*k; draw(true);
+  return { width:w, height:h, data:new Uint8Array(g.getImageData(0,0,w,h).data.buffer) };
+}
+function sketchMapbox(m){
+  const L=m.getStyle().layers||[], set=(id,k,v)=>{ try{ m.setPaintProperty(id,k,v); }catch(e){} };
+  L.forEach(l=>{ const id=l.id;
+    if(l.type==='background') set(id,'background-color',SK.land);
+    else if(l.type==='fill' && /water/.test(id)) set(id,'fill-color',SK.water);
+    else if(l.type==='fill' && /building/.test(id)){ set(id,'fill-color',SK.land); set(id,'fill-outline-color','rgba(53,58,50,.28)'); }
+    else if(l.type==='line' && /^(road|bridge|tunnel)/.test(id) && !/path|steps|pedestrian|rail|construction/.test(id)){
+      // 1: the road's edge is the ink line and its middle is paper, like a pen-drawn street
+      if(/case/.test(id)){ set(id,'line-color',INK); set(id,'line-opacity',/motorway|trunk|primary/.test(id)?.62:.5); }
+      else set(id,'line-color',/motorway|trunk|primary/.test(id)?SK.major:SK.road);
+    }
+    else if(l.type==='line' && /path|pedestrian|steps/.test(id)) set(id,'line-color','rgba(53,58,50,.35)');
+    else if(l.type==='symbol' && /road/.test(id)) { set(id,'text-color','#5E6157'); set(id,'text-halo-color',SK.land); }
+  });
+  // 2: parks as drawn tree clumps with an ink edge, hill shadows hatched in pencil, lakes with a drawn shoreline
+  if(!m.hasImage('sk-park')) m.addImage('sk-park',sketchTile('park'),{pixelRatio:2});
+  if(!m.hasImage('sk-hatch')) m.addImage('sk-hatch',sketchTile('hatch'),{pixelRatio:2});
+  const ids=L.map(l=>l.id), firstWater=ids.find(id=>/^water/.test(id)), afterWater=ids[ids.lastIndexOf('water')+1];
+  const parkF=['match',['get','class'],['park','wood','scrub','grass','cemetery','golf_course','pitch'],true,false];
+  try{
+    if(m.getSource('mapbox-terrain')||ids.includes('hillshade')){ const hs=L.find(l=>l.id==='hillshade');
+      m.addLayer({id:'sk-hills',type:'fill',source:hs.source,'source-layer':hs['source-layer'],filter:['==',['get','class'],'shadow'],maxzoom:16,paint:{'fill-pattern':'sk-hatch','fill-opacity':['interpolate',['linear'],['zoom'],10,.55,15,.3]}},firstWater); }
+  }catch(e){ console.warn('sketch hills',e); }
+  try{
+    m.addLayer({id:'sk-parks',type:'fill',source:'composite','source-layer':'landuse',filter:parkF,paint:{'fill-pattern':'sk-park'}},firstWater);
+    m.addLayer({id:'sk-parks-edge',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':SK.parkInk,'line-width':['interpolate',['linear'],['zoom'],11,.5,15,1.2],'line-opacity':.7}},firstWater);
+    m.addLayer({id:'sk-natpark',type:'fill',source:'composite','source-layer':'landuse_overlay',filter:['==',['get','class'],'national_park'],paint:{'fill-pattern':'sk-park','fill-opacity':.7}},firstWater);
+  }catch(e){ console.warn('sketch parks',e); }
+  try{
+    m.addLayer({id:'sk-shore',type:'line',source:'composite','source-layer':'water',paint:{'line-color':SK.waterInk,'line-width':['interpolate',['linear'],['zoom'],10,.6,15,1.6]}},afterWater);
+    // a second, fainter line just inside the shore: the ripple a pen leaves going round twice
+    m.addLayer({id:'sk-shore-ripple',type:'line',source:'composite','source-layer':'water',minzoom:12,paint:{'line-color':SK.waterInk,'line-width':.8,'line-opacity':.4,'line-offset':['interpolate',['linear'],['zoom'],12,2,16,5]}},afterWater);
+  }catch(e){ console.warn('sketch water',e); }
+  // 3: neighborhood names as hand-lettered images (Mapbox can't use web fonts), with Mapbox still placing them and avoiding collisions
+  m.on('styleimagemissing',e=>{ const id=e.id; if(!/^hand[12]:/.test(id) || m.hasImage(id)) return; m.addImage(id,handLabel(id.slice(6),id[4]==='1'),{pixelRatio:2}); });
+  document.fonts.load(`20px ${HAND_FONT}`).catch(()=>{}).then(()=>{ if(!m.style) return; try{
+    ['comuna-hood-labels','comuna-hood-labels-hoods'].forEach(id=>m.getLayer(id)&&m.setLayoutProperty(id,'visibility','none'));
+    const lay=(city)=>({'symbol-sort-key':['-',['get','size']],'icon-image':['concat',city?'hand1:':'hand2:',['get','name']],'icon-size':['interpolate',['linear'],['zoom'],11,.8,15,1.05],'icon-offset':[0,-26],'icon-padding':4});
+    m.addLayer({id:'sk-city-labels',type:'symbol',source:'comuna-hoods',minzoom:11,filter:['==',['get','city'],1],layout:lay(1)});
+    m.addLayer({id:'sk-hood-labels',type:'symbol',source:'comuna-hoods',minzoom:12,filter:['==',['get','city'],0],layout:lay(0)});
+  }catch(e){ console.warn('sketch labels',e); } });
 }
 function setMapStatus(live){ const el=document.getElementById('mapStatus'); if(el) el.textContent = live ? 'Map: live Mapbox, styled to Brand Guide v2.' : 'Map: Paper preview. The live Mapbox map loads when this file runs on the team\'s own site (Mapbox tokens are locked to approved domains).'; }
 function tryMapbox(){
