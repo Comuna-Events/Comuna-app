@@ -2332,7 +2332,9 @@ function styleMapbox(m=map){
    3 hand-lettered neighborhood labels, 4 paper grain over the map (CSS above). */
 const SKETCH=/[?&]sketch\b/.test(location.search);
 if(SKETCH){ document.documentElement.classList.add('sketch');
-  const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&display=swap'; document.head.appendChild(l); }
+  const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&display=swap'; document.head.appendChild(l);
+  // the names are drawn once, so wait for the font's stylesheet and then the font itself, never the fallback
+  window.HAND_READY=new Promise(r=>{ l.onload=r; l.onerror=r; setTimeout(r,4000); }).then(()=>document.fonts.load("20px 'Patrick Hand SC'")).catch(()=>{}); }
 const INK='#353A32', SK={ land:'#F2EADA', road:'#FBF7EE', major:'#FFFDF8', water:'#BCD0D6', waterInk:'#6F8E99', park:'#CDD6B8', parkInk:'#7D9468' };
 const HAND_FONT="'Patrick Hand SC', 'Caveat', cursive";
 // small seamless tiles drawn on a canvas: tree clumps for parks, pencil hatching for hill shadows
@@ -2387,14 +2389,20 @@ function sketchMapbox(m){
     else if(l.type==='line' && /path|pedestrian|steps/.test(id)) set(id,'line-color','rgba(53,58,50,.35)');
     else if(l.type==='symbol' && /road/.test(id)) { set(id,'text-color','#5E6157'); set(id,'text-halo-color',SK.land); }
   });
+  // 1b: the style draws each road as one line, so add the pen outline ourselves: two thin ink lines with a gap as wide as the road
+  ['road-simple','bridge-simple'].forEach(rid=>{ const r=L.find(l=>l.id===rid); if(!r) return; try{
+    m.addLayer({id:'sk-ink-'+rid,type:'line',source:r.source,'source-layer':r['source-layer'],filter:r.filter,minzoom:Math.max(r.minzoom||0,10),layout:{'line-cap':'butt','line-join':'round'},
+      paint:{'line-color':INK,'line-gap-width':r.paint['line-width'],'line-width':['interpolate',['linear'],['zoom'],11,.5,14,.9,17,1.3],'line-opacity':['interpolate',['linear'],['zoom'],10,.2,13,.5,16,.62]}},rid);
+  }catch(e){ console.warn('sketch roads',e); } });
   // 2: parks as drawn tree clumps with an ink edge, hill shadows hatched in pencil, lakes with a drawn shoreline
   if(!m.hasImage('sk-park')) m.addImage('sk-park',sketchTile('park'),{pixelRatio:2});
   if(!m.hasImage('sk-hatch')) m.addImage('sk-hatch',sketchTile('hatch'),{pixelRatio:2});
   const ids=L.map(l=>l.id), firstWater=ids.find(id=>/^water/.test(id)), afterWater=ids[ids.lastIndexOf('water')+1];
   const parkF=['match',['get','class'],['park','wood','scrub','grass','cemetery','golf_course','pitch'],true,false];
   try{
-    if(m.getSource('mapbox-terrain')||ids.includes('hillshade')){ const hs=L.find(l=>l.id==='hillshade');
-      m.addLayer({id:'sk-hills',type:'fill',source:hs.source,'source-layer':hs['source-layer'],filter:['==',['get','class'],'shadow'],maxzoom:16,paint:{'fill-pattern':'sk-hatch','fill-opacity':['interpolate',['linear'],['zoom'],10,.55,15,.3]}},firstWater); }
+    // hill shadows hatched in pencil, and faint contour lines, from the terrain data already in the map's source
+    m.addLayer({id:'sk-hills',type:'fill',source:'composite','source-layer':'hillshade',filter:['==',['get','class'],'shadow'],maxzoom:16,paint:{'fill-pattern':'sk-hatch','fill-opacity':['interpolate',['linear'],['zoom'],10,.6,15,.35]}},firstWater);
+    m.addLayer({id:'sk-contours',type:'line',source:'composite','source-layer':'contour',minzoom:12,paint:{'line-color':INK,'line-opacity':['interpolate',['linear'],['zoom'],12,.08,15,.14],'line-width':['match',['get','index'],[5,10],.9,.5]}},firstWater);
   }catch(e){ console.warn('sketch hills',e); }
   try{
     m.addLayer({id:'sk-parks',type:'fill',source:'composite','source-layer':'landuse',filter:parkF,paint:{'fill-pattern':'sk-park'}},firstWater);
@@ -2407,8 +2415,9 @@ function sketchMapbox(m){
     m.addLayer({id:'sk-shore-ripple',type:'line',source:'composite','source-layer':'water',minzoom:12,paint:{'line-color':SK.waterInk,'line-width':.8,'line-opacity':.4,'line-offset':['interpolate',['linear'],['zoom'],12,2,16,5]}},afterWater);
   }catch(e){ console.warn('sketch water',e); }
   // 3: neighborhood names as hand-lettered images (Mapbox can't use web fonts), with Mapbox still placing them and avoiding collisions
-  m.on('styleimagemissing',e=>{ const id=e.id; if(!/^hand[12]:/.test(id) || m.hasImage(id)) return; m.addImage(id,handLabel(id.slice(6),id[4]==='1'),{pixelRatio:2}); });
-  document.fonts.load(`20px ${HAND_FONT}`).catch(()=>{}).then(()=>{ if(!m.style) return; try{
+  (window.HAND_READY||Promise.resolve()).then(()=>{ if(!m.style) return; try{
+    // every name drawn up front: Mapbox places a label once, so an image that arrives late would never show
+    HOODS.forEach(h=>{ const id=(h.city?'hand1:':'hand2:')+h.name.toUpperCase(); if(!m.hasImage(id)) m.addImage(id,handLabel(h.name.toUpperCase(),!!h.city),{pixelRatio:2}); });
     ['comuna-hood-labels','comuna-hood-labels-hoods'].forEach(id=>m.getLayer(id)&&m.setLayoutProperty(id,'visibility','none'));
     const lay=(city)=>({'symbol-sort-key':['-',['get','size']],'icon-image':['concat',city?'hand1:':'hand2:',['get','name']],'icon-size':['interpolate',['linear'],['zoom'],11,.8,15,1.05],'icon-offset':[0,-26],'icon-padding':4});
     m.addLayer({id:'sk-city-labels',type:'symbol',source:'comuna-hoods',minzoom:11,filter:['==',['get','city'],1],layout:lay(1)});
