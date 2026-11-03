@@ -12,6 +12,8 @@ monthly neighborhood leaderboard. It runs as a web app that can be added to a ph
   check-ins, points, reports and guest counts. The publishable key in `index.html` is safe to ship; row-level
   security decides what each person can read and write.
 - **Mapbox** draws the map. Event locations are stored in the database (see `supabase/ADDING_EVENTS.md`).
+  The map is restyled in code to look hand-drawn (ink-outlined roads, watercolor parks and water, hand-lettered
+  neighborhood names, drawn pins): see `sketchMapbox()` in `index.html`. Add `?classic` to the link to see the plain map.
 - **`service-worker.js`** caches the app shell so it opens offline. Change `CACHE_NAME` whenever you change
   a file it caches, so phones pick up the new version.
 

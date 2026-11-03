@@ -154,9 +154,9 @@ img{ max-width:100% }
 #map, .paper-map{ position:absolute; inset:0 }
 /* markers stack among themselves inside the map, never above the header, filters or cards that float over it */
 #map{ isolation:isolate; z-index:0 }
-/* MOCKUP (?sketch): print the map on the passport's paper, under the pins */
+/* hand-drawn map (off with ?classic): print the map on the passport's paper, under the pins */
 .sketch #map .mapboxgl-canvas-container{ position:absolute; inset:0 }
-/* MOCKUP (?sketch) pins: printed in ink like the map, a hard offset shadow instead of a soft one, a slightly hand-drawn round */
+/* hand-drawn map pins: printed in ink like the map, a hard offset shadow instead of a soft one, a slightly hand-drawn round */
 .sketch .pin{ border:1.7px solid var(--ink); border-radius:52% 47% 50% 48% / 48% 53% 47% 52%; box-shadow:inset 0 0 0 1.6px rgba(250,246,238,.55), 1.5px 2px 0 rgba(53,58,50,.75) }
 .sketch .pin.big{ box-shadow:inset 0 0 0 1.6px rgba(250,246,238,.55), 0 0 0 2px var(--paper), 0 0 0 3.6px var(--sun), 2px 3px 0 1.5px rgba(53,58,50,.6) }
 .sketch .pin.venue{ box-shadow:inset 0 0 0 1.6px rgba(250,246,238,.55), 3px -3px 0 -1px var(--paper), 3px -3px 0 .6px var(--ink), 1.5px 2px 0 rgba(53,58,50,.75) }
@@ -906,8 +906,9 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
    (offline, or a sandboxed preview), the app falls back to a hand-drawn "Paper" map
    and the demo events below, so nothing breaks.
 ============================================ */
-// MOCKUP: the hand-drawn map style, on when the link ends in ?sketch (defined first: pins read it as they're drawn)
-const SKETCH=/[?&]sketch\b/.test(location.search);
+// The hand-drawn map style is the default; ?classic on the end of the link shows the previous plain map
+// (defined first: pins read it as they're drawn)
+const SKETCH=!/[?&]classic\b/.test(location.search);
 const MAPBOX_TOKEN = "pk.eyJ1IjoiY3BpY2tlMjEiLCJhIjoiY212OGxveTQ1MDZ2MTJ5b2pxanM1Nzh2cCJ9.rfY6jqvu9LHbmGCx_rrGKw";
 // Supabase: accounts, RSVPs, check-ins, points. The publishable key is safe in the page; row-level security protects the data.
 const SUPABASE_URL = "https://sjxxiammvvfxcnukkqhg.supabase.co";
@@ -2184,7 +2185,7 @@ async function logSearch(q,results,eventId){
 let map=null, markers=[], paperDrawn=false;
 // small tier glyph for tabs, badges and the legend
 function tierIcon(k,size=14){ return k==='cornerstone'? `<span class="ticon"><i style="width:${size*.8}px;height:${size*.8}px;border-radius:50%;background:${C.green};box-shadow:0 0 0 2px ${C.sun}"></i></span>` : `<span class="ticon"></span>`; }
-// MOCKUP (?sketch): the name on a pin's tag: the venue as a stamp names it, else the event
+// hand-drawn map: the name on a pin's tag: the venue as a stamp names it, else the event
 function pinTag(ev){ const t=stampPlaceName(ev.venue||'')||ev.title||''; return t.length>40? t.slice(0,39).trim()+"…" : t; }
 // once a tag is on the map: if it would run past the map's right edge, put it on the pin's left
 function fitTag(el){ const t=el.querySelector('.tag'), mapEl=document.getElementById('map'); if(!t||!mapEl) return; t.classList.remove('flip');
@@ -2300,9 +2301,7 @@ function setDots(list){
   const data={ type:'FeatureCollection', features:list.map(ev=>({ type:'Feature', properties:{ id:ev.id, c:CATS[catKey(ev.category)].bg }, geometry:{ type:'Point', coordinates:[ev.lng,ev.lat] } })) };
   if(!map.getSource('focus-dots')){
     map.addSource('focus-dots',{ type:'geojson', data });
-    // sketch: a hard ink shadow under each dot, offset like the pins'
-    if(SKETCH) map.addLayer({ id:'focus-dots-shadow', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':'#353A32', 'circle-opacity':.7, 'circle-translate':[1.5,2] } });
-    map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':SKETCH?1:.85, 'circle-stroke-color':SKETCH?'#353A32':'#F3E7D1', 'circle-stroke-width':SKETCH?1.2:1.5 } });
+    map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':.85, 'circle-stroke-color':SKETCH?'#353A32':'#F3E7D1', 'circle-stroke-width':SKETCH?1.2:1.5 } });
     // dots are 9px but a fingertip isn't: a tap anywhere within ~22px opens the closest dot's event
     map.on('click',e=>{ if(!map.getLayer('focus-dots')) return; const p=e.point, r=22;
       const fs=map.queryRenderedFeatures([[p.x-r,p.y-r],[p.x+r,p.y+r]],{layers:['focus-dots']}); if(!fs.length) return;
@@ -2366,7 +2365,7 @@ function styleMapbox(m=map){
   }catch(e){}
   if(SKETCH) sketchMapbox(m);
 }
-/* ---------- MOCKUP (?sketch): a hand-drawn map, after the illustrated LA maps ----------
+/* ---------- the hand-drawn map (off with ?classic), after the illustrated LA maps ----------
    1 roads drawn as ink outlines, 2 sketched parks and trees, watercolor hills, inked lake edges and ripples,
    3 hand-lettered neighborhood labels, 4 paper grain over the map (CSS above). */
 if(SKETCH){ document.documentElement.classList.add('sketch');
