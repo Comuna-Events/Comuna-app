@@ -1073,7 +1073,13 @@ if(!S.signedUp && !S.guest) Object.assign(S,{ places:{}, points:0, streak:0, vis
 
 /* ---------- geometry ---------- */
 function miles(a,b){ const R=3958.8, dLa=(b.lat-a.lat)*Math.PI/180, dLo=(b.lng-a.lng)*Math.PI/180; const x=Math.sin(dLa/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
-function origin(){ return S.loc || DEFAULT_CENTER; }
+// A location outside LA (the iPhone Simulator and Apple's reviewers sit in Cupertino; people travel) has nothing nearby,
+// so the map, distances and today's picks start from your neighborhood instead. Check-ins still use the real location.
+const LA_REACH_MI=15;   // this far from the nearest LA neighborhood or city still counts as LA
+function inLA(p){ if(!p || p.lat==null || p.lng==null) return false; const k=p.lat+','+p.lng;
+  if(inLA.k!==k){ inLA.k=k; inLA.v=HOODS.some(h=>miles(p,h)<=LA_REACH_MI); } return inLA.v; }
+function homeBase(){ const h=S.nb? hoodByName(S.nb) : null; return h && h.lat!=null? {lat:h.lat,lng:h.lng} : DEFAULT_CENTER; }
+function origin(){ return S.loc && inLA(S.loc)? S.loc : homeBase(); }
 function inRing(x,y,r){ let c=false; for(let i=0,j=r.length-2;i<r.length;j=i,i+=2){ const xi=r[i],yi=r[i+1],xj=r[j],yj=r[j+1]; if((yi>y)!==(yj>y) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) c=!c; } return c; }
 function inPlace(p,h){ const b=h.bbox; return !!b && p.lng>=b[0] && p.lng<=b[2] && p.lat>=b[1] && p.lat<=b[3] && h.shapes.some(s=>inRing(p.lng,p.lat,s[0]) && !s.slice(1).some(r=>inRing(p.lng,p.lat,r))); }
 function hoodOf(p){ if(p.lat==null||p.lng==null) return HOODS[0];
@@ -1398,7 +1404,9 @@ locList.onclick=e=>{ const b=e.target.closest('[data-hood]'); if(!b) return;
   setHood(b.dataset.hood); locQ.value=''; locList.innerHTML=''; toast('Got it. Home base is '+S.nb); afterLocation(); };
 document.getElementById('allowLoc').addEventListener('click',()=>{
   if(!navigator.geolocation){ toast('Location isn\'t available on this device. Try another browser or phone.'); return; }
-  navigator.geolocation.getCurrentPosition(p=>{ const loc={lat:p.coords.latitude,lng:p.coords.longitude}; setHood(hoodOf(loc).name,loc); toast('Got it. You\'re near '+S.nb); afterLocation(); },
+  navigator.geolocation.getCurrentPosition(p=>{ const loc={lat:p.coords.latitude,lng:p.coords.longitude};
+    if(!inLA(loc)){ setHood(hoodByName('Silver Lake').name); toast('You\'re outside LA, so we started you in '+S.nb+'.'); afterLocation(); return; }
+    setHood(hoodOf(loc).name,loc); toast('Got it. You\'re near '+S.nb); afterLocation(); },
     ()=>{ toast('No problem. Search for your neighborhood or city instead.'); locQ.focus(); }, {timeout:6000});
 });
 
@@ -2201,7 +2209,9 @@ function centerOnLocation(){
   busy(true);
   try{ navigator.geolocation.getCurrentPosition(position=>{
     busy(false);
-    S.loc={lat:position.coords.latitude,lng:position.coords.longitude}; locAt=Date.now(); save();
+    const here={lat:position.coords.latitude,lng:position.coords.longitude};
+    if(!inLA(here)){ haptic('selection'); toast('You\'re outside LA, so the map stays on '+(S.nb||'Silver Lake')+'.'); if(current==='home') openCamera(true); return; }
+    S.loc=here; locAt=Date.now(); save();
     if(markers.you) markers.you.setLngLat([S.loc.lng,S.loc.lat]);
     userMoved=false; selId=null; fromCards=false; cardSwipe=false;
     if(current==='home'){ renderHome(); openCamera(true); }
@@ -2459,7 +2469,7 @@ function placePins(P){
   if(map){ const you=markers.you; lastPins=P; drawClusters(); markers.you=you;
     if(!map._clusterHook){ map._clusterHook=true; map.on('moveend',()=>{ drawClusters(); if(fromCards){ fromCards=false; return; } cardsForView(); });
       ['dragstart','zoomstart'].forEach(t=>map.on(t,e=>{ if(e.originalEvent){ userMoved=true; fromCards=false; if(t==='dragstart' && selId!==null){ selId=null; } } })); }
-    if(!markers.you){ const y=youEl(YOU_SIZE), z=map.getZoom(); y.classList.toggle('dots', z>=CLUSTER_ZOOM && z<PIN_ZOOM); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
+    if(!markers.you && (!S.loc || inLA(S.loc))){ const y=youEl(YOU_SIZE), z=map.getZoom(); y.classList.toggle('dots', z>=CLUSTER_ZOOM && z<PIN_ZOOM); markers.you=new mapboxgl.Marker({element:y}).setLngLat([origin().lng,origin().lat]).addTo(map); }
     if(!map._opened){ map._opened=true; openCamera(false); }
   } else drawPaper();
 }
@@ -4045,6 +4055,7 @@ async function refreshLoc(){
   navigator.geolocation.getCurrentPosition(p=>{
     const loc={lat:p.coords.latitude,lng:p.coords.longitude};
     if(miles(loc,S.loc)<0.25) return;   // GPS jitter, not a move
+    if(!inLA(loc)) return;              // away from LA: keep your neighborhood (origin() falls back to it anyway)
     S.loc=loc; save(); rebuildMap(); if(current==='home') renderHome(); dbProfile();
   },()=>{}, {timeout:10000, maximumAge:5*6e4});
 }

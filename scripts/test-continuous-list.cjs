@@ -69,7 +69,7 @@ const server=http.createServer((req,res)=>{
   await page.click('#tList');assert.equal((await ids()).length,60,'switching back restores the extended result set');
   await run(()=>{searchQ='doesnotexist';searchHits=null;renderHome();});
   assert.equal((await ids()).length,0);assert.equal(await page.locator('#loadMoreEvents').count(),0,'empty results cannot append stale events');
-  await run(()=>{searchQ='';searchHits=null;S.loc={lat:35.3369,lng:-118.2702};renderHome();});
+  await run(()=>{searchQ='';searchHits=null;inLA=()=>true;S.loc={lat:35.3369,lng:-118.2702};renderHome();});   // a made-up spot past the test events; count it as LA (test-outside-la.cjs covers the real rule)
   assert.equal((await ids())[0],125,'changing location reorders and resets the list');
   assert.equal((await ids()).length,30);
   assert.deepEqual(errors,[],'no browser errors');
