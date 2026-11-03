@@ -2359,10 +2359,10 @@ const HAND_FONT="'Patrick Hand SC', 'Caveat', cursive";
 // watercolor mottle over a tile: soft blotches of a darker and a lighter tone, each drawn at every wrap offset so the
 // tile repeats without seams, then a fine granulation like pigment settling in the paper's grain
 function washTile(g,s,R,dark,light,n=26){
-  for(let i=0;i<n;i++){ const x=R()*s, y=R()*s, r=s*(.1+R()*.24), col=R()<.55? dark : light, a=.1+R()*.16;
+  for(let i=0;i<n;i++){ const x=R()*s, y=R()*s, r=s*(.12+R()*.24), col=R()<.55? dark : light, a=.035+R()*.06;
     [-s,0,s].forEach(ox=>[-s,0,s].forEach(oy=>{ const gr=g.createRadialGradient(x+ox,y+oy,0,x+ox,y+oy,r);
       gr.addColorStop(0,`rgba(${col},${a})`); gr.addColorStop(.6,`rgba(${col},${a*.55})`); gr.addColorStop(1,`rgba(${col},0)`); g.fillStyle=gr; g.fillRect(x+ox-r,y+oy-r,r*2,r*2); })); }
-  for(let i=0;i<s*s/30;i++){ g.fillStyle=`rgba(${dark},${.05+R()*.07})`; g.fillRect(R()*s,R()*s,.7,.7); }
+  for(let i=0;i<s*s/30;i++){ g.fillStyle=`rgba(${dark},${.03+R()*.04})`; g.fillRect(R()*s,R()*s,.7,.7); }
 }
 function waterTile(){
   const s=256, k=2, c=document.createElement('canvas'); c.width=c.height=s*k; const g=c.getContext('2d'); g.scale(k,k); const R=rng(23);
@@ -2500,22 +2500,22 @@ function ripple(v){
 function placeTrees(m){
   const src=m.getSource('sk-trees'); if(!src) return; const z=m.getZoom();
   if(z<12.5){ src.setData({type:'FeatureCollection',features:[]}); return; }
-  const Z=Math.floor(z), step=(z<15?20:30)*360/(512*2**Z), b=m.getBounds(), lat0=b.getCenter().lat, stepLat=step*Math.cos(lat0*Math.PI/180);
+  const Z=Math.floor(z), step=(z<15?26:38)*360/(512*2**Z), b=m.getBounds(), lat0=b.getCenter().lat, stepLat=step*Math.cos(lat0*Math.PI/180);
   // zoomed out, trails are hair-thin and trees may stand over them; up close they keep clear of every path too
   const block=m.getStyle().layers.filter(l=>/^(road|bridge|tunnel)-|^water$|^building|^sk-shore$/.test(l.id) && !(z<15 && /path|trail|steps|pedestrian|cycleway|label/.test(l.id)) && m.getLayer(l.id)).map(l=>l.id);
   const parks=['sk-parks','sk-natpark'].filter(id=>m.getLayer(id));
   const f=[], hash=(i,j)=>{ let x=(i*73856093)^(j*19349663); x=(x^(x>>>13))*1274126177; return ((x^(x>>>16))>>>0)/4294967296; };
-  const scale=z<15? .55+(z-12.5)*.12 : .85+(z-15)*.125, hw=14*scale, hh=26*scale;
+  const scale=z<15? .45+(z-12.5)*.08 : .65+(z-15)*.1, hw=14*scale, hh=26*scale;
   for(let i=Math.floor(b.getWest()/step)-1;i<=b.getEast()/step+1;i++) for(let j=Math.floor(b.getSouth()/stepLat)-1;j<=b.getNorth()/stepLat+1;j++){
-    const r1=hash(i,j), r2=hash(j+7,i-3); if(r1<.18) continue;   // leave some gaps, like a hand would
+    const r1=hash(i,j), r2=hash(j+7,i-3); if(r1<.35) continue;   // about a third of the spots stay open   // leave some gaps, like a hand would
     const lng=(i+r1)*step, lat=(j+r2)*stepLat, p=m.project([lng,lat]);
     if(!m.queryRenderedFeatures(p,{layers:parks}).length) continue;
-    const r3=hash(i+11,j+5), isPalm=r3<.3, top=isPalm? hh*2.2 : hh;
+    const r3=hash(i+11,j+5), isPalm=r3<.18, top=isPalm? hh*2.2 : hh;
     if(m.queryRenderedFeatures([[p.x-hw,p.y-top],[p.x+hw,p.y+3]],{layers:block}).some(f=>!(z<15 && /track|service|path/.test(f.properties.class||'')))) continue;
-    f.push({type:'Feature',properties:{v:isPalm? 'sk-palm'+(r3<.2?0:1) : 'sk-tree'+Math.floor(hash(i+5,j+11)*4)},geometry:{type:'Point',coordinates:[lng,lat]}});
+    f.push({type:'Feature',properties:{v:isPalm? 'sk-palm'+(r3<.1?0:1) : 'sk-tree'+Math.floor(hash(i+5,j+11)*4)},geometry:{type:'Point',coordinates:[lng,lat]}});
   }
   // ripples: a sparser grid, kept only where the whole stroke sits on open water, clear of shores and bridges
-  const wstep=step*1.15, wstepLat=stepLat*1.15, rw=12*scale/.85, water=['water'].filter(id=>m.getLayer(id)), dry=block.filter(id=>id!=="water"&&id!=="sk-shore");
+  const wstep=step*.85, wstepLat=stepLat*.85, rw=12*scale/.85, water=['water'].filter(id=>m.getLayer(id)), dry=block.filter(id=>id!=="water"&&id!=="sk-shore");
   for(let i=Math.floor(b.getWest()/wstep)-1;i<=b.getEast()/wstep+1;i++) for(let j=Math.floor(b.getSouth()/wstepLat)-1;j<=b.getNorth()/wstepLat+1;j++){
     const r1=hash(i+101,j-7), r2=hash(j+3,i+29); if(r1<.2) continue;
     const lng=(i+r1)*wstep, lat=(j+r2)*wstepLat, p=m.project([lng,lat]);
@@ -2571,9 +2571,9 @@ function sketchMapbox(m){
   try{
     m.addLayer({id:'sk-parks',type:'fill',source:'composite','source-layer':'landuse',filter:parkF,paint:{'fill-pattern':'sk-park'}},firstWater);
     // watercolor: pigment pools at the edge of each park, a soft darker band just inside it, and the drawn edge stays faint
-    m.addLayer({id:'sk-parks-pool',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':'#97AC7C',
-      'line-width':['interpolate',['linear'],['zoom'],11,3,14,8,17,16],'line-blur':['interpolate',['linear'],['zoom'],11,3,14,7,17,14],
-      'line-offset':['interpolate',['linear'],['zoom'],11,1.5,14,4,17,8],'line-opacity':.45}},firstWater);
+    m.addLayer({id:'sk-parks-pool',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':'#A3B68A',
+      'line-width':['interpolate',['linear'],['zoom'],11,2,14,5,17,10],'line-blur':['interpolate',['linear'],['zoom'],11,2,14,5,17,9],
+      'line-offset':['interpolate',['linear'],['zoom'],11,1,14,2.5,17,5],'line-opacity':.22}},firstWater);
     m.addLayer({id:'sk-parks-edge',type:'line',source:'composite','source-layer':'landuse',filter:parkF,minzoom:11,paint:{'line-color':SK.parkInk,'line-width':['interpolate',['linear'],['zoom'],11,.5,15,1.1],'line-opacity':.32}},firstWater);
     m.addLayer({id:'sk-natpark',type:'fill',source:'composite','source-layer':'landuse_overlay',filter:['==',['get','class'],'national_park'],paint:{'fill-pattern':'sk-park','fill-opacity':.7}},firstWater);
     // the hill wash goes over the park greens too, so Griffith and Elysian keep their shape
@@ -2581,16 +2581,16 @@ function sketchMapbox(m){
     m.addSource('sk-trees',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     const firstRoad=ids.find(id=>/^(tunnel|road|bridge)-/.test(id));
     m.addLayer({id:'sk-trees',type:'symbol',source:'sk-trees',minzoom:12.5,layout:{'icon-image':['get','v'],'icon-anchor':['case',['has','w'],'center','bottom'],'icon-allow-overlap':true,'icon-ignore-placement':true,
-      'icon-size':['interpolate',['linear'],['zoom'],12.5,.55,15,.85,17,1.1]}},firstRoad);
+      'icon-size':['interpolate',['linear'],['zoom'],12.5,.45,15,.65,17,.85]}},firstRoad);
     // place them once the new view's tiles are drawn, or the park and road checks would find nothing
     let tt=null; const again=()=>{ clearTimeout(tt); tt=setTimeout(()=>placeTrees(m),80); };
     m.on('moveend',()=>m.once('idle',again)); m.once('idle',again);
   }catch(e){ console.warn('sketch parks',e); }
   try{
     // the same pooling inside every lake and the ocean's edge: a soft, darker blue band along the shore
-    m.addLayer({id:'sk-water-pool',type:'line',source:'composite','source-layer':'water',paint:{'line-color':'#88A9B5',
-      'line-width':['interpolate',['linear'],['zoom'],10,3,14,8,17,16],'line-blur':['interpolate',['linear'],['zoom'],10,3,14,7,17,14],
-      'line-offset':['interpolate',['linear'],['zoom'],10,1.5,14,4,17,8],'line-opacity':.38}},afterWater);
+    m.addLayer({id:'sk-water-pool',type:'line',source:'composite','source-layer':'water',paint:{'line-color':'#93B1BC',
+      'line-width':['interpolate',['linear'],['zoom'],10,2,14,5,17,10],'line-blur':['interpolate',['linear'],['zoom'],10,2,14,5,17,9],
+      'line-offset':['interpolate',['linear'],['zoom'],10,1,14,2.5,17,5],'line-opacity':.22}},afterWater);
     // the dark blue line that hugs the land
     m.addLayer({id:'sk-shore',type:'line',source:'composite','source-layer':'water',paint:{'line-color':SK.waterInk,'line-width':['interpolate',['linear'],['zoom'],10,.6,15,1.6]}},afterWater);
   }catch(e){ console.warn('sketch water',e); }
