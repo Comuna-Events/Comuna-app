@@ -2530,7 +2530,9 @@ function placeTrees(m){
       if(!e || Math.abs(z-e.z)>.5){ const lng=(i+spotHash(i,j,salt+1))*dLo, lat=(j+spotHash(i,j,salt+2))*dLa, r=test(lng,lat,i,j);
         if(r!=='retry'){ e={r,z}; memo.set(key,e); } }
       if(e && e.r) f.push(e.r); } };
-  spots(1,TREE_M,keep,(lng,lat,i,j)=>{ const p=m.project([lng,lat]);
+  // palms switched off (too distracting from the events); flip SHOW_PALMS to bring them back
+  const SHOW_PALMS=false;
+  if(SHOW_PALMS) spots(1,TREE_M,keep,(lng,lat,i,j)=>{ const p=m.project([lng,lat]);
     if(p.x<-20||p.y<-40||p.x>m.getCanvas().clientWidth+20||p.y>m.getCanvas().clientHeight+20) return 'retry';   // only judge spots on screen
     if(!m.queryRenderedFeatures(p,{layers:parks}).length) return null;
     const r3=spotHash(i,j,7), isPalm=true, top=hh*2.2, pw=hw*1.3;   // palms only: this is LA
