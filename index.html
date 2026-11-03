@@ -156,6 +156,21 @@ img{ max-width:100% }
 #map{ isolation:isolate; z-index:0 }
 /* MOCKUP (?sketch): print the map on the passport's paper, under the pins */
 .sketch #map .mapboxgl-canvas-container{ position:absolute; inset:0 }
+/* MOCKUP (?sketch) pins: printed in ink like the map, a hard offset shadow instead of a soft one, a slightly hand-drawn round */
+.sketch .pin{ border:1.7px solid var(--ink); border-radius:52% 47% 50% 48% / 48% 53% 47% 52%; box-shadow:inset 0 0 0 1.6px rgba(250,246,238,.55), 1.5px 2px 0 rgba(53,58,50,.75) }
+.sketch .pin.big{ box-shadow:inset 0 0 0 1.6px rgba(250,246,238,.55), 0 0 0 2px var(--paper), 0 0 0 3.6px var(--sun), 2px 3px 0 1.5px rgba(53,58,50,.6) }
+.sketch .pin.venue{ box-shadow:inset 0 0 0 1.6px rgba(250,246,238,.55), 3px -3px 0 -1px var(--paper), 3px -3px 0 .6px var(--ink), 1.5px 2px 0 rgba(53,58,50,.75) }
+.sketch .pin .cnt, .sketch .pin .chk{ border:1.5px solid var(--paper) }
+/* the chosen pin becomes a drawn map pin, like the reference's coffee pin. Mapbox moves markers with their own
+   transform, so the teardrop is drawn behind the icon and lifted so its point sits on the spot */
+.sketch .pin.sel{ background:transparent !important; border:0; box-shadow:none !important }
+.sketch .pin.sel::before{ content:''; position:absolute; left:-4px; top:-22px; width:36px; height:36px; background:var(--pc); border:1.8px solid var(--ink); border-radius:50% 50% 50% 4px; transform:rotate(-45deg); box-sizing:border-box;
+  box-shadow:inset 0 0 0 1.8px rgba(250,246,238,.55), 2px -1px 0 rgba(53,58,50,.8); z-index:-1 }
+.sketch .pin.sel > svg{ transform:translateY(-18px) scale(1.15) } .sketch .pin.sel .tag{ top:calc(50% - 18px); left:calc(100% + 12px) }
+.sketch .pin.sel .chk, .sketch .pin.sel .cnt{ top:-30px }
+/* name tag: an ink-outlined pill lettered by hand */
+.sketch .pin .tag{ position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%); white-space:nowrap; pointer-events:none; background:var(--card); color:var(--ink); border:1.6px solid var(--ink); border-radius:9px; padding:1px 9px 0; font:17px/1.25 'Patrick Hand SC','Caveat',cursive; letter-spacing:.06em; box-shadow:1.5px 2px 0 rgba(53,58,50,.7) }
+.sketch .cluster{ background:var(--card); color:var(--ink); border:1.7px solid var(--ink); box-shadow:1.5px 2px 0 rgba(53,58,50,.75); font:20px/1 'Patrick Hand SC','Caveat',cursive; border-radius:52% 47% 50% 48% / 48% 53% 47% 52% }
 .sketch #map .mapboxgl-canvas-container::after{ content:''; position:absolute; inset:0; background:var(--grain); mix-blend-mode:multiply; pointer-events:none }
 .mapwrap .toggle{ position:absolute; right:10px; top:10px; z-index:5; background:var(--card); border-radius:30px; display:flex; padding:3px; box-shadow:0 2px 8px rgba(0,0,0,.12) }
 .mapwrap .toggle button{ padding:6px 12px; border-radius:30px; font-size:12.5px; font-weight:700 }
@@ -2163,8 +2178,12 @@ async function logSearch(q,results,eventId){
 let map=null, markers=[], paperDrawn=false;
 // small tier glyph for tabs, badges and the legend
 function tierIcon(k,size=14){ return k==='cornerstone'? `<span class="ticon"><i style="width:${size*.8}px;height:${size*.8}px;border-radius:50%;background:${C.green};box-shadow:0 0 0 2px ${C.sun}"></i></span>` : `<span class="ticon"></span>`; }
+// MOCKUP (?sketch): the name on a pin's tag: the venue as a stamp names it, else the event
+function pinTag(ev){ const t=stampPlaceName(ev.venue||'')||ev.title||''; return t.length>20? t.slice(0,19).trim()+"…" : t; }
 function pinEl(ev,i){ const el=document.createElement('div'); const done=S.checked.includes(ev.id); const k=kindOf(ev), big=k==='cornerstone';
   el.className='pin'+(big?' big':''); el.style.background=CATS[catKey(ev.category)].bg; el.innerHTML=catIcon(ev.category,15)+(done?CHK_BADGE:'');
+  if(SKETCH) el.style.setProperty('--pc',CATS[catKey(ev.category)].bg);
+  if(SKETCH && (big || ev.id===selId)) el.insertAdjacentHTML('beforeend',`<span class="tag">${escH(pinTag(ev))}</span>`);
   el.setAttribute('role','button'); el.setAttribute('aria-label',ev.title+', '+CATS[catKey(ev.category)].label+(big?', Headliner':'')); el.tabIndex=0;
   el.onclick=e=>{ e.stopPropagation(); openSheet(ev.id); }; el.onmouseenter=()=>showCard(ev); el.onkeydown=e=>{ if(e.key==='Enter') openSheet(ev.id); }; return el; }
 /* pin clustering: pins closer than ~40px on screen merge into a numbered bubble; tap it to zoom in.
@@ -2263,7 +2282,7 @@ function setDots(list){
   const data={ type:'FeatureCollection', features:list.map(ev=>({ type:'Feature', properties:{ id:ev.id, c:CATS[catKey(ev.category)].bg }, geometry:{ type:'Point', coordinates:[ev.lng,ev.lat] } })) };
   if(!map.getSource('focus-dots')){
     map.addSource('focus-dots',{ type:'geojson', data });
-    map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':.85, 'circle-stroke-color':'#F3E7D1', 'circle-stroke-width':1.5 } });
+    map.addLayer({ id:'focus-dots', type:'circle', source:'focus-dots', paint:{ 'circle-radius':4.5, 'circle-color':['get','c'], 'circle-opacity':.85, 'circle-stroke-color':SKETCH?'#353A32':'#F3E7D1', 'circle-stroke-width':SKETCH?1.2:1.5 } });
     // dots are 9px but a fingertip isn't: a tap anywhere within ~22px opens the closest dot's event
     map.on('click',e=>{ if(!map.getLayer('focus-dots')) return; const p=e.point, r=22;
       const fs=map.queryRenderedFeatures([[p.x-r,p.y-r],[p.x+r,p.y+r]],{layers:['focus-dots']}); if(!fs.length) return;
@@ -2392,7 +2411,7 @@ function sketchMapbox(m){
   // 1b: the style draws each road as one line, so add the pen outline ourselves: two thin ink lines with a gap as wide as the road
   ['road-simple','bridge-simple'].forEach(rid=>{ const r=L.find(l=>l.id===rid); if(!r) return; try{
     m.addLayer({id:'sk-ink-'+rid,type:'line',source:r.source,'source-layer':r['source-layer'],filter:r.filter,minzoom:Math.max(r.minzoom||0,10),layout:{'line-cap':'butt','line-join':'round'},
-      paint:{'line-color':INK,'line-gap-width':r.paint['line-width'],'line-width':['interpolate',['linear'],['zoom'],11,.5,14,.9,17,1.3],'line-opacity':['interpolate',['linear'],['zoom'],10,.2,13,.5,16,.62]}},rid);
+      paint:{'line-color':INK,'line-gap-width':r.paint['line-width'],'line-width':['interpolate',['linear'],['zoom'],11,.5,14,.9,17,1.3],'line-opacity':['interpolate',['linear'],['zoom'],10,.12,12.5,['match',['get','class'],['motorway','trunk','primary','secondary'],.3,.06],14,['match',['get','class'],['motorway','trunk','primary','secondary'],.45,.2],15.5,.58,17,.62]}},rid);
   }catch(e){ console.warn('sketch roads',e); } });
   // 2: parks as drawn tree clumps with an ink edge, hill shadows hatched in pencil, lakes with a drawn shoreline
   if(!m.hasImage('sk-park')) m.addImage('sk-park',sketchTile('park'),{pixelRatio:2});
