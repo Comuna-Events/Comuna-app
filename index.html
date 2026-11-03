@@ -299,7 +299,7 @@ img{ max-width:100% }
 @media (prefers-reduced-motion:reduce){ .maplocate[aria-busy="true"] svg{ animation:none } }
 #homeScreen:not(.home-list) .mapwrap .toggle{ top:auto; bottom:calc(var(--navh) + 96px) }
 #homeScreen:not(.home-list) .maplabel{ bottom:calc(var(--navh) + 158px) }
-/* first view: today's Top 4 as pins, other events as quiet dots, one pill to show everything */
+/* first view: today's picks as pins, other events as quiet dots, one pill to show everything */
 .edot{ position:absolute; width:11px; height:11px; border-radius:50%; border:1.5px solid var(--paper); transform:translate(-50%,-50%); opacity:.85; cursor:pointer; padding:0 }
 #homeScreen:not(.home-list) .picks{ position:absolute; left:0; right:0; bottom:calc(var(--navh) - 18px); z-index:6; flex:none; display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:10px 14px 28px;  /* room for the cards' shadow, which a scrolling row would otherwise clip */ scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x; cursor:grab; -webkit-overflow-scrolling:touch }
 #homeScreen:not(.home-list) .picks.dragging{ scroll-snap-type:none; cursor:grabbing }
@@ -327,7 +327,7 @@ img{ max-width:100% }
 @keyframes up{ from{ transform:translateY(40px); opacity:.6 } to{ transform:none; opacity:1 } }
 @media (prefers-reduced-motion:reduce){ .sheet{ animation:none } }
 .grab{ width:42px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px; cursor:grab }
-/* icon only: the label (a venue name, "Top 4") ran long and wrapped over the sheet */
+/* icon only: the label (a venue name, "today's picks") ran long and wrapped over the sheet */
 .sheet .sback{ position:sticky; top:0; float:left; margin:-4px 0 0 -8px; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); display:flex; align-items:center; justify-content:center; z-index:2 }
 .sheet .sback ~ .cat{ clear:both; padding-top:10px }
 .sheet .x{ position:sticky; top:0; float:right; margin:-4px -8px 0 0; width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--muted); font-size:20px; line-height:1; display:grid; place-items:center; z-index:2 }
@@ -401,6 +401,20 @@ img{ max-width:100% }
 .recmodal .pickhd{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red); margin:16px 0 6px 4px }
 .recmodal .pickhd + .pick{ margin-top:0 }
 .recmodal .why{ font-size:11px; color:var(--muted); margin-top:2px }
+/* Tonight in <neighborhood>: no icons, the reason above each pick, a mood row, × back to the map */
+.recmodal .box{ position:relative }
+.recmodal .x{ position:absolute; top:12px; right:12px; width:44px; height:44px; border-radius:50%; color:var(--muted); font-size:24px; line-height:1; display:grid; place-items:center }
+.recmodal #recTitle{ padding-right:36px }
+.recmodal .recsum{ font-family:var(--hand); font-weight:700; font-size:22px; line-height:1.1; color:var(--red) }
+.recmodal .recmoods{ display:flex; gap:6px; margin:14px -20px 0; padding:0 20px; overflow-x:auto; scrollbar-width:none }
+.recmodal .recmoods::-webkit-scrollbar{ display:none }
+.recmodal .recmoods:empty{ display:none }
+.recmodal .recmoods .chip{ border-color:var(--line); background:var(--card); font-weight:700; min-height:34px }
+.recmodal .recmoods .chip.on{ background:var(--green); border-color:var(--green); color:#fff }
+.recmodal .pick{ grid-template-columns:1fr auto; border:1px solid var(--line); min-height:64px }
+.recmodal .pick .sig{ font-size:12px; font-weight:700; color:var(--green); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.recmodal .pick .dist{ color:var(--ink) }
+.recmodal .recnone{ font-size:14px; color:var(--muted); margin:18px 4px 4px }
 /* neighborhood starter kit: shown once, right after sign-up */
 .kitstats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 6px }
 .kitstat{ background:var(--card); border-radius:16px; padding:14px } .kitstat b{ display:block; font-family:var(--display); font-weight:900; font-size:40px; line-height:1; color:var(--green) } .kitstat span{ font-size:12.5px; color:var(--muted) }
@@ -873,10 +887,12 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
     <div class="overlay" id="overlay"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
     <div class="recmodal" id="recModal" role="dialog" aria-modal="true" aria-labelledby="recTitle"><div class="box">
       <div class="grab" aria-hidden="true"></div>
+      <button class="x" id="recClose" aria-label="Back to the map">&times;</button>
       <div class="k" id="recKicker">Picked for you</div>
-      <div class="h1" id="recTitle">Your week, nearby</div>
+      <div class="h1" id="recTitle">Tonight nearby</div>
+      <div class="recsum" id="recSum"></div>
+      <div class="recmoods" id="recMoods" role="group" aria-label="What are you up for?"></div>
       <div id="recList"></div>
-      <button class="btn green" id="recClose" style="margin-top:16px">Explore the map</button>
     </div></div>
     <div class="recmodal kit" id="kitModal" role="dialog" aria-modal="true" aria-labelledby="kitTitle"><div class="box">
       <div id="kitBody"></div>
@@ -1675,44 +1691,126 @@ function forgetPlan(ev,day){
   if(!S.rsvpDates[ev.id].length) S.rsvp=S.rsvp.filter(id=>id!==ev.id);
 }
 
-/* ---------- daily Top 4: up to four events within 5 miles, once a day ---------- */
-const PICK_MAX_MI=5;   // ~18 "min away"; anything farther never makes the Top 4
-function dailyPicks(){
+/* ---------- Tonight in <neighborhood>: up to four picks, once a day, different from the days before ---------- */
+// Closest used to win outright, so the same few venues (and every weekly event) came back daily. Now:
+// - anything shown in the last few days and not tapped is pushed down, and a weekly event shows at most once a week;
+// - one-time and last-chance events beat things that happen every week ("rare beats close");
+// - no two picks share a category; one slot is a wildcard from outside your interests or a bit farther away;
+// - today's events come first, and a neighborhood you haven't stamped yet gets a nudge.
+// Every reason comes from the listing or from you (your stamps), never from other people, so it works with few users.
+const PICK_MAX_MI=5;        // ~18 "min away": the usual limit
+const PICK_WILD_MI=12;      // the wildcard ("Worth the drive") can come from up to here
+const PICK_FORGET_DAYS=5;   // a pick you didn't tap stays pushed down this long
+const PICK_KEEP_DAYS=14;    // how long the shown/tapped log is kept
+const pickDayNum=()=>Math.round(today0().getTime()/864e5);
+const recursOften=ev=>!ev.start || /daily|weekly|biweekly/i.test(ev.rec||'');   // weekday-only listings repeat weekly
+function lastChance(ev,t0=today0()){ return !!(ev.end && ev.start && ev.start<t0 && ev.end>=t0 && ev.end-t0<3*864e5); }
+// a neighborhood you haven't checked into yet (only once you have at least one stamp, or everything would be "new")
+function newStampFor(ev){ const H=visitedHoods(); return Object.keys(H).length>0 && !!ev.hood && !H[ev.hood]; }
+function pickDay(ev){ return ev.start? nextDate(ev) : evDate(ev); }
+const pickToday=ev=>{ const d=pickDay(ev); return !!d && d<=today0(); };
+function pickScore(ev,day,want){
+  const shown=(S.pickShown||{})[ev.id], tapped=(S.pickTapped||{})[ev.id];
+  let s=ev.mi*(want.includes(ev.category)?0.6:1);
+  if(pickToday(ev)) s-=1.5;                                       // "Tonight in…" leads with tonight
+  if(newStampFor(ev)) s-=0.8;                                     // a stamp you don't have yet
+  if(kindOf(ev)==='popup' || /one-off/i.test(ev.rec||'')) s-=1.5; // only happens once
+  if(lastChance(ev)) s-=2.5;                                      // a run that ends in the next few days
+  if(recursOften(ev)) s+=1;                                       // will be there next week too
+  if(ev.rev && ev.rev.pct>=85) s-=0.5;       // people who went loved it
+  if(shown!=null && tapped==null){ const age=day-shown; if(age>=1 && age<PICK_FORGET_DAYS) s+=3*(1-age/PICK_FORGET_DAYS); }
+  return s+((ev.id*7919+day*104729)%97)/97*0.8;                   // a daily shuffle big enough to reorder near-ties
+}
+// "What are you up for?": filters from the listing (vibes, price, start time), shown only when something matches
+const PICK_MOODS={
+  chill:  { label:'Chill',    ok:ev=>(ev.vibes||[]).some(v=>['chill','solo-friendly','creative','cultural'].includes(v)) },
+  social: { label:'Social',   ok:ev=>catKey(ev.category)==='community' || (ev.vibes||[]).some(v=>['dance','live music','festive','solo-friendly'].includes(v)) },
+  late:   { label:'Out late', ok:ev=>(ev.vibes||[]).includes('late night') || ev.sub==='nightlife' || String(ev.t0||'')>='20:00' },
+  cheap:  { label:'Cheap',    ok:ev=>/free|donation|pay-what/i.test(ev.price||'') }
+};
+function dailyPicks(mood){
   enrich();
-  const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label));
+  const want=Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].label)), day=pickDayNum(), shown=S.pickShown||{};
   // only things happening in the next 7 days (today included), so daily picks stay timely
   const t0=today0(), soon=ev=>{ const d=ev.start? nextDate(ev) : evDate(ev); return !!d && d>=t0 && d-t0<7*864e5; };
-  const pool=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && ev.mi!=null && ev.mi<=PICK_MAX_MI && soon(ev));
-  // closest first, with a nudge toward what you're into; the day number rotates ties so picks change daily
-  const day=Math.floor(Date.now()/864e5);
-  const score=ev=>ev.mi*(want.includes(ev.category)?0.6:1)+((ev.id*7+day)%5)*0.05;
-  const ranked=pool.sort((x,y)=>score(x)-score(y)), order=['cornerstone','regular','niche','popup'];
-  // the best of each type that has one nearby, then the next best of any type, so two Pop-ups and no Headliner is fine
-  const picks=order.map(k=>ranked.find(ev=>kindOf(ev)===k)).filter(Boolean);
-  for(const ev of ranked){ if(picks.length>=4) break; if(!picks.includes(ev)) picks.push(ev); }
-  return picks.slice(0,4).sort((x,y)=>order.indexOf(kindOf(x))-order.indexOf(kindOf(y)) || score(x)-score(y));
+  const moodOK=PICK_MOODS[mood]? PICK_MOODS[mood].ok : ()=>true;
+  const open=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && ev.mi!=null && ev.mi<=PICK_WILD_MI && soon(ev) && moodOK(ev));
+  const thisWeek=ev=>recursOften(ev) && shown[ev.id]!=null && day-shown[ev.id]<7 && day-shown[ev.id]>0;   // weekly: once a week
+  const pool=open.filter(ev=>!thisWeek(ev)), score=new Map(open.map(ev=>[ev,pickScore(ev,day,want)]));
+  const byScore=(x,y)=>score.get(x)-score.get(y), order=['cornerstone','regular','niche','popup'];
+  // if there aren't enough fresh ones nearby, the weekly repeats come back after everything else (oldest shown first)
+  const ranked=[...pool].sort(byScore).concat(open.filter(thisWeek).sort((x,y)=>shown[x.id]-shown[y.id]||byScore(x,y)));
+  const near=ranked.filter(ev=>ev.mi<=PICK_MAX_MI);
+  // the wildcard: outside your interests (when you picked some) or past the usual 5 miles, picked for rarity, not distance
+  const wildOK=ev=>ev.mi>PICK_MAX_MI || (want.length && !want.includes(ev.category));
+  const wildScore=ev=>score.get(ev)-ev.mi*(want.includes(ev.category)?0.6:1)+ev.mi*0.15;
+  const wild=pool.filter(wildOK).sort((x,y)=>wildScore(x)-wildScore(y))[0];   // never a repeat from this week
+  // three from nearby: the best of each type first, never two of the same category, then relax the category rule if short
+  const picks=[], cats=()=>picks.map(ev=>ev.category), slots=wild? 3 : 4;
+  // the best of each type, most urgent type first (so a last-chance event isn't beaten to its category by a weekly one)
+  const fresh=near.filter(e=>pool.includes(e) && e!==wild);
+  for(const ev of order.map(k=>fresh.find(e=>kindOf(e)===k)).filter(Boolean).sort(byScore)){ if(picks.length>=slots) break; if(!cats().includes(ev.category)) picks.push(ev); }
+  for(const ev of near){ if(picks.length>=slots) break; if(!picks.includes(ev) && ev!==wild && !cats().includes(ev.category)) picks.push(ev); }
+  for(const ev of near){ if(picks.length>=slots) break; if(!picks.includes(ev) && ev!==wild) picks.push(ev); }
+  for(const ev of ranked){ if(picks.length>=slots) break; if(!picks.includes(ev) && ev!==wild) picks.push(ev); }   // a quiet area: farther ones fill in
+  picks.sort((x,y)=>order.indexOf(kindOf(x))-order.indexOf(kindOf(y)) || byScore(x,y));
+  if(wild){ wild.pickWhy=wild.mi>PICK_MAX_MI? 'Worth the drive' : 'Out of your lane'; picks.push(wild); }
+  picks.forEach(ev=>{ if(ev!==wild) ev.pickWhy=pickReason(ev); });
+  return picks.slice(0,4);
+}
+// remember what was shown (and tapped), so tomorrow's picks are different; old entries drop off after two weeks
+function logPicks(picks){
+  const day=pickDayNum(), prune=o=>Object.fromEntries(Object.entries(o||{}).filter(([,d])=>day-d<PICK_KEEP_DAYS));
+  S.pickShown=prune(S.pickShown); S.pickTapped=prune(S.pickTapped);
+  picks.forEach(ev=>{ S.pickShown[ev.id]=day; });
+}
+function pickReason(ev){
+  if(lastChance(ev)) return 'Last chance';
+  if(newStampFor(ev)) return 'New stamp for you';
+  if(ev.mi>PICK_MAX_MI) return 'Worth the drive';
+  if(kindOf(ev)==='popup' || /one-off/i.test(ev.rec||'')) return 'One night only';
+  if(pickToday(ev) && ev.t0 && ev.t0<'12:00' && new Date().getHours()<12) return 'This morning';
+  return KINDS[kindOf(ev)].label;
+}
+// the green line under a pick: the stamp it earns, else up to two vibes from the listing
+function pickSignal(ev){
+  if(newStampFor(ev)) return `Your first ${ev.hood} stamp`;
+  return (ev.vibes||[]).slice(0,2).map(v=>v[0].toUpperCase()+v.slice(1)).join(' · ');
 }
 function maybeDailyPicks(){
   if(S.kitSeen===false) return;   // the starter kit goes first; it hands off to these picks when closed
   const today=new Date().toDateString(); if(S.lastPicksDay===today) return;
   const picks=dailyPicks(); if(!picks.length) return;
-  S.lastPicksDay=today; save();
+  S.lastPicksDay=today; logPicks(picks); save();
   showPicks(picks);
 }
+let pickMood='';
 function showPicks(picks){
-  const row=ev=>`<div class="pickhd">${KINDS[kindOf(ev)].label}</div><button class="pick" data-rec="${ev.id}"><div class="n">${catDot(ev.category,34)}</div>
-    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${escH(ev.venue)}${escH(ev.start?' · '+nextWhen(ev):ev.time?' · '+ev.time:'')}${priceTag(ev)?' · '+escH(priceTag(ev)):''}${socialText(ev)?' · '+socialText(ev):''}</div></div>
-    <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`;
-  const first=(S.name||'').split(' ')[0];
-  document.getElementById('recTitle').textContent=first?`${first}, your Top 4 today`:'Your Top 4 today';
-  document.getElementById('recList').innerHTML=picks.map(row).join('');
+  pickMood='';
+  renderPicks(picks);
   setTimeout(()=>{ document.getElementById('recModal').classList.add('on'); fitLine(document.getElementById('recTitle')); },350);
 }
-// shrink a heading until it fits on one line (names make "…, your Top 4 today" longer)
+// "Today in" before 4pm, "Tonight in" after; "This week in" when fewer than two picks are today
+function renderPicks(picks){
+  const now=new Date(), hood=S.nb||'LA', todayN=picks.filter(pickToday).length;
+  const span=todayN>=2 || (!picks.length && pickMood)? (now.getHours()>=16?'tonight':'today') : 'this week';
+  document.getElementById('recKicker').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})+' · '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  document.getElementById('recTitle').textContent=`${span[0].toUpperCase()+span.slice(1)} in ${hood}`;
+  document.getElementById('recSum').textContent=picks.length? `${picks.length} ${picks.length===1?'pick':'picks'} for ${span}.` : '';
+  const moods=Object.entries(PICK_MOODS).filter(([k])=>k===pickMood || dailyPicks(k).length);
+  document.getElementById('recMoods').innerHTML=moods.length? [['','Anything'],...moods.map(([k,m])=>[k,m.label])]
+    .map(([k,l])=>`<button class="chip${k===pickMood?' on':''}" data-mood="${k}" aria-pressed="${k===pickMood}">${l}</button>`).join('') : '';
+  const row=ev=>{ const when=(ev.start? nextWhen(ev) : ev.time||'').replace(/^Today · /,''), sig=pickSignal(ev);
+    return `<div class="pickhd">${escH(ev.pickWhy||KINDS[kindOf(ev)].label)}</div><button class="pick" data-rec="${ev.id}">
+    <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${[escH(ev.venue),escH(when),escH(priceTag(ev))].filter(Boolean).join(' · ')}</div>${sig?`<div class="sig">${escH(sig)}</div>`:''}</div>
+    <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; };
+  document.getElementById('recList').innerHTML=picks.length? picks.map(row).join('') : '<p class="recnone">Nothing nearby fits that this week. Try another one.</p>';
+}
+// shrink a heading until it fits on one line (long neighborhood names make "Tonight in …" longer)
 function fitLine(el,min=18){ el.style.fontSize=''; let fs=parseFloat(getComputedStyle(el).fontSize); while(el.scrollWidth>el.clientWidth && fs>min){ fs--; el.style.fontSize=fs+'px'; } }
 /* ---------- neighborhood starter kit: one card, right after sign-up ---------- */
 // Points and the map key are explained where they happen (the check-in stamp, the map's "?", the Passport),
-// so the welcome only covers the basics and hands off to today's Top 4.
+// so the welcome only covers the basics and hands off to today's picks.
 const kitModal=document.getElementById('kitModal');
 function kitHtml(){
   enrich();
@@ -1741,7 +1839,7 @@ function openLegend(){
 }
 function openKit(){
   document.getElementById('kitBody').innerHTML=kitHtml();
-  document.getElementById('kitNext').textContent=(S.lastPicksDay!==new Date().toDateString() && dailyPicks().length)? 'See today\'s Top 4' : 'Start exploring';
+  document.getElementById('kitNext').textContent=(S.lastPicksDay!==new Date().toDateString() && dailyPicks().length)? 'See what\'s on today' : 'Start exploring';
   kitModal.classList.add('on'); renderKitBadge();
 }
 function closeKit(){ kitModal.classList.remove('on'); S.kitSeen=true; save(); maybeDailyPicks(); }
@@ -1751,7 +1849,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && kitModal.classLi
 
 const recModal=document.getElementById('recModal');
 document.getElementById('recClose').onclick=()=>recModal.classList.remove('on');
-recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; } const r=e.target.closest('[data-rec]'); if(r){ recModal.classList.remove('on'); sheetFrom='picks'; openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
+recModal.addEventListener('click',e=>{ if(e.target===recModal){ recModal.classList.remove('on'); return; }
+  const md=e.target.closest('[data-mood]'); if(md){ pickMood=md.dataset.mood; renderPicks(dailyPicks(pickMood)); fitLine(document.getElementById('recTitle')); return; } const r=e.target.closest('[data-rec]'); if(r){ (S.pickTapped=S.pickTapped||{})[+r.dataset.rec]=pickDayNum(); save(); recModal.classList.remove('on'); sheetFrom='picks'; openSheet(+r.dataset.rec,()=>recModal.classList.add('on')); } });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') recModal.classList.remove('on'); });
 
 /* ---------- home ---------- */
@@ -1888,7 +1987,7 @@ function showCard(ev){
 function inView(ev){ return true; }
 /* Zoom ladder: city level shows cream cluster bubbles (lone events as dots), neighborhood level shows every event
    as a small dot in its group's color, street level shows full pins with icons. The map opens just past the pin level
-   around you; today's Top 4 live in the daily pop-up, not on the map. */
+   around you; today's picks live in the daily pop-up, not on the map. */
 const CLUSTER_ZOOM=12, PIN_ZOOM=13.5, OPEN_ZOOM=14;
 // the header floats over the top of the map and the cards over the bottom: frame events in the space between
 function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
@@ -1956,7 +2055,7 @@ function filterSummary(){ return [WHEN.find(w=>w[0]===when)[1], tier!=='any'?KIN
 document.getElementById('filtBtn').onclick=openFilters;
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
 function countWith(w,c,t=tier,pr=price){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&priceOK(ev,pr)&&searchOK(ev)).length; when=ow; return n; }
-// change the interests you picked at sign-up (also drives "Your interests" on the map and the daily Top 4)
+// change the interests you picked at sign-up (also drives "Your interests" on the map and the daily picks)
 function editInterests(){
   const pick=new Set(S.interests||[]);
   const draw=()=>{ sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Your interests</div>
@@ -2965,7 +3064,7 @@ function addToCalendar(ev){
 /* ---------- event sheet ---------- */
 const overlay=document.getElementById('overlay'), sheet=document.getElementById('sheet');
 const faceCols=[C.green,C.red,C.blue,C.sun,C.ink];
-function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: optional, adds a back button (its aria-label names backLabel) that returns to where you came from
+function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   // back: optional, adds a back button (its aria-label names backLabel) that returns to where you came from
   const base=events.find(e=>e.id===id); if(!base) return;
   const ev=occurrenceDate?{...base,occurrenceDate}:base; enrich();
   sheetCtx={ placement:sheetFrom||placementNow(), query:searchQ||null }; sheetFrom=null;
@@ -2982,7 +3081,7 @@ function openSheet(id,back,backLabel='Top 4',occurrenceDate=null){   // back: op
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
     : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${escH(okRsvpLink(ev))}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
     : `<button class="btn primary" id="rsvpBtn">RSVP</button>`;
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel==='Top 4'?'your Top 4':backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div>
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div>
     ${photoHtml(ev)}
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
     <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
@@ -3152,7 +3251,7 @@ function showRsvp(ev,pts=0){
   m.classList.add('on');
   document.getElementById('closeStamp').onclick=()=>m.classList.remove('on');
   document.getElementById('rsvpCal').onclick=()=>addToCalendar(ev);
-  document.getElementById('rsvpInvite').onclick=()=>{ m.classList.remove('on'); openSheet(ev.id,null,'Top 4',ev.occurrenceDate); setTimeout(()=>document.getElementById('shareBtn')?.click(),50); };
+  document.getElementById('rsvpInvite').onclick=()=>{ m.classList.remove('on'); openSheet(ev.id,null,undefined,ev.occurrenceDate); setTimeout(()=>document.getElementById('shareBtn')?.click(),50); };
 }
 
 // your points, from the same Supabase view as the leaderboard (so both always match; all time until
@@ -3434,7 +3533,7 @@ function renderPlans(){
   // real invites will come from friends on Comuna; nothing to show until then
   document.getElementById('inviteList').innerHTML=`<div class="empty">No invites yet. When a friend invites you to something, it shows up here.</div>`;
 }
-document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open,null,'Top 4',planDayKey(calSel)); const s=e.target.closest('[data-share]'); if(s) shareEv({...events.find(x=>x.id===+s.dataset.share),occurrenceDate:planDayKey(calSel)}); });
+document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open,null,undefined,planDayKey(calSel)); const s=e.target.closest('[data-share]'); if(s) shareEv({...events.find(x=>x.id===+s.dataset.share),occurrenceDate:planDayKey(calSel)}); });
 
 // Cancels only the Comuna plan; external tickets/registrations stay with the host.
 async function cancelPlan(id,button){
@@ -3546,14 +3645,14 @@ function renderAlerts(){
   const icon=k=>({cal:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.red}" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,music:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.red}" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,invite:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.blue}" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`,stamp:`<svg width="22" height="22" viewBox="-28 -28 56 56">${glyph('star',C.sun)}</svg>`,coffee:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${C.green}" stroke-width="2"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h2a2 2 0 0 1 0 4h-2"/></svg>`}[k]);
   document.getElementById('alertList').innerHTML=ALERTS.length? ALERTS.map((a,i)=>`<button class="alert ${seen.includes(a.key)?'':'unread'}" ${a.ev?`data-alert-ev="${a.ev}" data-alert-date="${a.date||''}"`:''}><div class="ic">${icon(a.ic)}</div><div><div class="t">${escH(a.t)}</div><div class="s">${escH(a.s)}</div><div class="w">${escH(a.w)}</div></div></button>`).join('') : `<div class="empty"><span class="hand">all quiet</span>No alerts yet. Tap "RSVP" on an event and we'll remind you here when it's coming up.</div>`;
 }
-document.getElementById('alertList').addEventListener('click',e=>{ const a=e.target.closest('[data-alert-ev]'); if(a) openSheet(+a.dataset.alertEv,null,'Top 4',a.dataset.alertDate||null); });
+document.getElementById('alertList').addEventListener('click',e=>{ const a=e.target.closest('[data-alert-ev]'); if(a) openSheet(+a.dataset.alertEv,null,undefined,a.dataset.alertDate||null); });
 function updateDot(){ buildAlerts(); const n=unseen().length, d=document.getElementById('alertDot'); d.textContent=n; d.style.display=n?'grid':'none'; }
 
 /* keep the Mapbox corner controls just below the header, whatever its height */
 function syncHeadH(){ const h=document.querySelector('#homeScreen .homehead'); if(h&&h.offsetHeight) document.getElementById('homeScreen').style.setProperty('--headh',(h.offsetHeight-6)+'px'); }
 window.addEventListener('resize',syncHeadH); setTimeout(syncHeadH,0);
 
-/* ---------- pop-ups (Top 4, starter kit): drag up/down with a mouse too; touch and trackpads already scroll ---------- */
+/* ---------- pop-ups (today's picks, starter kit): drag up/down with a mouse too; touch and trackpads already scroll ---------- */
 document.querySelectorAll('.recmodal .box').forEach(box=>{ let down=false, y0=0, s0=0, moved=false;
   box.addEventListener('pointerdown',e=>{ if(e.pointerType!=='mouse' || box.scrollHeight<=box.clientHeight) return; down=true; moved=false; y0=e.clientY; s0=box.scrollTop; });
   window.addEventListener('pointermove',e=>{ if(!down) return; const dy=e.clientY-y0; if(Math.abs(dy)>4){ moved=true; box.style.cursor='grabbing'; } box.scrollTop=s0-dy; });
@@ -3853,13 +3952,13 @@ async function loadEvents(){
 // beside the phone on a laptop, and Account sync in Profile. Everyone else gets the plain app.
 const DEV=new URLSearchParams(location.search).has('dev');
 if(DEV){ document.getElementById('devTools').hidden=false; document.getElementById('dbCheck').hidden=false; }
-const jumps=[['onb1','Intro'],['kit','Starter kit',1],['picks','Top 4 today',1],['home','Map'],['plans','Plans'],['passport','Passport'],['alerts','Alerts']];
+const jumps=[['onb1','Intro'],['kit','Starter kit',1],['picks','Tonight',1],['home','Map'],['plans','Plans'],['passport','Passport'],['alerts','Alerts']];
 document.getElementById('jump').innerHTML=jumps.map(j=>`<button data-${j[2]?'pop':'go'}="${j[0]}">${j[1]}</button>`).join('');
-// pop-up jumps: open the starter kit or today's Top 4 over the map, whatever was seen before
+// pop-up jumps: open the starter kit or today's picks over the map, whatever was seen before
 document.getElementById('jump').addEventListener('click',e=>{
   const b=e.target.closest('[data-pop]'); if(!b) return;
   kitModal.classList.remove('on'); recModal.classList.remove('on');
-  if(b.dataset.pop==='kit'){ S.kitSeen=false; go('home'); openKit(); return; }   // as after sign-up: closing it hands off to the Top 4
+  if(b.dataset.pop==='kit'){ S.kitSeen=false; go('home'); openKit(); return; }   // as after sign-up: closing it hands off to today's picks
   go('home');
   const picks=dailyPicks(); if(!picks.length){ toast('No picks nearby right now'); return; }
   showPicks(picks);
@@ -3881,7 +3980,7 @@ if("serviceWorker" in navigator){
 
 /* ---------- your location: the spot saved at sign-up goes stale once you move (e.g. signed up at work, open it at home) ---------- */
 // On launch and whenever the app comes back after a while, quietly re-read it for people who already shared it.
-// Only "you are here" moves (map, distances, Top 4); your neighborhood, and its leaderboard, stay what you signed up with.
+// Only "you are here" moves (map, distances, today's picks); your neighborhood, and its leaderboard, stay what you signed up with.
 let locAt=0;
 async function refreshLoc(){
   if(!S.signedUp || !S.loc || !navigator.geolocation || Date.now()-locAt<10*6e4) return;

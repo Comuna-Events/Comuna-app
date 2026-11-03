@@ -8,7 +8,7 @@ for(const name of ['hm','occurrenceEnd','occursOn','nextDate','fmtTime','ordinal
  const start=source.indexOf('function '+name+'('),end=['hm','ordinal'].includes(name)?source.indexOf('\n',start):source.indexOf('\n}',start)+2;
  vm.runInContext(source.slice(start,end),c);
 }
-vm.runInContext(source.slice(source.indexOf('// Plans belong to individual'),source.indexOf('/* ---------- daily Top 4:')),c);
+vm.runInContext(source.slice(source.indexOf('// Plans belong to individual'),source.indexOf('/* ---------- Tonight in <neighborhood>:')),c);
 vm.runInContext(source.slice(source.indexOf("const WD=['Sun'"),source.indexOf('function occursOn(')).replace("const FULL_WD=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];",''),c);
 vm.runInContext(source.slice(source.indexOf('function renderPlans(){'),source.indexOf("document.querySelector('[data-s=\"plans\"]')")),c);
 const day=n=>new Date(2026,9,n),ev=(id,rec)=>({id,title:rec,rec,start:day(20),end:day(31),t0:'19:00',t1:'21:00',venue:'Venue'});
