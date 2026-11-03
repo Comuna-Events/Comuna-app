@@ -2502,7 +2502,7 @@ function placeTrees(m){
   if(z<12.5){ src.setData({type:'FeatureCollection',features:[]}); return; }
   const Z=Math.floor(z), step=(z<15?20:30)*360/(512*2**Z), b=m.getBounds(), lat0=b.getCenter().lat, stepLat=step*Math.cos(lat0*Math.PI/180);
   // zoomed out, trails are hair-thin and trees may stand over them; up close they keep clear of every path too
-  const block=m.getStyle().layers.filter(l=>/^(road|bridge|tunnel)-|^water$|^building|^sk-shore$/.test(l.id) && !(z<15 && /path|trail|steps|pedestrian|cycleway|label/.test(l.id)) && m.getLayer(l.id)).map(l=>l.id);
+  const block=m.getStyle().layers.filter(l=>/^(road|bridge|tunnel)-|^water$|^building/.test(l.id) && !(z<15 && /path|trail|steps|pedestrian|cycleway|label/.test(l.id)) && m.getLayer(l.id)).map(l=>l.id);
   const parks=['sk-parks','sk-natpark'].filter(id=>m.getLayer(id));
   const f=[], hash=(i,j)=>{ let x=(i*73856093)^(j*19349663); x=(x^(x>>>13))*1274126177; return ((x^(x>>>16))>>>0)/4294967296; };
   const scale=z<15? .55+(z-12.5)*.12 : .85+(z-15)*.125, hw=14*scale, hh=26*scale;
@@ -2515,7 +2515,7 @@ function placeTrees(m){
     f.push({type:'Feature',properties:{v:isPalm? 'sk-palm'+(r3<.2?0:1) : 'sk-tree'+Math.floor(hash(i+5,j+11)*4)},geometry:{type:'Point',coordinates:[lng,lat]}});
   }
   // ripples: a sparser grid, kept only where the whole stroke sits on open water, clear of shores and bridges
-  const wstep=step*1.15, wstepLat=stepLat*1.15, rw=12*scale/.85, water=['water'].filter(id=>m.getLayer(id)), dry=block.filter(id=>id!=='water'&&id!=='sk-shore');
+  const wstep=step*1.15, wstepLat=stepLat*1.15, rw=12*scale/.85, water=['water'].filter(id=>m.getLayer(id)), dry=block.filter(id=>id!=="water");
   for(let i=Math.floor(b.getWest()/wstep)-1;i<=b.getEast()/wstep+1;i++) for(let j=Math.floor(b.getSouth()/wstepLat)-1;j<=b.getNorth()/wstepLat+1;j++){
     const r1=hash(i+101,j-7), r2=hash(j+3,i+29); if(r1<.2) continue;
     const lng=(i+r1)*wstep, lat=(j+r2)*wstepLat, p=m.project([lng,lat]);
@@ -2591,9 +2591,6 @@ function sketchMapbox(m){
     m.addLayer({id:'sk-water-pool',type:'line',source:'composite','source-layer':'water',paint:{'line-color':'#88A9B5',
       'line-width':['interpolate',['linear'],['zoom'],10,3,14,8,17,16],'line-blur':['interpolate',['linear'],['zoom'],10,3,14,7,17,14],
       'line-offset':['interpolate',['linear'],['zoom'],10,1.5,14,4,17,8],'line-opacity':.38}},afterWater);
-    m.addLayer({id:'sk-shore',type:'line',source:'composite','source-layer':'water',paint:{'line-color':SK.waterInk,'line-width':['interpolate',['linear'],['zoom'],10,.6,15,1.6]}},afterWater);
-    // a second, fainter line just inside the shore: the ripple a pen leaves going round twice
-    m.addLayer({id:'sk-shore-ripple',type:'line',source:'composite','source-layer':'water',minzoom:12,paint:{'line-color':SK.waterInk,'line-width':.8,'line-opacity':.4,'line-offset':['interpolate',['linear'],['zoom'],12,2,16,5]}},afterWater);
   }catch(e){ console.warn('sketch water',e); }
   // 3: neighborhood names as hand-lettered images (Mapbox can't use web fonts), with Mapbox still placing them and avoiding collisions
   (window.HAND_READY||Promise.resolve()).then(()=>{ if(!m.style) return; try{
