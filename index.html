@@ -2403,93 +2403,75 @@ function treeClump(v){
     g.beginPath(); g.arc(x-r*.15,y-r*.1,r*.5,Math.PI*1.1,Math.PI*1.7); g.strokeStyle='rgba(53,58,50,.3)'; g.lineWidth=.6; g.stroke(); });
   return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) };
 }
-// Pen-and-ink palms after the illustrated LA map. palmArt(g, x, groundY, o) draws one palm standing at (x, groundY).
-// o: { style:'ink'|'silhouette'|'outline', tall, crown (frond length), lean, bushy, seed }
-function palmRng(seed){ return ()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }; }
-function palmArt(g,x,gy,o){
-  const R=palmRng(o.seed||7), st=o.style, INKC=st==='silhouette'?'#22281F':'#262A24', PAPER='#F4EEE2', LEAF='#B7C49C';
-  const tx=x+(o.lean||0), ty=gy-o.tall, C=o.crown;
-  const pt=(t,P)=>{ const u=1-t; return [u*u*u*P[0][0]+3*u*u*t*P[1][0]+3*u*t*t*P[2][0]+t*t*t*P[3][0], u*u*u*P[0][1]+3*u*u*t*P[1][1]+3*u*t*t*P[2][1]+t*t*t*P[3][1]]; };
-  // ---- trunk ----
-  const tw0=Math.max(1,C*.075), tw1=Math.max(.7,C*.05);
-  g.beginPath(); g.moveTo(x-tw0,gy); g.quadraticCurveTo((x+tx)/2-tw0*.9+(o.lean||0)*.1,(gy+ty)/2,tx-tw1,ty+C*.15); g.lineTo(tx+tw1,ty+C*.15); g.quadraticCurveTo((x+tx)/2+tw0*.9+(o.lean||0)*.1,(gy+ty)/2,x+tw0,gy); g.closePath();
-  if(st==='outline'){ g.fillStyle=PAPER; g.fill(); g.strokeStyle=INKC; g.lineWidth=Math.max(.6,C*.05); g.stroke(); }
-  else { g.fillStyle=INKC; g.fill(); }
-  // ring marks down the trunk: little paper flecks on the ink ones, ink ticks on the outline one
-  const rings=Math.floor(o.tall/(C*.22));
-  for(let i=1;i<rings;i++){ const t=i/rings, cx=x+(tx-x)*t, cy=gy+(ty-gy)*t, w=tw0+(tw1-tw0)*t;
-    g.beginPath(); g.moveTo(cx-w*.55,cy); g.lineTo(cx+w*(st==='outline'?.9:.05),cy-w*.25);
-    g.strokeStyle=st==='outline'?INKC:'rgba(244,238,226,.55)'; g.lineWidth=Math.max(.35,C*.025); g.stroke(); }
-  // ---- crown ----
-  // fronds: angle (deg, 0 = right, -90 = up), length, droop (radians the tip turns toward the ground), drawn back to front.
-  // Upper fronds make a loose V; side fronds arch out and fall below the heart, one or two hang almost straight down.
-  const bushy=o.bushy||0;
-  let F=[[-108,.8,.3],[-66,.82,.35],[-140,.95,1],[-35,.98,1.05],[-165,1,1.85],[-10,1.02,1.9],[145,.78,1.9],[35,.75,2.1],[-90,.6,.05]];
-  if(bushy) F=[[-112,.8,.4],[-70,.78,.45],[-138,.9,1.1],[-42,.9,1.1],[-162,.95,1.7],[-16,.95,1.75],[162,.85,2],[18,.85,2],[120,.65,1.5],[60,.62,1.6],[-90,.65,.15],[95,.5,.8]];
-  const fronds=F.map(([a,l,d])=>{ const ang=(a+(R()-.5)*16)*Math.PI/180, L=C*l*(.85+R()*.3), side=Math.cos(ang)>=0?1:-1, droop=d*(.8+R()*.4);
-    const a1=ang+side*droop;
-    const P=[[tx,ty],[tx+Math.cos(ang)*L*.45,ty+Math.sin(ang)*L*.45],[tx+Math.cos(ang)*L*.7+Math.cos(a1)*L*.1,ty+Math.sin(ang)*L*.7+Math.sin(a1)*L*.1],[0,0]];
-    P[3]=[P[2][0]+Math.cos(a1)*L*.4,P[2][1]+Math.sin(a1)*L*.4]; return {P,L,a1,side,seed:R()}; });
-  const W=C*(bushy?.12:.11);
-  const leafPath=(pts)=>{ g.beginPath(); pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1])); g.closePath(); };
-  fronds.forEach(f=>{
-    const n=34, left=[], right=[], fr=palmRng(Math.floor(f.seed*1e6)+3);
-    // the leaf: a narrow stalk, widest past the middle, closing to the tip
-    for(let i=0;i<=n;i++){ const t=i/n, [px,py]=pt(t,f.P), [qx,qy]=pt(Math.min(1,t+.01),f.P), dx=qx-px, dy=qy-py, d=Math.hypot(dx,dy)||1, nx=-dy/d, ny=dx/d;
-      const w=W*Math.pow(Math.sin(Math.PI*Math.min(1,t)),1.3)*(t<.6?1:1-(t-.6)*.9);
-      left.push([px+nx*w,py+ny*w]); right.push([px-nx*w,py-ny*w]); }
-    const shape=[[tx,ty],...left,...right.reverse()];
-    // fingers: pointed leaflets that splay from the outer half, each side, swept toward the tip and the ground
-    const fingers=[]; const k=2+Math.floor(fr()*2);
-    for(let sd of [1,-1]) for(let i=0;i<k;i++){ const t0=.42+i*.13+fr()*.05, [px,py]=pt(t0,f.P), [qx,qy]=pt(t0+.01,f.P), dx=qx-px, dy=qy-py, d=Math.hypot(dx,dy)||1;
-      const base=Math.atan2(dy,dx), spread=(.32+fr()*.25)*sd, a=base+spread+f.side*.25*(1+i*.3), len=f.L*(.32+fr()*.12)*(1-i*.12), fw=W*.55*(1-i*.1);
-      const nx=-Math.sin(a), ny=Math.cos(a), ex=px+Math.cos(a)*len, ey=py+Math.sin(a)*len+len*.15, mx=px+Math.cos(a)*len*.5, my=py+Math.sin(a)*len*.5;
-      fingers.push([[px+nx*fw,py+ny*fw],[mx+nx*fw*.6,my+ny*fw*.6],[ex,ey],[mx-nx*fw*.6,my-ny*fw*.6],[px-nx*fw,py-ny*fw]]); }
-    const ink=()=>{ if(st==='outline'){ g.fillStyle=LEAF; g.fill(); g.strokeStyle=INKC; g.lineWidth=Math.max(.55,C*.028); g.stroke(); } else { g.fillStyle=INKC; g.fill(); } };
-    fingers.forEach(q=>{ leafPath(q); ink(); }); leafPath(shape); ink();
-    // the reference's pale streak along each ink frond, a little to its upper side; an ink rib on the outlined ones
-    g.beginPath(); for(let i=5;i<=Math.floor(n*.72);i++){ const [px,py]=pt(i/n,f.P); i===5?g.moveTo(px,py-W*.12):g.lineTo(px,py-W*.12); }
-    if(st==='ink'){ g.strokeStyle='rgba(244,238,226,.85)'; g.lineWidth=Math.max(.45,W*.24); g.stroke(); }
-    else if(st==='outline'){ g.strokeStyle=INKC; g.lineWidth=Math.max(.4,C*.02); g.stroke(); }
+// A brushy palm in dark olive ink, after the reference sketch: a tapered trunk with cream ring bands, two thin arcs
+// over the top, long fronds drooping either side with short strokes hanging from their undersides, and a dark bunch
+// hanging where the fronds meet. Drawn in the reference's own coordinates (300 x 420, standing at 155,410), scaled to fit.
+function palmBrush(g,x,gy,H,o={}){
+  const s=H/400, flip=o.flip?-1:1, INK=o.ink||'#434E36', PAPER=o.paper||'#F4EEE2';
+  const X=rx=>x+(rx-155)*s*flip, Y=ry=>gy+(ry-410)*s;
+  const R=(seed=>()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; })(o.seed||9);
+  const bez=(P,t)=>{ const u=1-t; return [u*u*u*P[0][0]+3*u*u*t*P[1][0]+3*u*t*t*P[2][0]+t*t*t*P[3][0], u*u*u*P[0][1]+3*u*u*t*P[1][1]+3*u*t*t*P[2][1]+t*t*t*P[3][1]]; };
+  // a brush stroke along a curve (reference coords): width w0 at the start easing to w1 at the end, a soft pointed tip
+  const stroke=(P,w0,w1,t0=0,t1=1)=>{ const n=24, L=[], Rr=[];
+    for(let i=0;i<=n;i++){ const t=t0+(t1-t0)*i/n, [px,py]=bez(P,t), [qx,qy]=bez(P,Math.min(1,t+.005)), dx=qx-px, dy=qy-py, d=Math.hypot(dx,dy)||1;
+      const f=i/n, w=(w0+(w1-w0)*f)*(f<.08? .55+f/.08*.45 : 1)/2;
+      L.push([X(px-dy/d*w),Y(py+dx/d*w)]); Rr.push([X(px+dy/d*w),Y(py-dx/d*w)]); }
+    g.beginPath(); L.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1])); Rr.reverse().forEach(q=>g.lineTo(q[0],q[1])); g.closePath(); g.fill(); };
+  g.fillStyle=INK;
+  // trunk: the foot set a little right of the crown, bowing gently left on the way up, so the palm leans
+  const cen=t=>{ const u=1-t; return [u*u*163+2*u*t*150+t*t*159.5, u*u*408+2*u*t*290+t*t*160]; };   // t 0 foot .. 1 top
+  const half=t=>10.5-t*4;
+  const side=(sd)=>{ const pts=[]; for(let i=0;i<=20;i++){ const t=i/20, [cx,cy]=cen(t); pts.push([cx+sd*half(t),cy]); } return pts; };
+  g.beginPath(); side(-1).forEach((q,i)=>i?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1]))); side(1).reverse().forEach(q=>g.lineTo(X(q[0]),Y(q[1])));
+  g.quadraticCurveTo(X(163),Y(413),X(163-half(0)),Y(408)); g.closePath(); g.fill();
+  // ring bands: wide, curved cream bars low down (ink left at both edges), shrinking to short marks on the left up top
+  g.fillStyle=PAPER;
+  for(let i=0;i<13;i++){ const t=.03+i*.075, [cx,cy]=cen(t), hw=half(t), f=t;
+    const left=cx-hw+2.2+f*1.5, right=cx+hw-2.4-f*hw*1.1, th=(1-f)*4.6+2.4, bow=(1-f)*2.4;
+    g.beginPath(); g.moveTo(X(left),Y(cy-th/2)); g.quadraticCurveTo(X((left+right)/2),Y(cy-th/2+bow),X(right),Y(cy-th/2)); g.lineTo(X(right),Y(cy+th/2)); g.quadraticCurveTo(X((left+right)/2),Y(cy+th/2+bow),X(left),Y(cy+th/2)); g.closePath(); g.fill(); }
+  g.fillStyle=INK;
+  // fronds: [curve], spine width, side the leaflets hang from (1 = below/outside), how many leaflets
+  const F=[
+    {P:[[158,64],[122,26],[82,30],[44,80]], w:7, hang:'under', n:5},          // upper left arc
+    {P:[[160,62],[188,16],[234,6],[270,48]], w:7, hang:'under', n:6},         // upper right arc
+    {P:[[152,80],[98,76],[62,116],[56,192]], w:8, hang:'down', n:8},          // long left droop
+    {P:[[168,76],[234,68],[284,104],[290,154]], w:8, hang:'down', n:8},       // long right droop
+    {P:[[166,86],[204,96],[218,140],[224,192]], w:6.5, hang:'down', n:6},     // inner right
+    {P:[[148,90],[124,104],[116,130],[118,160]], w:6, hang:'down', n:4},      // inner left
+  ];
+  F.forEach(f=>{
+    stroke(f.P,f.w,.8);
+    // leaflets come in bunches: two or three clumps of overlapping strokes along each frond, with open gaps between,
+    // so they build up into dark patches the way a brush does
+    const clumps=f.hang==='under'? 3 : 3;
+    for(let k=0;k<clumps;k++){ const tc=.2+k*(.7/clumps)+R()*.04, per=f.hang==='under'? 3 : 4+Math.floor(R()*2);
+      for(let j=0;j<per;j++){ const t=Math.min(.95,tc+j*.032+R()*.012), [px,py]=bez(f.P,t), [qx,qy]=bez(f.P,t+.01); let tx=qx-px, ty=qy-py; const d=Math.hypot(tx,ty)||1; tx/=d; ty/=d;
+        let dx,dy,len,start;
+        if(f.hang==='under'){ dx=tx*.9; dy=ty*.9+.5; len=(16+R()*8)*(j===1?1.15:.9); start=[px, py+6+R()*2]; }
+        else { dx=tx*.3+(j-per/2)*.06; dy=1; len=(30+R()*16)*(1-t*.35)*(j===0||j===per-1?.8:1.05); start=[px-(tx>0?1:-1)*2.5, py+4]; }   // inner side, splaying a little
+        const m=Math.hypot(dx,dy); dx/=m; dy/=m;
+        const sx=start[0], sy=start[1], ex=sx+dx*len, ey=sy+dy*len;
+        stroke([[sx,sy],[sx+dx*len*.35,sy+dy*len*.35],[sx+dx*len*.7+tx*2,sy+dy*len*.7],[ex,ey]],(f.hang==='under'?4.5:5.5)+R()*2.5,.6); } }
   });
-  // the dark heart where the fronds meet
-  g.beginPath(); g.ellipse(tx,ty+C*.05,C*.14,C*.11,0,0,7); g.fillStyle=INKC; g.fill();
+  // the dark bunch hanging under the crown, heaviest on the left of the trunk top
+  stroke([[150,82],[144,108],[138,132],[132,160]],15,2);
+  stroke([[158,84],[158,120],[157,150],[156,186]],14,4);
+  stroke([[164,84],[172,106],[176,128],[176,150]],10,1.5);
+  stroke([[146,90],[140,112],[142,132],[146,150]],9,2);
+  stroke([[160,70],[152,80],[148,92],[146,104]],12,4);
 }
-// a soft grey patch of ground with a few scribbles, like the reference
-function palmGround(g,x,gy,w){ g.fillStyle='rgba(120,118,104,.16)'; g.beginPath(); g.ellipse(x,gy-1,w,w*.18,0,0,7); g.fill();
-  g.strokeStyle='rgba(53,58,50,.35)'; g.lineWidth=.6; const R=palmRng(Math.floor(x*13)+5); for(let i=0;i<5;i++){ const sx=x-w*.7+R()*w*1.4; g.beginPath(); g.moveTo(sx,gy-.5); g.quadraticCurveTo(sx+1.5,gy-2.5,sx+3,gy-.8); g.stroke(); } }
-// MOCKUP: three palm styles to compare, ?palm=a (ink with a pale streak, default) | b (solid silhouette) | c (outlined sage)
-const PALM_STYLE={a:'ink',b:'silhouette',c:'outline'}[(location.search.match(/palm=([abc])/)||[])[1]||'a'];
-// If map/palm.png exists (a hand-drawn palm on white), use it instead of the drawn palms: its white is turned
-// transparent, v0 is the palm on its own, v1 a mirrored copy beside a smaller one. Same size as palm(v), so it swaps in place.
-function usePalmArt(m){
-  const img=new Image(); img.onload=()=>{ try{
-    const k=2, w=48, h=66;
-    // clean the drawing once: the white AROUND the palm becomes see-through (a flood fill in from the edges), the white
-    // INSIDE it (between the outlines) becomes the map's cream paper, and the ink stays as drawn
-    const src=document.createElement('canvas'); src.width=img.width; src.height=img.height; const sg=src.getContext('2d'); sg.drawImage(img,0,0);
-    const W=src.width, H=src.height, sd=sg.getImageData(0,0,W,H), sp=sd.data, lum=i=>sp[i]*.3+sp[i+1]*.59+sp[i+2]*.11;
-    const out=new Uint8Array(W*H), stack=[]; for(let x=0;x<W;x++){ stack.push(x,(H-1)*W+x); } for(let y=0;y<H;y++){ stack.push(y*W,y*W+W-1); }
-    while(stack.length){ const q=stack.pop(); if(out[q]) continue; const i=q*4; if(sp[i+3]>20 && lum(i)<170) continue; out[q]=1;
-      const x=q%W; if(x>0) stack.push(q-1); if(x<W-1) stack.push(q+1); if(q>=W) stack.push(q-W); if(q<W*(H-1)) stack.push(q+W); }
-    for(let q=0;q<W*H;q++){ const i=q*4, l=lum(i), a=Math.max(0,Math.min(1,(235-l)/85));   // a: how much ink this pixel holds
-      if(out[q]) sp[i+3]=Math.round(sp[i+3]*a);   // outside: keep only the ink part of the edge
-      else if(l>150){ const m=1-a; sp[i]=sp[i]*a+244*m; sp[i+1]=sp[i+1]*a+238*m; sp[i+2]=sp[i+2]*a+226*m; } }   // inside: white to cream
-    sg.putImageData(sd,0,0);
-    const make=(v)=>{ const c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k);
-      const put=(x,tall,flip)=>{ const ww=tall*img.width/img.height; g.save(); g.translate(x,h-1); if(flip) g.scale(-1,1); g.drawImage(src,-ww/2,-tall,ww,tall); g.restore(); };
-      palmGround(g,w/2,h-1,v?15:9);
-      if(v===0) put(w/2,64,false); else { put(w/2+7,64,true); put(w/2-11,36,false); }
-      return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) }; };
-    [0,1].forEach(v=>{ const id='sk-palm'+v, im=make(v); m.hasImage(id)? m.updateImage(id,im) : m.addImage(id,im,{pixelRatio:2}); });
-  }catch(e){ console.warn('palm art',e); } };
-  img.src='map/palm.png';   // missing file: onload never fires and the drawn palms stay
-}
-// a palm image for the map: v0 one tall palm, v1 a tall one with a short, bushy one beside it on a patch of ground
+// a palm for the map, in the round trees' colours: sage green with the same thin dark outline, cream bands on the trunk.
+// v0 one tall palm, v1 a tall one with a shorter one beside it, facing the other way.
 function palm(v){
-  const k=2, w=48, h=66, c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k); g.lineCap='round'; g.lineJoin='round';
-  if(v===0){ palmGround(g,w/2,h-1,9); palmArt(g,w/2,h-2,{style:PALM_STYLE,tall:46,crown:15,lean:1,seed:5}); }
-  else { palmGround(g,w/2,h-1,15); palmArt(g,w/2+8,h-2,{style:PALM_STYLE,tall:46,crown:14,lean:1.5,seed:9}); palmArt(g,w/2-9,h-1,{style:PALM_STYLE,tall:22,crown:11,lean:-1,bushy:1,seed:23}); }
+  const k=2, w=56, h=66, draw=(ink,paper)=>{ const c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d'); g.scale(k,k);
+      if(v===0) palmBrush(g,w/2-3,h-1,62,{ink,paper,seed:9});
+      else { palmBrush(g,w/2+7,h-1,60,{ink,paper,seed:9,flip:true}); palmBrush(g,w/2-12,h-1,36,{ink,paper,seed:4}); }
+      return c; };
+  const fill=draw('#A7BB8C','#F4EEE2'), edge=draw('#5C6355','#5C6355');
+  const c=document.createElement('canvas'); c.width=w*k; c.height=h*k; const g=c.getContext('2d');
+  // the outline: the silhouette drawn in the trees' outline colour, nudged round a circle, then the green on top
+  for(let i=0;i<8;i++){ const a=i*Math.PI/4; g.drawImage(edge,Math.cos(a)*1.7,Math.sin(a)*1.7); }
+  g.drawImage(fill,0,0);
   return { width:w*k, height:h*k, data:new Uint8Array(g.getImageData(0,0,w*k,h*k).data.buffer) };
 }
 // a few short ripple strokes, drawn with the shoreline's blue ink
@@ -2552,7 +2534,6 @@ function sketchMapbox(m){
   // 2: parks as drawn tree clumps with an ink edge, hill shadows hatched in pencil, lakes with a drawn shoreline
   if(!m.hasImage('sk-park')) m.addImage('sk-park',sketchTile('grass'),{pixelRatio:2});
   for(let v=0;v<4;v++) if(!m.hasImage('sk-tree'+v)) m.addImage('sk-tree'+v,treeClump(v),{pixelRatio:2});
-  usePalmArt(m);
   for(let v=0;v<2;v++){ if(!m.hasImage('sk-palm'+v)) m.addImage('sk-palm'+v,palm(v),{pixelRatio:2}); if(!m.hasImage('sk-ripple'+v)) m.addImage('sk-ripple'+v,ripple(v),{pixelRatio:2}); }
   const ids=L.map(l=>l.id), firstWater=ids.find(id=>/^water/.test(id)), afterWater=ids[ids.lastIndexOf('water')+1];
   const parkF=['match',['get','class'],['park','wood','scrub','grass','cemetery','golf_course','pitch'],true,false];
