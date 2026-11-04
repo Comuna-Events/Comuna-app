@@ -10,6 +10,7 @@
 -- ingest.ingest_runs and ingest.event_candidates within a couple of minutes:
 --   select ingest.run();                     -- every active web source (ingest-web)
 --   select ingest.run('ingest-web', 1);      -- just event_sources row 1
+--   select ingest.run('ingest-partiful');    -- Partiful hosts and Explore pages (no AI, see below)
 --   select ingest.run('ingest-instagram');   -- another platform's function, once it's deployed
 --
 -- When a new platform's function is deployed, add it to ingest.run_nightly() below and re-run this file.
@@ -48,3 +49,15 @@ revoke execute on function ingest.run_nightly() from public, anon, authenticated
 -- gets through ~12 web sources before its 2-minute limit, and each call starts with the sources checked
 -- longest ago, so 24 calls cover a couple of hundred. Raise the hours if ingest_runs shows sources left over.
 select cron.schedule('nightly-event-ingest', '*/5 10-11 * * *', 'select ingest.run_nightly()');
+
+-- Eventbrite, Luma, Meetup, Partiful and Handstamp (ingest-eventbrite, -luma, -meetup, -partiful, -handstamp) read sites
+-- that carry their events as data, so they call no AI and a night costs nothing but page loads. They have a job of their
+-- own, so they keep running while the AI-based job above is paused: every 10 minutes from 10:00 to 11:50 UTC, done
+-- before ingest.auto_promote() at 12:10. Each call reads as many of that platform's sources as fit in its 2 minutes,
+-- oldest-checked first, so 12 calls cover them several times over; events already read are skipped. Sources are rows in
+-- ingest.event_sources with those platforms (see each function's comments for what a handle looks like).
+select cron.unschedule('nightly-eventbrite-ingest') where exists (select 1 from cron.job where jobname = 'nightly-eventbrite-ingest');
+select cron.unschedule('nightly-structured-ingest') where exists (select 1 from cron.job where jobname = 'nightly-structured-ingest');
+select cron.schedule('nightly-structured-ingest', '*/10 10-11 * * *',
+  $$select ingest.run('ingest-eventbrite'); select ingest.run('ingest-luma'); select ingest.run('ingest-meetup');
+    select ingest.run('ingest-partiful'); select ingest.run('ingest-handstamp');$$);

@@ -11,6 +11,12 @@ _shared/ingest.ts      shared: loads sources, skips posts already read, saves ca
 _shared/extract.ts     shared: the Claude prompt and the fields it returns
 ingest-instagram/      fetchPosts for Instagram                   ← Instagram owner
 ingest-web/            city calendars and venue / event websites  ← web owner (works already; improve per site)
+ingest-eventbrite/     Eventbrite search pages for LA (no AI: Eventbrite's own data, see eventbrite.ts)
+ingest-luma/           Luma's discover search around a point (no AI, see luma.ts)
+ingest-meetup/         Meetup's in-person search around a point (no AI, see meetup.ts)
+_shared/structured.ts  shared helpers for the no-AI platforms (LA County check, local times, prices, categories)
+ingest-partiful/       Partiful hosts and city Explore pages (no AI needed)
+ingest-handstamp/      Handstamp city pages and host profiles (no AI, see handstamp.ts)
 _shared/vibes.ts       shared: the fixed list of vibes (spooky, date night, live music...) the AI picks from
 ingest-vibes/          picks vibes for events that don't have them (added by hand, or from before vibes)
 ```
@@ -20,6 +26,24 @@ posts as `SourcePost`s (see `_shared/ingest.ts`). Don't call Claude or write to 
 To add a platform, copy `ingest-instagram/`, rename it, and change the platform name in the last line
 (it must be one of the values allowed in `ingest.event_sources.platform`).
 
+A platform whose pages already carry the event as data (dates, address, price) can skip the AI: fill in the post's
+`events` with the finished candidates and they're saved as they are (`ingest-eventbrite` does this).
+
+**Eventbrite sources:** add a row with platform `eventbrite` and an Eventbrite search page as `handle`, e.g.
+`https://www.eventbrite.com/d/ca--los-angeles/trivia/` (a keyword), `.../ca--los-angeles/free--events/` (a filter) or
+`.../ca--pasadena/all-events/` (a city). It reads 3 pages of 20; end the handle with `#pages=N` for more (up to 10).
+**Luma and Meetup sources:** a point to search around, as `https://luma.com/discover?lat=34.05&lng=-118.24` or
+`https://www.meetup.com/find/?lat=34.05&lon=-118.24` (add `#pages=N` to read more or fewer pages).
+
+**Handstamp sources:** a city page (`https://www.handstamp.com/d/los-angeles`: its events plus its listed hosts') or a
+host's profile (`https://www.handstamp.com/camberplaces`).
+
+Eventbrite, Luma, Meetup, Partiful and Handstamp share a nightly job of their own (`nightly-structured-ingest` in `ingest_schedule.sql`),
+so they run even while the AI-based job is paused. Test the reading and mapping without the database:
+`node --experimental-strip-types scripts/test-ingest-eventbrite.mjs --live` and
+`node --experimental-strip-types scripts/test-ingest-luma-meetup.mjs --live` and
+`node --experimental-strip-types scripts/test-ingest-handstamp.mjs --live` (behind a proxy, add `NODE_USE_ENV_PROXY=1`).
+
 **Web sources:** add a row with platform `city_calendar` or `venue_website` and the page's full URL as `handle`.
 `ingest-web` downloads the page, turns it into text and lets the AI find the events. If a source fails
 with "almost no text", or finds no events on a page that clearly lists some, the site loads its events with
@@ -27,6 +51,17 @@ JavaScript. Look for what the page loads them from, and use that as the handle i
 - a JSON feed or API (e.g. `https://www.hollywoodbowl.com/events/feed`): read as one post per event;
 - an RSS / Atom feed (e.g. a city calendar's RSS link): one post per item;
 - schema.org JSON-LD in the page (most Ticketmaster / Live Nation venue pages): add `#jsonld` to the page URL.
+
+**Partiful sources:** add a row with platform `partiful` and as `handle` either
+- a host's profile, e.g. `https://partiful.com/u/wYOYiNfFReumziGUYS56` (goodboybob): every upcoming public event they
+  post. To find a host's link, open one of their events and click their name, or search the web for
+  `site:partiful.com/u <name>`;
+- a city's Explore page, e.g. `https://partiful.com/explore/la`: the ~60-90 public events Partiful features there.
+
+`ingest-partiful` reads each upcoming public event's own page (details, address, hosts, price), one post per event.
+It doesn't use the AI: Partiful's data is already structured, so the fields are copied straight across (category
+from keywords, no vibes). Events outside LA County (by zip code) are skipped, and ones without a street address or
+zip are saved with confidence 0.6, so they wait for review instead of being promoted.
 
 Put `{today}` or `{today+N}` in a handle for APIs that take a date range; it's filled in on every run.
 Anything else needs a special case in `ingest-web/index.ts`.

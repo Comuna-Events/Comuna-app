@@ -44,6 +44,7 @@ begin
       when 'luma'          then 'Luma'
       when 'partiful'      then 'Partiful'
       when 'meetup'        then 'Meetup'
+      when 'handstamp'     then 'Handstamp'
       when 'city_calendar' then 'City / library calendar'
       when 'venue_website' then 'Venue website'
       when 'newsletter'    then 'Newsletter'
