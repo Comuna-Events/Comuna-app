@@ -15,10 +15,12 @@
 //
 // No AI: Partiful's data is already structured, so toEvent maps it straight onto a candidate (category from
 // keywords, see guessCategory). Events outside LA County (Explore LA also lists Orange County,
-// the Inland Empire and Ventura) are left out by zip code, see inLaCounty. Vibes are left empty.
+// the Inland Empire and Ventura) are left out by zip code, see inLaCounty in _shared/structured.ts.
+// Vibes are left empty.
 
 import { handleIngestRequest, type Source, type SourcePost } from "../_shared/ingest.ts";
 import type { ExtractedEvent } from "../_shared/extract.ts";
+import { inLaCounty } from "../_shared/structured.ts";
 
 const USER_AGENT = "Mozilla/5.0 (compatible; ComunaEventBot/1.0)";
 const SITE = "https://partiful.com";
@@ -164,13 +166,6 @@ export function toEvent(e: JsonObject, props: JsonObject): ExtractedEvent {
     confidence: street && cityLine?.[2] ? 0.9 : 0.6, // no street address or zip: left for review
     notes: capacity,
   };
-}
-
-// LA County zip codes: 900xx-918xx and the Antelope Valley's 935xx, minus the Orange County ones in that range.
-export function inLaCounty(zip: string): boolean {
-  const z = Number(zip);
-  if (!((z >= 90001 && z <= 91899) || (z >= 93510 && z <= 93599))) return false;
-  return !((z >= 90620 && z <= 90633) || z === 90680 || (z >= 90720 && z <= 90743));
 }
 
 // The app's six categories (see _shared/extract.ts), from keywords: the title first, then the start of the

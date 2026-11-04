@@ -16,6 +16,7 @@ ingest-luma/           Luma's discover search around a point (no AI, see luma.ts
 ingest-meetup/         Meetup's in-person search around a point (no AI, see meetup.ts)
 _shared/structured.ts  shared helpers for the no-AI platforms (LA County check, local times, prices, categories)
 ingest-partiful/       Partiful hosts and city Explore pages (no AI needed)
+ingest-handstamp/      Handstamp city pages and host profiles (no AI, see handstamp.ts)
 _shared/vibes.ts       shared: the fixed list of vibes (spooky, date night, live music...) the AI picks from
 ingest-vibes/          picks vibes for events that don't have them (added by hand, or from before vibes)
 ```
@@ -34,10 +35,14 @@ A platform whose pages already carry the event as data (dates, address, price) c
 **Luma and Meetup sources:** a point to search around, as `https://luma.com/discover?lat=34.05&lng=-118.24` or
 `https://www.meetup.com/find/?lat=34.05&lon=-118.24` (add `#pages=N` to read more or fewer pages).
 
-Eventbrite, Luma and Meetup share a nightly job of their own (`nightly-structured-ingest` in `ingest_schedule.sql`),
+**Handstamp sources:** a city page (`https://www.handstamp.com/d/los-angeles`: its events plus its listed hosts') or a
+host's profile (`https://www.handstamp.com/camberplaces`).
+
+Eventbrite, Luma, Meetup, Partiful and Handstamp share a nightly job of their own (`nightly-structured-ingest` in `ingest_schedule.sql`),
 so they run even while the AI-based job is paused. Test the reading and mapping without the database:
 `node --experimental-strip-types scripts/test-ingest-eventbrite.mjs --live` and
-`node --experimental-strip-types scripts/test-ingest-luma-meetup.mjs --live` (behind a proxy, add `NODE_USE_ENV_PROXY=1`).
+`node --experimental-strip-types scripts/test-ingest-luma-meetup.mjs --live` and
+`node --experimental-strip-types scripts/test-ingest-handstamp.mjs --live` (behind a proxy, add `NODE_USE_ENV_PROXY=1`).
 
 **Web sources:** add a row with platform `city_calendar` or `venue_website` and the page's full URL as `handle`.
 `ingest-web` downloads the page, turns it into text and lets the AI find the events. If a source fails
