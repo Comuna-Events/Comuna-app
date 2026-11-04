@@ -33,7 +33,11 @@ build**. Changes in Supabase (events, badges, rules) show up straight away, as o
 
 ## Reminders (push notifications)
 
-After someone saves their first plan, the app asks to send notifications. An hour before each saved plan starts,
+iOS shows its "Allow notifications?" prompt only once, so the app asks in its own words first: the "RSVP saved" card
+offers "Get a heads-up an hour before?" on a signed-in person's first 3 saves, and only "Remind me" brings up Apple's
+prompt. **Profile > Reminders** turns them on or off on this phone (off forgets the phone's token), and when they're
+blocked in iPhone Settings it opens Comuna's page there. Guests can't get reminders, since the token needs an account.
+An hour before each saved plan starts,
 `supabase/functions/send-reminders` sends "starts at 6:30 PM … check in when you get there", and tapping it opens the
 event. The database runs it every 10 minutes (`supabase/push.sql`). It needs an Apple push key, once:
 

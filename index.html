@@ -558,6 +558,10 @@ img{ max-width:100% }
 .kinds small{ font-size:10.5px; font-weight:700; color:var(--muted) }
 .kinds b{ margin-left:auto; font-family:var(--hand); font-size:19px; color:var(--red); font-weight:700 }
 .unlocks{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:-8px 0 18px }
+.remindask{ background:rgba(243,231,209,.12); border:1px solid rgba(243,231,209,.35); border-radius:18px; padding:14px; max-width:320px; margin:-4px 0 18px; display:flex; flex-direction:column; gap:4px; font-size:14px }
+.remindask span{ color:#DDD1B8; font-size:13.5px; line-height:1.4 }
+.remindask .row{ display:flex; gap:8px; margin-top:8px } .remindask .btn{ flex:1; padding:11px 8px; font-size:14px }
+.remindask .yes{ background:var(--paper); color:var(--green) } .remindask .no{ border:1.5px solid rgba(243,231,209,.5); color:var(--paper) }
 .unlocks span{ background:rgba(243,231,209,.14); border:1px solid rgba(243,231,209,.35); border-radius:30px; padding:6px 12px; font-size:13px; font-weight:700 }
 .ptitle{ display:flex; align-items:center; gap:6px; max-width:calc(100% - 100px); margin-top:4px; padding:3px 0; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; line-height:1.3; color:#B9AE97; text-align:left }
 .ptitle[hidden]{ display:none } .ptitle i{ font-style:normal } .ptitle i::after{ content:'·'; margin-left:6px }
@@ -857,6 +861,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
         <button class="linkrow" id="pfLbBtn" hidden>Leaderboard name <span id="pfLb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
+        <button class="linkrow" id="pfRemind" hidden>Reminders <span id="pfRemindTxt"></span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
         <button class="linkrow" id="pfSources">How we find events <span>Where they come from</span></button>
         <a class="linkrow" href="https://www.wearecomuna.com/about" target="_blank" rel="noopener">About Comuna <span>Who we are</span></a>
@@ -3297,8 +3302,62 @@ function showRsvp(ev,pts=0){
   m.classList.add('on');
   document.getElementById('closeStamp').onclick=()=>m.classList.remove('on');
   document.getElementById('rsvpCal').onclick=()=>addToCalendar(ev);
+  offerReminders(m);
   document.getElementById('rsvpInvite').onclick=()=>{ m.classList.remove('on'); openSheet(ev.id,null,undefined,ev.occurrenceDate); setTimeout(()=>document.getElementById('shareBtn')?.click(),50); };
 }
+
+/* iPhone app reminders (window.comunaReminders, from native.js). iOS shows its permission prompt only once, and a
+   "Don't Allow" is for good, so we ask in our own words first and show Apple's prompt only after a yes. The ask rides
+   on the "RSVP saved" card, the moment a reminder obviously helps, for someone's first 3 saves while iOS hasn't asked
+   yet; after that it's only in Profile > Reminders. Guests can't get reminders: the token needs an account. */
+const REMIND_ASKS=3;
+async function offerReminders(m){
+  const R=window.comunaReminders; if(!R || !S.signedUp || (S.remindAsks||0)>=REMIND_ASKS) return;
+  if((await R.status())!=='unasked' || !m.classList.contains('on') || m.querySelector('.remindask')) return;
+  S.remindAsks=(S.remindAsks||0)+1; save();
+  const cal=document.getElementById('rsvpCal'); if(cal) cal.textContent='Add to calendar';
+  const box=document.createElement('div'); box.className='remindask';
+  box.innerHTML=`<b>Get a heads-up an hour before?</b><span>We'll send one reminder before each plan you save, with the time and venue.</span>
+    <div class="row"><button class="btn yes">Remind me</button><button class="btn no">Not now</button></div>`;
+  document.getElementById('closeStamp').before(box);
+  box.querySelector('.no').onclick=()=>box.remove();
+  box.querySelector('.yes').onclick=async()=>{
+    const st=await R.turnOn(); box.remove(); renderRemindRow();
+    if(st==='on'){ S.remindAsks=REMIND_ASKS; save(); haptic('success'); toast("Reminders on. We'll nudge you an hour before."); }
+    else toast('No reminders for now. You can turn them on in Profile > Reminders.');
+  };
+}
+async function renderRemindRow(){   // a function declaration with nothing outside it, so renderProfile can call it any time
+  const R=window.comunaReminders, row=document.getElementById('pfRemind'); row.hidden=!R; if(!R) return;
+  const label={ on:'On', off:'Off', unasked:'Off', blocked:'Off in iPhone Settings' };
+  document.getElementById('pfRemindTxt').textContent=S.signedUp? label[await R.status()] : 'Needs an account';
+}
+async function openReminders(){
+  const R=window.comunaReminders; if(!R) return;
+  const st=S.signedUp? await R.status() : 'guest';
+  const [title,body,action,cls]={
+    on:['Reminders are on', "An hour before each plan you save, we'll send a heads-up with the time and venue. Tap it to open the event.", 'Turn off reminders', 'ghost'],
+    off:['Reminders are off', "Turn them on and we'll send a heads-up an hour before each plan you save.", 'Turn on reminders', 'primary'],
+    blocked:['Notifications are off', "Your iPhone is blocking notifications from Comuna. Open Settings, tap Notifications, and turn on Allow Notifications. Then we'll send a heads-up an hour before each plan you save.", 'Open iPhone Settings', 'primary'],
+    guest:['Reminders need an account', "Plans saved only on this phone can't get reminders. Create an account and we'll send a heads-up an hour before each plan you save.", 'Create account', 'primary'],
+  }[st==='unasked'? 'off' : st];
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Reminders</div>
+    <h2 style="font-size:28px">${title}</h2><p class="sub">${body}</p><button class="btn ${cls}" id="remindAct" style="margin-top:14px">${action}</button>`;
+  document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  document.getElementById('remindAct').onclick=async()=>{
+    if(st==='guest'){ overlay.classList.remove('on'); openAuth('signup'); return; }
+    if(st==='blocked'){ R.openSettings(); return; }   // coming back redraws this sheet (below)
+    if(st==='on'){ await R.turnOff(); toast('Reminders off'); }
+    else { const now=await R.turnOn(); if(now==='on'){ haptic('success'); toast('Reminders on'); } }
+    renderRemindRow(); openReminders();
+  };
+  overlay.classList.add('on');
+}
+document.getElementById('pfRemind').onclick=openReminders;
+// back from the iPhone's Settings: show whether notifications are allowed now
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState!=='visible' || !window.comunaReminders) return;
+  if(current==='profile') renderRemindRow();
+  if(overlay.classList.contains('on') && document.getElementById('remindAct')) openReminders(); });
 
 // your points, from the same Supabase view as the leaderboard (so both always match; all time until
 // leaderboard_start() in supabase/leaderboard_all_time.sql goes back to monthly)
@@ -3673,7 +3732,7 @@ document.getElementById('passTabs').addEventListener('click',e=>{ const b=e.targ
 
 /* ---------- profile / alerts ---------- */
 function renderProfile(){ const lb=document.getElementById('pfLbBtn'); lb.hidden=!(S.signedUp && S.lbShow); document.getElementById('pfLb').textContent=lbLabel(); document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up';
-  const nb=(S.badges||[]).filter(b=>b.earned_at).length; document.getElementById('pfBadgeN').textContent=nb? `${nb} earned${myTitle()?' · '+myTitle():''}` : 'Earn your first'; }
+  const nb=(S.badges||[]).filter(b=>b.earned_at).length; document.getElementById('pfBadgeN').textContent=nb? `${nb} earned${myTitle()?' · '+myTitle():''}` : 'Earn your first'; renderRemindRow(); }
 document.getElementById('pfBadges').onclick=()=>go('badges');
 // reminders for events you RSVP’d to happening in the next 7 days
 let ALERTS=[];
@@ -3769,7 +3828,6 @@ async function dbRsvp(ev){
   if(!ev) return; const u=await dbUser(); if(!u) return;
   const { error } = await sb.from('rsvps').upsert({ user_id:u.id, event_id:eidOf(ev), event_title:ev.title, kind:'rsvp', occurrence_date:ev.occurrenceDate }, {onConflict:'user_id,event_id,occurrence_date'});
   if(error){ console.warn('Supabase RSVP save failed', error); dbStatus('RSVP save failed: '+error.message,true); }
-  else try{ dispatchEvent(new Event('comuna:plan-saved')); }catch(e){}   // the iPhone app asks for reminders here (native.js)
   dbProfile(); loadGoing();
 }
 // what people look at and tap, per event, for host stats. Batched, sent quietly (no error toasts), never blocks the app.
