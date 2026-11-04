@@ -3779,6 +3779,13 @@ dragRow(document.getElementById('alsoList'),'.dayev');
 /* ---------- Supabase ---------- */
 // Every write also lives in local storage first, so the app keeps working offline or if Supabase is down.
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true}}) : null;
+// native.js (the iPhone app only) runs outside this script's closure, so it can't see sb, events or openSheet.
+// These are the pieces it uses: the Supabase client for reminder tokens, and opening what a tapped notification is about.
+window.comunaApp={
+  sb,
+  openEvent(eid,date){ const ev=events.find(e=>eidOf(e)===eid); if(!ev) return false; openSheet(ev.id,null,'Top 4',date||null); return true; },
+  openPlans(){ go('plans'); return true; }
+};
 // status line in the dev panel (🛠) so a phone test shows whether saves reach Supabase
 function dbStatus(msg,bad){ const el=document.getElementById('dbStatus'); if(el) el.textContent='Database: '+msg;
   const pf=document.getElementById('dbStatusPf'); if(pf) pf.textContent=msg; if(bad) toast('Sync problem: '+msg); }
