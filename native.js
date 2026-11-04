@@ -60,7 +60,7 @@
      once, so the app asks first in its own words (the "RSVP saved" card and Profile > Reminders in index.html) and
      only shows Apple's prompt to someone who said yes. Every launch re-sends the phone's token, since iOS can change
      it. Turning reminders off in the app forgets this phone's token and stays off on this phone until turned back
-     on. `sb` and `openSheet` are the app's own, from index.html. */
+     on. window.comunaApp is the app's Supabase client and screens, from index.html (the rest of it is out of reach). */
   const Push=cap.registerPlugin('PushNotifications');
   const OFF='comuna_reminders_off';
   const isOff=()=>{ try{ return localStorage.getItem(OFF)==='1'; }catch(e){ return false; } };
@@ -68,10 +68,11 @@
   let token='';
   Push.addListener('registration',t=>{ token=t.value; saveToken(); });
   Push.addListener('registrationError',e=>console.warn('Push registration failed',e));
-  const signedIn=async()=>!!(typeof sb!=='undefined' && sb && (await sb.auth.getSession()).data.session);
+  const db=()=>window.comunaApp?.sb;
+  const signedIn=async()=>!!(db() && (await db().auth.getSession()).data.session);
   async function saveToken(){
     if(!token || isOff() || !(await signedIn())) return;
-    const { error }=await sb.rpc('save_push_token',{ p_token:token });
+    const { error }=await db().rpc('save_push_token',{ p_token:token });
     if(error) console.warn('Saving the push token failed',error);
   }
   // 'granted', 'denied', or 'prompt' when iOS hasn't asked yet
@@ -80,8 +81,8 @@
     if(!isOff() && (await pushPermission())==='granted') Push.register().catch(()=>{});
   }
   addEventListener('load',async()=>{
-    if(typeof sb==='undefined' || !sb) return;
-    sb.auth.onAuthStateChange(e=>{ if(e==='SIGNED_IN') setTimeout(register); });   // outside the callback, as Supabase asks
+    if(!db()) return;
+    db().auth.onAuthStateChange(e=>{ if(e==='SIGNED_IN') setTimeout(register); });   // outside the callback, as Supabase asks
     if(await signedIn()) register();
   });
   // back from the iPhone's Settings, where they may have just allowed notifications
@@ -102,13 +103,13 @@
     },
     async turnOff(){
       setOff(true);
-      if(token && await signedIn()){ const { error }=await sb.rpc('forget_push_token',{ p_token:token }); if(error) console.warn('Forgetting the push token failed',error); }
+      if(token && await signedIn()){ const { error }=await db().rpc('forget_push_token',{ p_token:token }); if(error) console.warn('Forgetting the push token failed',error); }
     },
     // Capacitor hands app-settings: to iOS, which opens Comuna's page in Settings
     openSettings(){ location.href='app-settings:'; }
   };
   window.comunaSigningOut=async()=>{
-    if(token && await signedIn()) await sb.rpc('forget_push_token',{ p_token:token });
+    if(token && await signedIn()) await db().rpc('forget_push_token',{ p_token:token });
     // Google remembers the account on the phone; forget it so the next person to sign in here gets the account picker
     if(window.comunaSocial?.providers.includes('google')) await cap.Plugins.SocialLogin?.logout({ provider:'google' }).catch(()=>{});
   };
@@ -148,11 +149,11 @@
     }
   };
 
-  // tapping a reminder opens its event
+  // tapping a notification opens its event (or Plans, for a rundown of several); straight after launch the events may
+  // still be loading, so keep trying for a few seconds
   Push.addListener('pushNotificationActionPerformed',a=>{
-    const d=a.notification?.data||{}, open=()=>{ const ev=typeof events!=='undefined' && events.find(e=>e.eid===d.event_id);
-      if(ev){ openSheet(ev.id,null,'Top 4',d.date||null); return true; } };
-    // straight after launch the events may still be loading
+    const d=a.notification?.data||{}, app=()=>window.comunaApp;
+    const open=()=>!!app() && (d.event_id? app().openEvent(d.event_id,d.date||null) : d.screen==='plans'? app().openPlans() : true);
     if(!open()){ let n=0; const t=setInterval(()=>{ if(open() || ++n>20) clearInterval(t); },500); }
   });
 })();

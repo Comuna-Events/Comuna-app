@@ -562,6 +562,14 @@ img{ max-width:100% }
 .remindask span{ color:#DDD1B8; font-size:13.5px; line-height:1.4 }
 .remindask .row{ display:flex; gap:8px; margin-top:8px } .remindask .btn{ flex:1; padding:11px 8px; font-size:14px }
 .remindask .yes{ background:var(--paper); color:var(--green) } .remindask .no{ border:1.5px solid rgba(243,231,209,.5); color:var(--paper) }
+.prefs{ margin-top:6px }
+.prefrow{ display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px 0; border-top:1px solid var(--line) }
+.prefrow:last-child{ border-bottom:1px solid var(--line) }
+.prefrow b{ display:block; font-size:15px } .prefrow small{ display:block; color:var(--muted); font-size:13px; margin-top:2px }
+.switch{ appearance:none; -webkit-appearance:none; flex:none; width:48px; height:28px; border-radius:14px; background:#CFC5B1; position:relative; transition:background .15s; margin:0; cursor:pointer }
+.switch::before{ content:''; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .15s }
+.switch:checked{ background:var(--green) } .switch:checked::before{ transform:translateX(20px) }
+.switch:focus-visible{ outline:2px solid var(--green); outline-offset:2px }
 .unlocks span{ background:rgba(243,231,209,.14); border:1px solid rgba(243,231,209,.35); border-radius:30px; padding:6px 12px; font-size:13px; font-weight:700 }
 .ptitle{ display:flex; align-items:center; gap:6px; max-width:calc(100% - 100px); margin-top:4px; padding:3px 0; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; line-height:1.3; color:#B9AE97; text-align:left }
 .ptitle[hidden]{ display:none } .ptitle i{ font-style:normal } .ptitle i::after{ content:'·'; margin-left:6px }
@@ -3317,13 +3325,13 @@ async function offerReminders(m){
   S.remindAsks=(S.remindAsks||0)+1; save();
   const cal=document.getElementById('rsvpCal'); if(cal) cal.textContent='Add to calendar';
   const box=document.createElement('div'); box.className='remindask';
-  box.innerHTML=`<b>Get a heads-up an hour before?</b><span>We'll send one reminder before each plan you save, with the time and venue.</span>
+  box.innerHTML=`<b>Get a heads-up before your plans?</b><span>Reminders before the plans you save, plus what's new in your interests once a week. Choose what you get in Profile > Reminders.</span>
     <div class="row"><button class="btn yes">Remind me</button><button class="btn no">Not now</button></div>`;
   document.getElementById('closeStamp').before(box);
   box.querySelector('.no').onclick=()=>box.remove();
   box.querySelector('.yes').onclick=async()=>{
     const st=await R.turnOn(); box.remove(); renderRemindRow();
-    if(st==='on'){ S.remindAsks=REMIND_ASKS; save(); haptic('success'); toast("Reminders on. We'll nudge you an hour before."); }
+    if(st==='on'){ S.remindAsks=REMIND_ASKS; save(); haptic('success'); toast("Reminders on. We'll give you a heads-up before your plans."); }
     else toast('No reminders for now. You can turn them on in Profile > Reminders.');
   };
 }
@@ -3336,14 +3344,16 @@ async function openReminders(){
   const R=window.comunaReminders; if(!R) return;
   const st=S.signedUp? await R.status() : 'guest';
   const [title,body,action,cls]={
-    on:['Reminders are on', "An hour before each plan you save, we'll send a heads-up with the time and venue. Tap it to open the event.", 'Turn off reminders', 'ghost'],
+    on:['Reminders are on', 'Choose what Comuna sends you. Tapping one opens the event.', 'Turn off all reminders', 'ghost'],
     off:['Reminders are off', "Turn them on and we'll send a heads-up an hour before each plan you save.", 'Turn on reminders', 'primary'],
     blocked:['Notifications are off', "Your iPhone is blocking notifications from Comuna. Open Settings, tap Notifications, and turn on Allow Notifications. Then we'll send a heads-up an hour before each plan you save.", 'Open iPhone Settings', 'primary'],
     guest:['Reminders need an account', "Plans saved only on this phone can't get reminders. Create an account and we'll send a heads-up an hour before each plan you save.", 'Create account', 'primary'],
   }[st==='unasked'? 'off' : st];
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Reminders</div>
-    <h2 style="font-size:28px">${title}</h2><p class="sub">${body}</p><button class="btn ${cls}" id="remindAct" style="margin-top:14px">${action}</button>`;
+    <h2 style="font-size:28px">${title}</h2><p class="sub">${body}</p>${st==='on'? '<div class="prefs" id="remindPrefs"></div>' : ''}
+    <button class="btn ${cls}" id="remindAct" style="margin-top:14px">${action}</button>`;
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  if(st==='on') drawRemindPrefs(document.getElementById('remindPrefs'));
   document.getElementById('remindAct').onclick=async()=>{
     if(st==='guest'){ overlay.classList.remove('on'); openAuth('signup'); return; }
     if(st==='blocked'){ R.openSettings(); return; }   // coming back redraws this sheet (below)
@@ -3352,6 +3362,25 @@ async function openReminders(){
     renderRemindRow(); openReminders();
   };
   overlay.classList.add('on');
+}
+// which kinds someone gets: push_prefs in Supabase (supabase/push.sql), one row per account, no row means all of them.
+// Until push.sql is re-run the table isn't there, and the sheet just shows the on/off button.
+const REMIND_KINDS=[
+  ['hour_before','An hour before','Each plan you save, with the time and venue'],
+  ['plans_today','Plans today','A morning rundown on days you have plans'],
+  ['tickets','Tickets the day before','When a plan needs an RSVP or tickets'],
+  ['new_for_you','New for you','Thursdays: up to 3 new events in your interests'],
+];
+async function drawRemindPrefs(box){
+  const u=await dbUser(); if(!u || !box) return;
+  const { data, error }=await sb.from('push_prefs').select('hour_before,plans_today,tickets,new_for_you').eq('user_id',u.id).maybeSingle();
+  if(error){ console.warn('Reminder settings unavailable', error); return; }
+  const prefs={ hour_before:true, plans_today:true, tickets:true, new_for_you:true, ...data };
+  box.innerHTML=REMIND_KINDS.map(([k,t,d])=>`<label class="prefrow"><span><b>${t}</b><small>${d}</small></span><input type="checkbox" class="switch" data-k="${k}" ${prefs[k]?'checked':''}></label>`).join('');
+  box.onchange=async e=>{ const c=e.target.closest('[data-k]'); if(!c) return;
+    haptic('selection');
+    const { error }=await sb.from('push_prefs').upsert({ user_id:u.id, [c.dataset.k]:c.checked, updated_at:new Date().toISOString() });
+    if(error){ c.checked=!c.checked; toast("Couldn't save that. Try again in a moment."); console.warn('Reminder settings save failed', error); } };
 }
 document.getElementById('pfRemind').onclick=openReminders;
 // back from the iPhone's Settings: show whether notifications are allowed now
@@ -3779,6 +3808,13 @@ dragRow(document.getElementById('alsoList'),'.dayev');
 /* ---------- Supabase ---------- */
 // Every write also lives in local storage first, so the app keeps working offline or if Supabase is down.
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true}}) : null;
+// native.js (the iPhone app only) runs outside this script's closure, so it can't see sb, events or openSheet.
+// These are the pieces it uses: the Supabase client for reminder tokens, and opening what a tapped notification is about.
+window.comunaApp={
+  sb,
+  openEvent(eid,date){ const ev=events.find(e=>eidOf(e)===eid); if(!ev) return false; openSheet(ev.id,null,'Top 4',date||null); return true; },
+  openPlans(){ go('plans'); return true; }
+};
 // status line in the dev panel (🛠) so a phone test shows whether saves reach Supabase
 function dbStatus(msg,bad){ const el=document.getElementById('dbStatus'); if(el) el.textContent='Database: '+msg;
   const pf=document.getElementById('dbStatusPf'); if(pf) pf.textContent=msg; if(bad) toast('Sync problem: '+msg); }
