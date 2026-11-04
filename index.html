@@ -2711,26 +2711,6 @@ function placeTrees(m){
     return {type:'Feature',properties:{v:'sk-ripple'+(spotHash(i,j,13)<.5?0:1),w:1},geometry:{type:'Point',coordinates:[lng,lat]}}; });
   src.setData({type:'FeatureCollection',features:f});
 }
-// Landmark sketches: a few big LA destinations drawn in ink, standing where they really are. They help you find your
-// way when zoomed out, grow a little as you zoom in, and fade out by street zoom so they never compete with the pins.
-// Tap one to fly in and see what's on around it. Each drawing is landmarks/<img>.png, about 480px wide, ink on transparent.
-const MAP_LANDMARKS=[
-  { name:'Hollywood Sign', img:'hollywood-sign', lng:-118.3215, lat:34.1341 },
-];
-function addLandmarks(m){
-  if(!MAP_LANDMARKS.length || m._landmarks) return; m._landmarks=true;
-  // load every drawing first: a symbol whose image arrives after it's placed may never show
-  Promise.all(MAP_LANDMARKS.map(l=>new Promise(r=>m.loadImage('landmarks/'+l.img+'.png',(err,im)=>{ if(err||!im) console.warn('landmark',l.img,err);
-    else if(!m.hasImage('lm-'+l.img)) m.addImage('lm-'+l.img,im,{pixelRatio:2}); r(); })))).then(()=>{ if(!m.style) return;
-  m.addSource('sk-landmarks',{type:'geojson',data:{type:'FeatureCollection',features:MAP_LANDMARKS.map(l=>({type:'Feature',properties:{name:l.name,img:'lm-'+l.img},geometry:{type:'Point',coordinates:[l.lng,l.lat]}}))}});
-  m.addLayer({id:'sk-landmarks',type:'symbol',source:'sk-landmarks',minzoom:9.5,maxzoom:16.5,
-    layout:{'icon-image':['get','img'],'icon-anchor':'bottom','icon-allow-overlap':true,
-      'icon-size':['interpolate',['linear'],['zoom'],9.5,.32,12,.48,14,.62,16,.7]},
-    paint:{'icon-opacity':['interpolate',['linear'],['zoom'],9.5,0,10.2,.95,13.8,.9,15.2,.35,16.3,0]}});
-  m.on('click','sk-landmarks',e=>{ const f=e.features&&e.features[0]; if(!f) return; userMoved=true;
-    m.flyTo({center:f.geometry.coordinates,zoom:Math.max(m.getZoom()+1.5,14),duration:900}); });
-  m.on('mouseenter','sk-landmarks',()=>m.getCanvas().style.cursor='pointer'); m.on('mouseleave','sk-landmarks',()=>m.getCanvas().style.cursor='');
-  }); }
 function sketchMapbox(m){
   const L=m.getStyle().layers||[], set=(id,k,v)=>{ try{ m.setPaintProperty(id,k,v); }catch(e){} };
   L.forEach(l=>{ const id=l.id;
@@ -2802,7 +2782,6 @@ function sketchMapbox(m){
     m.addLayer({id:'sk-city-labels',type:'symbol',source:'comuna-hoods',minzoom:11,filter:['==',['get','city'],1],layout:lay(1)});
     m.addLayer({id:'sk-hood-labels',type:'symbol',source:'comuna-hoods',minzoom:12,filter:['==',['get','city'],0],layout:lay(0)});
   }catch(e){ console.warn('sketch labels',e); } });
-  addLandmarks(m);
 }
 function setMapStatus(live){ const el=document.getElementById('mapStatus'); if(el) el.textContent = live ? 'Map: live Mapbox, styled to Brand Guide v2.' : 'Map: Paper preview. The live Mapbox map loads when this file runs on the team\'s own site (Mapbox tokens are locked to approved domains).'; }
 function tryMapbox(){

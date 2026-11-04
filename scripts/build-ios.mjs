@@ -12,7 +12,7 @@ const MAPBOX_IOS_TOKEN = 'pk.eyJ1IjoiY3BpY2tlMjEiLCJhIjoiY212cjhjMTViMDZ4OTM1b3N
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'ios-web');
 // The service worker is left out: iOS apps can't run one, and the app's files are already on the phone.
-const files = ['places.js', 'manifest.json', 'native.js', 'badges', 'stamps', 'landmarks'];
+const files = ['places.js', 'manifest.json', 'native.js', 'badges', 'stamps'];
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
