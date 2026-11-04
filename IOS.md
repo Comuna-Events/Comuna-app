@@ -34,12 +34,18 @@ build**. Changes in Supabase (events, badges, rules) show up straight away, as o
 ## Reminders (push notifications)
 
 iOS shows its "Allow notifications?" prompt only once, so the app asks in its own words first: the "RSVP saved" card
-offers "Get a heads-up an hour before?" on a signed-in person's first 3 saves, and only "Remind me" brings up Apple's
-prompt. **Profile > Reminders** turns them on or off on this phone (off forgets the phone's token), and when they're
-blocked in iPhone Settings it opens Comuna's page there. Guests can't get reminders, since the token needs an account.
-An hour before each saved plan starts,
-`supabase/functions/send-reminders` sends "starts at 6:30 PM … check in when you get there", and tapping it opens the
-event. The database runs it every 10 minutes (`supabase/push.sql`). It needs an Apple push key, once:
+offers "Get a heads-up before your plans?" on a signed-in person's first 3 saves, and only "Remind me" brings up
+Apple's prompt. Guests can't get reminders, since the token needs an account. What gets sent (Los Angeles time):
+
+- **An hour before**: "Jazz in the Park starts at 6:30 PM … check in when you get there".
+- **Plans today**: 9–11 AM on a day with plans that start later on ("2 plans today: …").
+- **Tickets the day before**: 5–8 PM the evening before a plan that needs an RSVP or paid tickets.
+- **New for you**: Thursdays 4–7 PM, up to 3 events added that week in your interests.
+
+**Profile > Reminders** has a switch for each (saved per account in `push_prefs`) and turns them all on or off on this
+phone (off forgets the phone's token); when they're blocked in iPhone Settings it opens Comuna's page there. Tapping a
+notification opens the event (or Plans, for a rundown of several). `supabase/functions/send-reminders` sends them, and
+the database runs it every 10 minutes (`supabase/push.sql`, which also holds the rules for what's due). It needs an Apple push key, once:
 
 1. On developer.apple.com > **Certificates, IDs & Profiles** > **Keys** > **+**: name it `Comuna push`, tick
    **Apple Push Notifications service (APNs)**, then **Continue** > **Register** > **Download**. Apple lets you
