@@ -3,7 +3,7 @@
 // saves new events to ingest.event_candidates and logs the run to ingest.ingest_runs.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { extractEvents } from "./extract.ts";
+import { type ExtractedEvent, extractEvents } from "./extract.ts";
 
 /** A row of ingest.event_sources. */
 export interface Source {
@@ -24,6 +24,7 @@ export interface SourcePost {
   postedAt?: string | null;    // ISO timestamp
   imageUrls?: string[];        // flyers: the AI reads them too, so include them when the details are in the image
   raw?: unknown;               // the platform's full response for this post, kept for debugging
+  events?: ExtractedEvent[];   // already structured (e.g. Partiful): saved as is, with no AI call
 }
 
 export type FetchPosts = (source: Source) => Promise<SourcePost[]>;
@@ -80,7 +81,7 @@ async function runIngest(name: string, platforms: string[], fetchPosts: FetchPos
 
       for (const post of await dropAlreadySeen(db, source.platform, posts)) {
         if (Date.now() > deadline) { ranOutOfTime = true; break; }
-        const events = await extractEvents(post, source);
+        const events = post.events ?? await extractEvents(post, source);
         stats.candidates_new += await saveCandidates(db, run.id, source, post, events);
       }
 

@@ -48,3 +48,10 @@ revoke execute on function ingest.run_nightly() from public, anon, authenticated
 -- gets through ~12 web sources before its 2-minute limit, and each call starts with the sources checked
 -- longest ago, so 24 calls cover a couple of hundred. Raise the hours if ingest_runs shows sources left over.
 select cron.schedule('nightly-event-ingest', '*/5 10-11 * * *', 'select ingest.run_nightly()');
+
+-- Eventbrite (ingest-eventbrite) has a job of its own, so it keeps running while the AI-based job above is paused:
+-- it calls no AI, so a night costs nothing but a few hundred page loads. Every 10 minutes from 10:00 to 11:50 UTC,
+-- done before ingest.auto_promote() at 12:10. One call reads 5-8 search pages (sources), oldest-checked first, so
+-- 12 calls cover the ~26 sources several times over; events already read are skipped.
+-- Sources are rows in ingest.event_sources with platform 'eventbrite' (see supabase/functions/ingest-eventbrite).
+select cron.schedule('nightly-eventbrite-ingest', '*/10 10-11 * * *', $$select ingest.run('ingest-eventbrite')$$);

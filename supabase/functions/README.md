@@ -11,6 +11,7 @@ _shared/ingest.ts      shared: loads sources, skips posts already read, saves ca
 _shared/extract.ts     shared: the Claude prompt and the fields it returns
 ingest-instagram/      fetchPosts for Instagram                   ← Instagram owner
 ingest-web/            city calendars and venue / event websites  ← web owner (works already; improve per site)
+ingest-eventbrite/     Eventbrite search pages for LA (no AI: Eventbrite's own data, see eventbrite.ts)
 _shared/vibes.ts       shared: the fixed list of vibes (spooky, date night, live music...) the AI picks from
 ingest-vibes/          picks vibes for events that don't have them (added by hand, or from before vibes)
 ```
@@ -19,6 +20,15 @@ ingest-vibes/          picks vibes for events that don't have them (added by han
 posts as `SourcePost`s (see `_shared/ingest.ts`). Don't call Claude or write to the database yourself.
 To add a platform, copy `ingest-instagram/`, rename it, and change the platform name in the last line
 (it must be one of the values allowed in `ingest.event_sources.platform`).
+
+A platform whose pages already carry the event as data (dates, address, price) can skip the AI: fill in the post's
+`events` with the finished candidates and they're saved as they are (`ingest-eventbrite` does this).
+
+**Eventbrite sources:** add a row with platform `eventbrite` and an Eventbrite search page as `handle`, e.g.
+`https://www.eventbrite.com/d/ca--los-angeles/trivia/` (a keyword), `.../ca--los-angeles/free--events/` (a filter) or
+`.../ca--pasadena/all-events/` (a city). It reads 3 pages of 20; end the handle with `#pages=N` for more (up to 10).
+It has its own nightly job (`nightly-eventbrite-ingest` in `ingest_schedule.sql`). Test the reading and mapping
+without the database: `NODE_USE_ENV_PROXY=1 node --experimental-strip-types scripts/test-ingest-eventbrite.mjs --live`.
 
 **Web sources:** add a row with platform `city_calendar` or `venue_website` and the page's full URL as `handle`.
 `ingest-web` downloads the page, turns it into text and lets the AI find the events. If a source fails

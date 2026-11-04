@@ -43,6 +43,9 @@ export interface ExtractedEvent {
   host: string | null;
   confidence: number;
   notes: string | null;
+  // Not asked of the AI: a platform with structured data (e.g. Eventbrite) can pass the venue's coordinates.
+  lat?: number | null;
+  lng?: number | null;
 }
 
 const text = { type: "string" };
