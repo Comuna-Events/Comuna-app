@@ -56,31 +56,57 @@
     done.catch(()=>{});
   };
 
-  /* reminders ("starts in an hour", sent by supabase/functions/send-reminders): iOS asks for permission after
-     someone saves their first plan, when a reminder obviously helps. Every launch re-sends the phone's token,
-     since iOS can change it. `sb` and `openSheet` are the app's own, from index.html. */
+  /* reminders ("starts in an hour", sent by supabase/functions/send-reminders). iOS shows its permission prompt only
+     once, so the app asks first in its own words (the "RSVP saved" card and Profile > Reminders in index.html) and
+     only shows Apple's prompt to someone who said yes. Every launch re-sends the phone's token, since iOS can change
+     it. Turning reminders off in the app forgets this phone's token and stays off on this phone until turned back
+     on. `sb` and `openSheet` are the app's own, from index.html. */
   const Push=cap.registerPlugin('PushNotifications');
+  const OFF='comuna_reminders_off';
+  const isOff=()=>{ try{ return localStorage.getItem(OFF)==='1'; }catch(e){ return false; } };
+  const setOff=v=>{ try{ v? localStorage.setItem(OFF,'1') : localStorage.removeItem(OFF); }catch(e){} };
   let token='';
   Push.addListener('registration',t=>{ token=t.value; saveToken(); });
   Push.addListener('registrationError',e=>console.warn('Push registration failed',e));
   const signedIn=async()=>!!(typeof sb!=='undefined' && sb && (await sb.auth.getSession()).data.session);
   async function saveToken(){
-    if(!token || !(await signedIn())) return;
+    if(!token || isOff() || !(await signedIn())) return;
     const { error }=await sb.rpc('save_push_token',{ p_token:token });
     if(error) console.warn('Saving the push token failed',error);
   }
-  async function register(ask){
-    let p=(await Push.checkPermissions().catch(()=>({}))).receive;
-    if(p!=='granted' && ask && p!=='denied') p=(await Push.requestPermissions().catch(()=>({}))).receive;
-    if(p==='granted') Push.register().catch(()=>{});
+  // 'granted', 'denied', or 'prompt' when iOS hasn't asked yet
+  const pushPermission=async()=>(await Push.checkPermissions().catch(()=>({}))).receive||'prompt';
+  async function register(){
+    if(!isOff() && (await pushPermission())==='granted') Push.register().catch(()=>{});
   }
-  // after the "You're in" message has had a moment on screen
-  addEventListener('comuna:plan-saved',()=>setTimeout(()=>register(true),1500));
   addEventListener('load',async()=>{
     if(typeof sb==='undefined' || !sb) return;
-    sb.auth.onAuthStateChange(e=>{ if(e==='SIGNED_IN') setTimeout(()=>register(false)); });   // outside the callback, as Supabase asks
-    if(await signedIn()) register(false);
+    sb.auth.onAuthStateChange(e=>{ if(e==='SIGNED_IN') setTimeout(register); });   // outside the callback, as Supabase asks
+    if(await signedIn()) register();
   });
+  // back from the iPhone's Settings, where they may have just allowed notifications
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') register(); });
+  window.comunaReminders={
+    // 'on', 'off' (turned off in the app), 'unasked' (iOS hasn't asked yet) or 'blocked' (off in iPhone Settings)
+    async status(){
+      const p=await pushPermission();
+      return p==='denied'? 'blocked' : p!=='granted'? 'unasked' : isOff()? 'off' : 'on';
+    },
+    // shows Apple's prompt the first time; resolves the new status
+    async turnOn(){
+      setOff(false);
+      let p=await pushPermission();
+      if(p!=='granted' && p!=='denied') p=(await Push.requestPermissions().catch(()=>({}))).receive;
+      if(p==='granted') await Push.register().catch(()=>{});
+      return window.comunaReminders.status();
+    },
+    async turnOff(){
+      setOff(true);
+      if(token && await signedIn()){ const { error }=await sb.rpc('forget_push_token',{ p_token:token }); if(error) console.warn('Forgetting the push token failed',error); }
+    },
+    // Capacitor hands app-settings: to iOS, which opens Comuna's page in Settings
+    openSettings(){ location.href='app-settings:'; }
+  };
   window.comunaSigningOut=async()=>{
     if(token && await signedIn()) await sb.rpc('forget_push_token',{ p_token:token });
     // Google remembers the account on the phone; forget it so the next person to sign in here gets the account picker
