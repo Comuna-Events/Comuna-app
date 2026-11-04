@@ -49,9 +49,12 @@ revoke execute on function ingest.run_nightly() from public, anon, authenticated
 -- longest ago, so 24 calls cover a couple of hundred. Raise the hours if ingest_runs shows sources left over.
 select cron.schedule('nightly-event-ingest', '*/5 10-11 * * *', 'select ingest.run_nightly()');
 
--- Eventbrite (ingest-eventbrite) has a job of its own, so it keeps running while the AI-based job above is paused:
--- it calls no AI, so a night costs nothing but a few hundred page loads. Every 10 minutes from 10:00 to 11:50 UTC,
--- done before ingest.auto_promote() at 12:10. One call reads 5-8 search pages (sources), oldest-checked first, so
--- 12 calls cover the ~26 sources several times over; events already read are skipped.
--- Sources are rows in ingest.event_sources with platform 'eventbrite' (see supabase/functions/ingest-eventbrite).
-select cron.schedule('nightly-eventbrite-ingest', '*/10 10-11 * * *', $$select ingest.run('ingest-eventbrite')$$);
+-- Eventbrite, Luma and Meetup (ingest-eventbrite, ingest-luma, ingest-meetup) read sites that carry their events as
+-- data, so they call no AI and a night costs nothing but page loads. They have a job of their own, so they keep running
+-- while the AI-based job above is paused: every 10 minutes from 10:00 to 11:50 UTC, done before ingest.auto_promote()
+-- at 12:10. Each call reads as many of that platform's sources as fit in its 2 minutes, oldest-checked first, so 12 calls
+-- cover them several times over; events already read are skipped. Sources are rows in ingest.event_sources with
+-- platform 'eventbrite', 'luma' or 'meetup' (see each function's comments for what a handle looks like).
+select cron.unschedule('nightly-eventbrite-ingest') where exists (select 1 from cron.job where jobname = 'nightly-eventbrite-ingest');
+select cron.schedule('nightly-structured-ingest', '*/10 10-11 * * *',
+  $$select ingest.run('ingest-eventbrite'); select ingest.run('ingest-luma'); select ingest.run('ingest-meetup');$$);

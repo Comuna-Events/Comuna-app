@@ -320,11 +320,12 @@ const tagNames = (l: Listing, prefix: string) =>
 const inLaArea = (lat: number, lng: number) => lat >= 33.65 && lat <= 34.85 && lng >= -118.95 && lng <= -117.65;
 
 // LA County zip codes: 900xx-918xx and the Antelope Valley's 935xx, minus the Orange County ones in that range
-// (same as ingest-partiful).
+// (Buena Park to La Habra 90620-90633, Stanton 90680, Los Alamitos 90720-90721, Seal Beach 90740, Sunset Beach
+// and Surfside 90742-90743; San Pedro 90731 and Paramount 90723 are LA County).
 export function inLaCounty(zip: string): boolean {
   const z = Number(zip);
   if (!((z >= 90001 && z <= 91899) || (z >= 93510 && z <= 93599))) return false;
-  return !((z >= 90620 && z <= 90633) || z === 90680 || (z >= 90720 && z <= 90743));
+  return !((z >= 90620 && z <= 90633) || z === 90680 || z === 90720 || z === 90721 || z === 90740 || z === 90742 || z === 90743);
 }
 
 export const laDate = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });

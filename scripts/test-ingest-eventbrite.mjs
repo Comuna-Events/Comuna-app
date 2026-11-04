@@ -50,7 +50,7 @@ const venue = (address) => ({ primary_venue: { name: "X", address: { latitude: "
 assert.equal(skipReason(listing(venue({ address_1: "Grand Park" })), today), "no street address");
 assert.equal(skipReason(listing(venue({ address_1: "1 Main St", postal_code: "92801" })), today), "outside LA County");
 assert.equal(skipReason(listing({ primary_venue: { name: "X", address: { address_1: "1 Main", latitude: "32.7", longitude: "-117.1" } } }), today), "outside LA");
-assert.ok(inLaCounty("90012") && inLaCounty("93550") && !inLaCounty("90630") && !inLaCounty("92614"));
+assert.ok(inLaCounty("90012") && inLaCounty("93550") && inLaCounty("90731") && inLaCounty("90723") && !inLaCounty("90630") && !inLaCounty("90740") && !inLaCounty("92614"));
 
 // One entry per repeated event, keeping the next date.
 const repeats = nextDates([listing({ id: "3", start_date: "2026-11-22" }), listing({ id: "2", start_date: "2026-11-15" }),
