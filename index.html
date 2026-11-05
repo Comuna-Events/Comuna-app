@@ -102,6 +102,7 @@ img{ max-width:100% }
 .onb .inner{ flex:1; display:flex; flex-direction:column; padding:44px 26px 34px; position:relative; overflow-y:auto; min-height:0 }
 .onb .btn.ghost{ border-color:var(--green); color:var(--green); margin-top:10px }
 .onb .big{ color:var(--green); font-family:var(--display); font-weight:900; font-size:60px; line-height:.9; text-transform:uppercase; margin:0 }
+.onb .service-area{ color:var(--green); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin:0 0 14px }
 .onb .lede{ color:var(--muted); font-size:15px; line-height:1.5; margin:14px 0 22px }
 .stampfield{ position:relative; flex:0 1 300px; max-height:300px; min-height:150px; margin:24px -6px 10px }
 /* the stamps are laid out at 300px tall and scaled (--s, set in buildOnb) to the height the screen leaves them */
@@ -694,6 +695,23 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 /* Mapbox gives the logo a -4px bottom margin, which sits it 2px below the (i): drop it so both centre on the Map / List switch */
 #homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-logo{ margin:0 0 0 -4px }
 #homeScreen:not(.home-list) .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-attrib.mapboxgl-compact-show{ max-width:calc(100vw - 150px) }
+/* Desktop and landscape tablets: let the app use the available workspace. */
+@media (min-width:821px){
+  .stage{ height:100%; min-height:0; padding:20px; gap:20px }
+  .aside{ display:none }
+  .phone{ width:100%; max-width:1440px; height:100%; max-height:none; padding:8px; border-radius:32px; min-width:0 }
+  .app{ border-radius:24px }
+  .topbar{ padding:20px 32px 12px }
+  .srch{ margin:4px 32px 0; max-width:760px }
+  .home-list .picks{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-content:start; padding:16px 32px 110px }
+  .home-list .pick{ margin:0; min-height:112px }
+  .home-list .picks > :not(.pick){ grid-column:1 / -1 }
+  #homeScreen:not(.home-list) .pick{ flex-basis:340px }
+  .nav{ width:420px; max-width:calc(100% - 32px); left:50%; right:auto; transform:translateX(-50%) }
+  .sheet{ max-width:620px; border-radius:26px 26px 0 0 }
+  .onb .inner{ width:100%; max-width:640px; margin:0 auto }
+  .screen:not(#homeScreen) > .scroll{ width:100%; max-width:880px; margin:0 auto; padding-left:32px; padding-right:32px }
+}
 </style>
 </head>
 <body>
@@ -720,6 +738,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
       <div class="inner">
         <div class="wm" id="onbMark" style="font-size:40px;color:var(--green)"></div>
         <div class="stampfield" id="stampfield"></div>
+        <p class="service-area">Now serving all of Los Angeles County</p>
         <h1 class="big">Your neighborhood has plans.</h1>
         <p class="lede">Explore local events, experiences and pop-ups near you.</p>
         <button class="btn primary" id="startGuest" style="margin-top:auto">Start exploring</button>
