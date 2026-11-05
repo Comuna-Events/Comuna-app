@@ -1,7 +1,8 @@
 # The iPhone app
 
 The App Store app ("Comuna: Neighborhood Events", bundle ID `com.wearecomuna.app`) is the same `index.html`, packaged
-with [Capacitor](https://capacitorjs.com). Nothing about the web app changes:
+with [Capacitor](https://capacitorjs.com). The Android app is packaged the same way (see [ANDROID.md](ANDROID.md)).
+Nothing about the web app changes:
 
 - `scripts/build-ios.mjs` copies the app into `ios-web/` and adds two scripts to that copy: Capacitor, and `native.js`,
   which switches location to the native iOS version (Comuna's own permission prompt) and sharing to the iOS share sheet.

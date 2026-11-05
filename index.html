@@ -1111,6 +1111,9 @@ function cardWhen(ev){ return ev.startsIn || !ev.start? ev.startsIn||ev.time : w
 const cardMeta=(ev,saved)=>[escH(ev.venue), priceTag(ev)?`<b class="cprice">${escH(priceTag(ev))}</b>`:'', saved?'Saved':socialText(ev)].filter(Boolean).join(' · ');
 
 
+// the Android app (Capacitor); the iPhone app and the website both say false
+const ANDROID_APP=window.Capacitor?.getPlatform?.()==='android';
+
 /* ---------- state ---------- */
 // Every check-in stamps a PLACE. Neighborhood, city and state stamps are earned from the places you've been.
 const START = { places:{}, points:0, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], alertsRead:false, nb:'Silver Lake', loc:null, name:'', interests:[], joined:new Date().toISOString().slice(0,10) };
@@ -3175,6 +3178,7 @@ function directionsUrl(ev,app){ const q=encodeURIComponent(ev.address||`${ev.ven
 /* directions: ask which maps app to open (the links keep a default href, so they still work if this doesn't run) */
 const mapsModal=document.getElementById('mapsModal');
 function askMaps(ev){
+  if(ANDROID_APP){ location.href=directionsUrl(ev,'google'); return; }   // Android has no Apple Maps; Capacitor hands the link to Google Maps
   document.getElementById('mapsApple').href=directionsUrl(ev,'apple');
   document.getElementById('mapsGoogle').href=directionsUrl(ev,'google');
   document.getElementById('mapsTo').textContent=ev.venue||'';
@@ -3395,6 +3399,7 @@ function showRsvp(ev,pts=0){
    on the "RSVP saved" card, the moment a reminder obviously helps, for someone's first 3 saves while iOS hasn't asked
    yet; after that it's only in Profile > Reminders. Guests can't get reminders: the token needs an account. */
 const REMIND_ASKS=3;
+const PHONE=ANDROID_APP? 'phone' : 'iPhone';
 async function offerReminders(m){
   const R=window.comunaReminders; if(!R || !S.signedUp || (S.remindAsks||0)>=REMIND_ASKS) return;
   if((await R.status())!=='unasked' || !m.classList.contains('on') || m.querySelector('.remindask')) return;
@@ -3413,7 +3418,7 @@ async function offerReminders(m){
 }
 async function renderRemindRow(){   // a function declaration with nothing outside it, so renderProfile can call it any time
   const R=window.comunaReminders, row=document.getElementById('pfRemind'); row.hidden=!R; if(!R) return;
-  const label={ on:'On', off:'Off', unasked:'Off', blocked:'Off in iPhone Settings' };
+  const label={ on:'On', off:'Off', unasked:'Off', blocked:`Off in ${PHONE} Settings` };
   document.getElementById('pfRemindTxt').textContent=S.signedUp? label[await R.status()] : 'Needs an account';
 }
 async function openReminders(){
@@ -3422,7 +3427,7 @@ async function openReminders(){
   const [title,body,action,cls]={
     on:['Reminders are on', 'Choose what Comuna sends you. Tapping one opens the event.', 'Turn off all reminders', 'ghost'],
     off:['Reminders are off', "Turn them on and we'll send a heads-up an hour before each plan you save.", 'Turn on reminders', 'primary'],
-    blocked:['Notifications are off', "Your iPhone is blocking notifications from Comuna. Open Settings, tap Notifications, and turn on Allow Notifications. Then we'll send a heads-up an hour before each plan you save.", 'Open iPhone Settings', 'primary'],
+    blocked:['Notifications are off', ANDROID_APP? "Your phone is blocking notifications from Comuna. Open Settings and turn on notifications for Comuna. Then we'll send a heads-up an hour before each plan you save." : "Your iPhone is blocking notifications from Comuna. Open Settings, tap Notifications, and turn on Allow Notifications. Then we'll send a heads-up an hour before each plan you save.", `Open ${PHONE} Settings`, 'primary'],
     guest:['Reminders need an account', "Plans saved only on this phone can't get reminders. Create an account and we'll send a heads-up an hour before each plan you save.", 'Create account', 'primary'],
   }[st==='unasked'? 'off' : st];
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Reminders</div>
@@ -3884,10 +3889,22 @@ dragRow(document.getElementById('alsoList'),'.dayev');
 /* ---------- Supabase ---------- */
 // Every write also lives in local storage first, so the app keeps working offline or if Supabase is down.
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true}}) : null;
-// native.js (the iPhone app only) runs outside this script's closure, so it can't see sb, events or openSheet.
+// native.js (the iPhone and Android apps only) runs outside this script's closure, so it can't see sb, events or openSheet.
 // These are the pieces it uses: the Supabase client for reminder tokens, and opening what a tapped notification is about.
 window.comunaApp={
   sb,
+  // Android's back button or gesture: close what's on top, else go back a screen. false means there's nowhere to go,
+  // and native.js sends the app to the background, as Android apps do on their first screen.
+  back(){
+    const stamp=document.getElementById('stampModal');
+    if(stamp.classList.contains('on')){ const c=document.getElementById('closeStamp'); if(c) c.click(); else stamp.classList.remove('on'); return true; }
+    const modal=document.querySelector('.recmodal.on'); if(modal){ modal.classList.remove('on'); return true; }
+    if(overlay.classList.contains('on')){ const b=document.getElementById('sheetBack'); if(b) b.click(); else overlay.classList.remove('on'); return true; }
+    const cancel=document.getElementById('srchCancel'); if(!cancel.hidden){ cancel.click(); return true; }
+    if(history.length){ go(history.pop(),false); return true; }
+    if(current!=='home' && (S.signedUp || S.guest)){ go('home',false); return true; }
+    return false;
+  },
   openEvent(eid,date){ const ev=events.find(e=>eidOf(e)===eid); if(!ev) return false; openSheet(ev.id,null,'Top 4',date||null); return true; },
   openPlans(){ go('plans'); return true; }
 };

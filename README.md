@@ -29,6 +29,7 @@ change is live; the file says so.
 ## Using it on a phone
 
 - **iPhone app:** the same app, packaged for the App Store. How to build and upload it is in `IOS.md`.
+- **Android app:** the same app, packaged for Google Play. How to build and upload it is in `ANDROID.md`.
 - **iPhone (Safari):** open the site, tap **Share**, then **Add to Home Screen**.
 - **Android (Chrome):** open the site, tap **⋮**, then **Install app**.
 

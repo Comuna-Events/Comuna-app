@@ -1,7 +1,8 @@
-// Copies the web app into ios-web/, the folder Capacitor packages into the iPhone app (run it with `npm run ios`).
+// Copies the web app into ios-web/, the folder Capacitor packages into the iPhone and Android apps (run it with
+// `npm run ios` or `npm run android`; despite the folder's name, both apps use it).
 // The copy of index.html also loads Capacitor and native.js, which switch location and sharing to the native versions;
 // the web app itself is unchanged. Nothing in ios-web/ is committed: it's rebuilt every time.
-import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,7 +23,17 @@ cpSync(join(root, 'node_modules/@capacitor/core/dist/capacitor.js'), join(out, '
 let html = readFileSync(join(root, 'index.html'), 'utf8');
 const hook = '<meta name="mobile-web-app-capable" content="yes" />';
 if (!html.includes(hook)) throw new Error(`index.html no longer has ${hook}; update scripts/build-ios.mjs to add the scripts elsewhere in <head>`);
-html = html.replace(hook, `${hook}\n<script src="capacitor.js"></script>\n<script src="native.js"></script>`);
+// Android reminders need Firebase's settings file (ANDROID.md); without it, native.js keeps reminders hidden there
+const androidPush = existsSync(join(root, 'android/app/google-services.json'));
+html = html.replace(hook, `${hook}\n<script>window.comunaBuild={ androidPush:${androidPush} };</script>`
+  + `\n<script src="capacitor.js"></script>\n<script src="native.js"></script>`);
+
+// Notches and the gesture bar: the page pads itself with env(safe-area-inset-*). Android WebViews older than
+// version 140 leave those at 0, so Capacitor sets --safe-area-inset-* instead; use it when it's there (iOS never sets
+// it, so the iPhone keeps using env()).
+const before = html;
+html = html.replace(/env\(safe-area-inset-(top|right|bottom|left)(,[^)]*)?\)/g, (m, side) => `var(--safe-area-inset-${side},${m})`);
+if (html === before) throw new Error('index.html no longer uses env(safe-area-inset-*); update scripts/build-ios.mjs to match');
 
 // An app doesn't zoom or rubber-band like a web page: no pinch or double-tap zoom, and the page itself doesn't slide
 // when dragged (lists and the map still scroll). The website keeps zoom for people who need it.
