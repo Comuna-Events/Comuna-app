@@ -46,7 +46,8 @@ begin
   if p_platform = 'ios' then
     if p_token !~ '^[0-9a-f]{64,200}$' then raise exception 'Not an iPhone push token.'; end if;
   elsif p_platform = 'android' then
-    if p_token !~ '^[A-Za-z0-9_:-]{100,4096}$' then raise exception 'Not an Android push token.'; end if;
+    -- Postgres regexes repeat at most 255 times, so the length is checked separately
+    if p_token !~ '^[A-Za-z0-9_:-]+$' or length(p_token) not between 100 and 4096 then raise exception 'Not an Android push token.'; end if;
   else
     raise exception 'Unknown platform %', p_platform;
   end if;
