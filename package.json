@@ -1,12 +1,16 @@
 {
   "name": "comuna",
   "private": true,
-  "description": "Comuna's iPhone app: the web app in index.html, packaged with Capacitor. See IOS.md.",
+  "description": "Comuna's iPhone and Android apps: the web app in index.html, packaged with Capacitor. See IOS.md and ANDROID.md.",
   "scripts": {
     "ios": "node scripts/build-ios.mjs && cap sync ios",
-    "ios:open": "cap open ios"
+    "ios:open": "cap open ios",
+    "android": "node scripts/build-ios.mjs && cap sync android",
+    "android:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.5.3",
     "@capacitor/geolocation": "8.2.3",
     "@capacitor/haptics": "8.0.2",

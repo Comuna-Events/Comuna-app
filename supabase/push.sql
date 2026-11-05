@@ -1,8 +1,10 @@
--- Comuna: notifications on the iPhone app. Run once in Supabase > SQL Editor; safe to re-run (re-run it after changes).
+-- Comuna: notifications on the iPhone and Android apps. Run once in Supabase > SQL Editor; safe to re-run (re-run it
+-- after changes).
 --
--- How it works: the iPhone app asks about reminders on the "RSVP saved" card, and saves the phone's push token with
+-- How it works: the app asks about reminders on the "RSVP saved" card, and saves the phone's push token with
 -- save_push_token(). Every 10 minutes the send-reminders Edge Function (scheduled below) reads what's due, sends each
--- through Apple's push service and records it, so nobody gets the same notification twice. Four kinds, each one a
+-- through Apple's push service (iPhone) or Firebase Cloud Messaging (Android) and records it, so nobody gets the same
+-- notification twice. Four kinds, each one a
 -- switch in Profile > Reminders (push_prefs; all on until someone turns one off):
 --   hour_before   "starts at 6:30 PM": an hour before each saved plan         due_push_reminders(), push_reminders_sent
 --   plans_today   "2 plans today": 9-11 AM on a day with plans later on       due_push_extras(), push_sent
@@ -10,16 +12,16 @@
 --   new_for_you   "New for you": Thursdays 4-7 PM, up to 3 events added that week in your interests (profiles.interests)
 -- Times are Los Angeles time.
 --
--- The schedule at the bottom only does anything once the APNS_* secrets are set (see
--- supabase/functions/send-reminders/index.ts); until then each call returns "not configured".
+-- The schedule at the bottom only does anything once the APNS_* secrets (iPhone) or the FCM_SERVICE_ACCOUNT secret
+-- (Android) are set (see supabase/functions/send-reminders/index.ts); until then each call returns "not configured".
 
 -- one row per phone; a phone that signs in to another account moves to that account
 create table if not exists public.push_tokens (
   token       text primary key,
   user_id     uuid not null references auth.users (id) on delete cascade,
-  platform    text not null default 'ios' check (platform in ('ios')),
-  -- Apple has two push services: 'sandbox' for builds run from Xcode, 'production' for TestFlight and the
-  -- App Store. Null until the first send works out which one the token belongs to.
+  platform    text not null default 'ios' check (platform in ('ios', 'android')),
+  -- iPhone only: Apple has two push services, 'sandbox' for builds run from Xcode, 'production' for TestFlight and
+  -- the App Store. Null until the first send works out which one the token belongs to. Android tokens leave it null.
   environment text check (environment in ('sandbox', 'production')),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
@@ -28,15 +30,28 @@ create index if not exists push_tokens_user_id on public.push_tokens (user_id);
 alter table public.push_tokens enable row level security;
 -- no policies: the app goes through the two functions below, and only they and the Edge Function touch the table
 revoke all on public.push_tokens from anon, authenticated;
+-- tables made before Android: let the platform column take 'android'
+alter table public.push_tokens drop constraint if exists push_tokens_platform_check;
+alter table public.push_tokens add constraint push_tokens_platform_check check (platform in ('ios', 'android'));
 
-create or replace function public.save_push_token(p_token text)
+-- iPhone tokens are hex; Firebase (Android) tokens are longer, with letters, digits, - _ and :. The iPhone app 1.0
+-- sends no p_platform, so it defaults to 'ios'. The one-argument version from before Android goes, so calls aren't
+-- ambiguous.
+drop function if exists public.save_push_token(text);
+create or replace function public.save_push_token(p_token text, p_platform text default 'ios')
 returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'Sign in to get reminders.'; end if;
-  if p_token !~ '^[0-9a-f]{64,200}$' then raise exception 'Not an iPhone push token.'; end if;
-  insert into push_tokens (token, user_id) values (p_token, auth.uid())
-  on conflict (token) do update set user_id = excluded.user_id, updated_at = now(),
+  if p_platform = 'ios' then
+    if p_token !~ '^[0-9a-f]{64,200}$' then raise exception 'Not an iPhone push token.'; end if;
+  elsif p_platform = 'android' then
+    if p_token !~ '^[A-Za-z0-9_:-]{100,4096}$' then raise exception 'Not an Android push token.'; end if;
+  else
+    raise exception 'Unknown platform %', p_platform;
+  end if;
+  insert into push_tokens (token, user_id, platform) values (p_token, auth.uid(), p_platform)
+  on conflict (token) do update set user_id = excluded.user_id, platform = excluded.platform, updated_at = now(),
     environment = case when push_tokens.user_id = excluded.user_id then push_tokens.environment end;
 end $$;
 
@@ -47,8 +62,8 @@ language sql security definer set search_path = public as $$
   delete from push_tokens where token = p_token and user_id = auth.uid();
 $$;
 
-revoke execute on function public.save_push_token(text), public.forget_push_token(text) from public, anon;
-grant execute on function public.save_push_token(text), public.forget_push_token(text) to authenticated;
+revoke execute on function public.save_push_token(text, text), public.forget_push_token(text) from public, anon;
+grant execute on function public.save_push_token(text, text), public.forget_push_token(text) to authenticated;
 
 -- which kinds of notification someone wants; no row means all of them. The app reads and writes its own row.
 create table if not exists public.push_prefs (
