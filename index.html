@@ -397,6 +397,9 @@ img{ max-width:100% }
 .recmodal .k{ font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red) }
 .recmodal .h1{ color:var(--green); margin:6px 0 4px }
 .recmodal #recTitle{ white-space:nowrap }
+.recmodal .awaytxt{ font-size:15px; line-height:1.5; color:var(--ink); margin:10px 0 0 }
+.recmodal .mapsto{ font-size:14px; color:var(--muted); margin-top:2px }
+.recmodal a.btn{ text-decoration:none }
 .recmodal .grab{ margin:-10px auto 14px; touch-action:none }
 .recmodal .pickhd{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red); margin:16px 0 6px 4px }
 .recmodal .pickhd + .pick{ margin-top:0 }
@@ -916,6 +919,21 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
       <div id="kitBody"></div>
       <button class="btn primary" id="kitNext" style="margin-top:18px">Let's go</button>
     </div></div>
+    <div class="recmodal" id="awayModal" role="dialog" aria-modal="true" aria-labelledby="awayTitle"><div class="box">
+      <div class="k">Coming to more cities</div>
+      <div class="h1" id="awayTitle">We're in LA for now.</div>
+      <p class="awaytxt">Looks like you're outside Los Angeles. Comuna is starting here, and we'll be expanding to other cities later. Until then, you can still explore what's happening around LA.</p>
+      <button class="btn primary" id="awayOk" style="margin-top:18px">Explore LA</button>
+      <button class="btn ghost" id="awayPick" hidden>Pick an LA neighborhood</button>
+    </div></div>
+    <div class="recmodal" id="mapsModal" role="dialog" aria-modal="true" aria-labelledby="mapsTitle"><div class="box">
+      <div class="k">Directions</div>
+      <div class="h1" id="mapsTitle">Open in…</div>
+      <div class="mapsto" id="mapsTo"></div>
+      <a class="btn primary mapsopt" id="mapsApple" href="#" target="_blank" rel="noopener" style="margin-top:16px">Apple Maps</a>
+      <a class="btn primary mapsopt" id="mapsGoogle" href="#" target="_blank" rel="noopener" style="margin-top:10px">Google Maps</a>
+      <button class="btn ghost" id="mapsCancel" style="margin-top:10px">Cancel</button>
+    </div></div>
     <div class="stampmodal" id="stampModal" role="dialog" aria-modal="true"></div>
     <!-- worn rubber-stamp ink, shared by the drawn stamps: speckles where the ink didn't take, faded patches, rough edges -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="inkWear" x="-5%" y="-5%" width="110%" height="110%">
@@ -1095,6 +1113,8 @@ function hoodOf(p){ if(p.lat==null||p.lng==null) return HOODS[0];
   if(!best){ let d=1e9; HOODS.forEach(h=>{ const m=miles(p,h); if(m<d){d=m;best=h;} }); }
   hoodOf.memo.set(k,best); return best; }
 hoodOf.memo=new Map();
+// Comuna only covers LA County for now: a spot that's in none of its places and more than 10 miles from all of them is somewhere else
+function outsideLA(p){ return p?.lat!=null && p?.lng!=null && !HOODS.some(h=>inPlace(p,h)) && !HOODS.some(h=>miles(p,h)<=10); }
 function cityOf(h){ return h.city || 'Los Angeles'; }
 function placeHood(p){ return p.lat!=null && p.lng!=null ? hoodOf(p) : HOODS.find(h=>h.name===(HOOD_RENAMED[p.hood]||p.hood))||null; }
 function visitedHoods(){ const o={}; Object.values(S.places).forEach(p=>{ const h=placeHood(p); if(h) o[h.name]=(o[h.name]||0)+p.n; }); return o; }
@@ -1411,9 +1431,24 @@ locList.onclick=e=>{ const b=e.target.closest('[data-hood]'); if(!b) return;
   setHood(b.dataset.hood); locQ.value=''; locList.innerHTML=''; toast('Got it. Home base is '+S.nb); afterLocation(); };
 document.getElementById('allowLoc').addEventListener('click',()=>{
   if(!navigator.geolocation){ toast('Location isn\'t available on this device. Try another browser or phone.'); return; }
-  navigator.geolocation.getCurrentPosition(p=>{ const loc={lat:p.coords.latitude,lng:p.coords.longitude}; setHood(hoodOf(loc).name,loc); toast('Got it. You\'re near '+S.nb); afterLocation(); },
+  navigator.geolocation.getCurrentPosition(p=>{ const loc={lat:p.coords.latitude,lng:p.coords.longitude};
+    // outside LA: start them in LA (they can pick a neighborhood instead) and say we'll come to their city later
+    if(outsideLA(loc)){ setHood(HOODS[0].name); showAway({ onOk:afterLocation, onPick:()=>locQ.focus() }); return; }
+    setHood(hoodOf(loc).name,loc); toast('Got it. You\'re near '+S.nb); afterLocation(); },
     ()=>{ toast('No problem. Search for your neighborhood or city instead.'); locQ.focus(); }, {timeout:6000});
 });
+/* "We're in LA for now": shown when someone's location is outside LA County */
+const awayModal=document.getElementById('awayModal'), awayPick=document.getElementById('awayPick');
+let awayDone=null;
+function showAway({onOk,onPick}={}){
+  awayPick.hidden=!onPick;
+  awayDone=onOk||null; awayPick.onclick=()=>{ awayDone=null; closeAway(); onPick(); };
+  awayModal.classList.add('on'); S.awayShown=Date.now(); save();
+}
+function closeAway(){ awayModal.classList.remove('on'); const f=awayDone; awayDone=null; f?.(); }
+document.getElementById('awayOk').onclick=closeAway;
+awayModal.addEventListener('click',e=>{ if(e.target===awayModal) closeAway(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && awayModal.classList.contains('on')) closeAway(); });
 
 /* sign-up: interests */
 const INTERESTS=Object.values(CATS).map(c=>c.label), INT_EX=Object.fromEntries(Object.values(CATS).map(c=>[c.label,c.ex]));
@@ -2214,7 +2249,9 @@ function centerOnLocation(){
   busy(true);
   try{ navigator.geolocation.getCurrentPosition(position=>{
     busy(false);
-    S.loc={lat:position.coords.latitude,lng:position.coords.longitude}; locAt=Date.now(); save();
+    const here={lat:position.coords.latitude,lng:position.coords.longitude};
+    if(outsideLA(here)){ showAway(); return; }   // the map only covers LA, so leave it where it is
+    S.loc=here; locAt=Date.now(); save();
     if(markers.you) markers.you.setLngLat([S.loc.lng,S.loc.lat]);
     userMoved=false; selId=null; fromCards=false; cardSwipe=false;
     if(current==='home'){ renderHome(); openCamera(true); }
@@ -2451,6 +2488,7 @@ function openVenue(list){
     <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(streetOf(ev)||ev.area||ev.hood||'')} <span>· ${mins(ev.mi)} min away</span></a>
     ${rows}`;
   overlay.classList.add('on'); sheet.scrollTop=0;
+  sheet.querySelector('.evwhere').addEventListener('click',e=>{ e.preventDefault(); track(ev,'directions'); askMaps(ev); });
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   sheet.querySelectorAll('[data-vev]').forEach(b=>b.onclick=()=>openSheet(+b.dataset.vev,()=>openVenue(list),name));
 }
@@ -3105,8 +3143,20 @@ function priceLine(ev){
     : ['unknown','Price not listed',hasLink?'Check the event page':''];
   return `<div class="evprice ${cls}"><b>${label}</b>${hint?`<span>${hint}</span>`:''}</div>`;
 }
-function directionsUrl(ev){ const q=encodeURIComponent(ev.address||`${ev.venue}, Los Angeles, CA`);
-  return /iPhone|iPad|Macintosh/.test(navigator.userAgent)? `https://maps.apple.com/?daddr=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`; }
+function directionsUrl(ev,app){ const q=encodeURIComponent(ev.address||`${ev.venue}, Los Angeles, CA`);
+  if(!app) app=/iPhone|iPad|Macintosh/.test(navigator.userAgent)? 'apple' : 'google';
+  return app==='apple'? `https://maps.apple.com/?daddr=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`; }
+/* directions: ask which maps app to open (the links keep a default href, so they still work if this doesn't run) */
+const mapsModal=document.getElementById('mapsModal');
+function askMaps(ev){
+  document.getElementById('mapsApple').href=directionsUrl(ev,'apple');
+  document.getElementById('mapsGoogle').href=directionsUrl(ev,'google');
+  document.getElementById('mapsTo').textContent=ev.venue||'';
+  mapsModal.classList.add('on');
+}
+const closeMaps=()=>mapsModal.classList.remove('on');
+mapsModal.addEventListener('click',e=>{ if(e.target===mapsModal || e.target.closest('#mapsCancel, .mapsopt')) closeMaps(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && mapsModal.classList.contains('on')) closeMaps(); });
 function addToCalendar(ev){
   const d=selectedPlanDay(ev); if(!d) return toast('Choose an event date before adding it to your calendar.');
   const a=hm(ev.t0)||[19,0], b=hm(ev.t1);
@@ -3162,7 +3212,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
       ${cta}
     </div>`;
   overlay.classList.add('on'); track(ev,'view');
-  sheet.querySelectorAll('#dirBtn,.evwhere').forEach(a=>a.addEventListener('click',()=>track(ev,'directions')));
+  sheet.querySelectorAll('#dirBtn,.evwhere').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); track(ev,'directions'); askMaps(ev); }));
   const el=sheet.querySelector('.evlink'); if(el) el.addEventListener('click',()=>track(ev,'link'));
   const vb=document.getElementById('vBtn'); if(vb) vb.onclick=()=>toast('Verified by Comuna: a real venue, organization or established host');
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
@@ -4139,6 +4189,7 @@ async function refreshLoc(){
   navigator.geolocation.getCurrentPosition(p=>{
     const loc={lat:p.coords.latitude,lng:p.coords.longitude};
     if(miles(loc,S.loc)<0.25) return;   // GPS jitter, not a move
+    if(outsideLA(loc)){ if(Date.now()-(S.awayShown||0)>7*864e5 && !document.querySelector('.recmodal.on')) showAway(); return; }   // traveling: keep LA, mention it now and then
     S.loc=loc; save(); rebuildMap(); if(current==='home') renderHome(); dbProfile();
   },()=>{}, {timeout:10000, maximumAge:5*6e4});
 }
