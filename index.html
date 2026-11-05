@@ -398,6 +398,8 @@ img{ max-width:100% }
 .recmodal .h1{ color:var(--green); margin:6px 0 4px }
 .recmodal #recTitle{ white-space:nowrap }
 .recmodal .awaytxt{ font-size:15px; line-height:1.5; color:var(--ink); margin:10px 0 0 }
+.recmodal .mapsto{ font-size:14px; color:var(--muted); margin-top:2px }
+.recmodal a.btn{ text-decoration:none }
 .recmodal .grab{ margin:-10px auto 14px; touch-action:none }
 .recmodal .pickhd{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red); margin:16px 0 6px 4px }
 .recmodal .pickhd + .pick{ margin-top:0 }
@@ -923,6 +925,14 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
       <p class="awaytxt">Looks like you're outside Los Angeles. Comuna is starting here, and we'll be expanding to other cities later. Until then, you can still explore what's happening around LA.</p>
       <button class="btn primary" id="awayOk" style="margin-top:18px">Explore LA</button>
       <button class="btn ghost" id="awayPick" hidden>Pick an LA neighborhood</button>
+    </div></div>
+    <div class="recmodal" id="mapsModal" role="dialog" aria-modal="true" aria-labelledby="mapsTitle"><div class="box">
+      <div class="k">Directions</div>
+      <div class="h1" id="mapsTitle">Open in…</div>
+      <div class="mapsto" id="mapsTo"></div>
+      <a class="btn primary mapsopt" id="mapsApple" href="#" target="_blank" rel="noopener" style="margin-top:16px">Apple Maps</a>
+      <a class="btn primary mapsopt" id="mapsGoogle" href="#" target="_blank" rel="noopener" style="margin-top:10px">Google Maps</a>
+      <button class="btn ghost" id="mapsCancel" style="margin-top:10px">Cancel</button>
     </div></div>
     <div class="stampmodal" id="stampModal" role="dialog" aria-modal="true"></div>
     <!-- worn rubber-stamp ink, shared by the drawn stamps: speckles where the ink didn't take, faded patches, rough edges -->
@@ -2478,6 +2488,7 @@ function openVenue(list){
     <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(streetOf(ev)||ev.area||ev.hood||'')} <span>· ${mins(ev.mi)} min away</span></a>
     ${rows}`;
   overlay.classList.add('on'); sheet.scrollTop=0;
+  sheet.querySelector('.evwhere').addEventListener('click',e=>{ e.preventDefault(); track(ev,'directions'); askMaps(ev); });
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   sheet.querySelectorAll('[data-vev]').forEach(b=>b.onclick=()=>openSheet(+b.dataset.vev,()=>openVenue(list),name));
 }
@@ -3132,8 +3143,20 @@ function priceLine(ev){
     : ['unknown','Price not listed',hasLink?'Check the event page':''];
   return `<div class="evprice ${cls}"><b>${label}</b>${hint?`<span>${hint}</span>`:''}</div>`;
 }
-function directionsUrl(ev){ const q=encodeURIComponent(ev.address||`${ev.venue}, Los Angeles, CA`);
-  return /iPhone|iPad|Macintosh/.test(navigator.userAgent)? `https://maps.apple.com/?daddr=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`; }
+function directionsUrl(ev,app){ const q=encodeURIComponent(ev.address||`${ev.venue}, Los Angeles, CA`);
+  if(!app) app=/iPhone|iPad|Macintosh/.test(navigator.userAgent)? 'apple' : 'google';
+  return app==='apple'? `https://maps.apple.com/?daddr=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`; }
+/* directions: ask which maps app to open (the links keep a default href, so they still work if this doesn't run) */
+const mapsModal=document.getElementById('mapsModal');
+function askMaps(ev){
+  document.getElementById('mapsApple').href=directionsUrl(ev,'apple');
+  document.getElementById('mapsGoogle').href=directionsUrl(ev,'google');
+  document.getElementById('mapsTo').textContent=ev.venue||'';
+  mapsModal.classList.add('on');
+}
+const closeMaps=()=>mapsModal.classList.remove('on');
+mapsModal.addEventListener('click',e=>{ if(e.target===mapsModal || e.target.closest('#mapsCancel, .mapsopt')) closeMaps(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && mapsModal.classList.contains('on')) closeMaps(); });
 function addToCalendar(ev){
   const d=selectedPlanDay(ev); if(!d) return toast('Choose an event date before adding it to your calendar.');
   const a=hm(ev.t0)||[19,0], b=hm(ev.t1);
@@ -3189,7 +3212,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
       ${cta}
     </div>`;
   overlay.classList.add('on'); track(ev,'view');
-  sheet.querySelectorAll('#dirBtn,.evwhere').forEach(a=>a.addEventListener('click',()=>track(ev,'directions')));
+  sheet.querySelectorAll('#dirBtn,.evwhere').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); track(ev,'directions'); askMaps(ev); }));
   const el=sheet.querySelector('.evlink'); if(el) el.addEventListener('click',()=>track(ev,'link'));
   const vb=document.getElementById('vBtn'); if(vb) vb.onclick=()=>toast('Verified by Comuna: a real venue, organization or established host');
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
