@@ -713,7 +713,9 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
   .home-list .picks > :not(.pick){ grid-column:1 / -1 }
   #homeScreen:not(.home-list) .pick{ flex-basis:340px }
   .nav{ width:420px; max-width:calc(100% - 32px); left:50%; right:auto; transform:translateX(-50%) }
-  .sheet{ max-width:620px; border-radius:26px 26px 0 0 }
+  .overlay, .recmodal{ align-items:center; justify-content:center; padding:24px }
+  .sheet{ max-width:620px; max-height:100%; border-radius:26px }
+  .recmodal .box{ max-width:620px; max-height:100%; border-radius:26px }
   .onb .inner{ width:100%; max-width:640px; margin:0 auto }
   .screen:not(#homeScreen) > .scroll{ width:100%; max-width:880px; margin:0 auto; padding-left:32px; padding-right:32px }
 }
