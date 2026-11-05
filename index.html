@@ -820,7 +820,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
       <div class="topbar">
         <div class="wm" id="homeMark" style="font-size:28px"></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="betapill" id="betaBtn" aria-label="Beta: send feedback">Beta · Feedback</button>
+          <button class="betapill" id="betaBtn" aria-label="Send feedback">Feedback</button>
           <button class="iconbtn" data-go="alerts" aria-label="Alerts"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4z"/><path d="M10 21h4"/></svg><span class="dot" id="alertDot" style="display:none"></span></button>
         </div>
       </div>
@@ -3144,7 +3144,7 @@ function openSources(back){
       <li><b>Shared by neighbors</b><span>Anyone can suggest an event. Our team reviews each one before it shows up.</span></li>
       <li><b>Free and paid</b><span>Every event says whether it's free, paid or pay what you can, when the host tells us.</span></li>
     </ul>
-    <p class="sub">Spot a wrong time or a canceled event? Tell us with <b>Beta · Feedback</b> at the top of the map.</p>`;
+    <p class="sub">Spot a wrong time or a canceled event? Tell us with <b>Feedback</b> at the top of the map.</p>`;
   overlay.classList.add('on');
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   if(back) document.getElementById('sheetBack').onclick=back;
@@ -4041,7 +4041,7 @@ async function loadCheckedIn(){
 
 document.getElementById('dbCheck').onclick=async()=>{ dbStatus('checking…'); const u=await dbUser(); if(!u) return dbStatus('not signed in (finish sign-up first)'); dbStatus('signed in, saving profile…'); await dbProfile(); };
 
-/* ---------- beta feedback ---------- */
+/* ---------- feedback ---------- */
 // Saved to Supabase "feedback" (insert-only for users). Falls back to the phone if offline, and retries next time.
 async function sendFeedback(row){
   const u=await dbUser(); const full={...row, screen:current, user_id:u?.id||null};
@@ -4054,7 +4054,7 @@ async function flushFeedback(){
 }
 function openFeedback(){
   let mood='';
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Comuna is in beta</div>
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Help shape Comuna</div>
     <h2 style="font-size:30px">How's it going?</h2><p class="sub">Bugs, ideas, events we're missing: it all helps.</p>
     <div class="moods" id="fbMoods">${['😍','🙂','😐','😕'].map(m=>`<button data-m="${m}" aria-label="${m}">${m}</button>`).join('')}</div>
     <textarea class="fbtext" id="fbText" placeholder="What should we fix or add?"></textarea>
