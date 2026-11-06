@@ -248,6 +248,7 @@ img{ max-width:100% }
 .picklist{ display:flex; flex-direction:column; margin-top:8px } .popt{ display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px dashed #DCCDAE; font-size:15px; text-align:left }
 .betapill{ font-size:12px; font-weight:600; color:var(--muted); padding:5px 4px; background:none; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
 .moods{ display:flex; gap:8px; margin:12px 0 4px } .moods button{ flex:1; font-size:26px; padding:10px 0; border-radius:14px; background:var(--card); border:2px solid transparent } .moods button.on{ border-color:var(--green); background:#E4ECDF }
+.fbtext.grow{ resize:none; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y }
 .fbtext{ width:100%; min-height:96px; border:1.5px solid #DCCDAE; border-radius:14px; padding:12px; font:inherit; font-size:16px; background:var(--card); resize:vertical; margin-top:10px }
 .tagpick{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px } .tagpick button{ font-size:13px; font-weight:500; padding:7px 12px; border-radius:20px; border:1.5px solid var(--ink) } .tagpick button.on{ background:var(--ink); color:var(--paper) }
 .subform label{ display:block; font-size:13px; font-weight:700; margin-top:12px } .subform label small{ display:block; font-weight:400; color:var(--muted); margin-top:2px }
@@ -480,6 +481,20 @@ img{ max-width:100% }
 .dayev .x{ flex:1; min-width:0 }
 .cancel-rsvp{ flex:0 0 100%; min-height:36px; border-top:1px solid var(--line); padding:10px 0 0; text-align:left; font:inherit; font-size:12.5px; font-weight:700; color:var(--red) }
 .cancel-rsvp:disabled{ opacity:.6; cursor:wait }
+.subhint{ display:block; margin:4px 0 0; font-size:12px; color:var(--muted) }
+.tixbtn{ flex:0 0 100%; min-height:36px; border-top:1px solid var(--line); padding:10px 0 0; text-align:left; font:inherit; font-size:12.5px; font-weight:700; color:var(--green) }
+.tixbtn + .cancel-rsvp{ border-top:0; padding-top:0 }
+.dayev .tag .tixno{ color:var(--ink) } .dayev .tag .tixok{ color:var(--green) }
+/* the host's own step (a ticket or RSVP on their page), in the event sheet and on the dark "Saved" card */
+.hoststep{ background:var(--card); border:1.5px solid var(--ink); border-radius:16px; padding:12px 14px; margin:14px 0 4px; display:flex; flex-direction:column; gap:4px; font-size:14px }
+.hoststep span{ color:var(--muted); font-size:13px; line-height:1.4 }
+.hoststep .row{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap } .hoststep .btn{ flex:1 1 140px; padding:10px 8px; font-size:14px; text-align:center; text-decoration:none }
+.hoststep .yes{ background:var(--green); color:#fff } .hoststep .no{ border:1.5px solid var(--line); color:var(--ink); background:transparent }
+.hoststep.done{ border-color:var(--green) } .hoststep.done b{ color:var(--green) }
+.hoststep.dark{ background:rgba(243,231,209,.12); border-color:rgba(243,231,209,.5); max-width:320px; margin:-4px 0 18px; text-align:left }
+.hoststep.dark span{ color:#DDD1B8 } .hoststep.dark b{ color:var(--paper) }
+.hoststep.dark .yes{ background:var(--paper); color:var(--green) } .hoststep.dark .no{ border-color:rgba(243,231,209,.5); color:var(--paper) }
+.savenote{ font-size:12.5px; color:var(--muted); margin:12px 0 0 }
 /* "Also happening": one row of cards you swipe sideways, edge to edge */
 .alsorow{ display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; margin:0 -20px; padding:10px 20px 4px; scroll-padding:0 20px; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x pan-y; cursor:grab; -webkit-overflow-scrolling:touch }
 .alsorow::-webkit-scrollbar{ display:none }
@@ -828,7 +843,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <form class="srchbox" id="srchForm" role="search" action="#">
           <button type="button" class="srchico" id="srchBack" aria-label="Clear search" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
           <span class="srchico" id="srchIcon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
-          <input id="srchQ" type="search" placeholder="Ask Comuna" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Search events, places and vibes" aria-controls="srchSugg" aria-expanded="false">
+          <input id="srchQ" type="search" placeholder="Search events, places, vibes" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Search events, places and vibes" aria-controls="srchSugg" aria-expanded="false">
           <button type="button" class="srchx" id="srchX" aria-label="Clear search" hidden><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </form>
         <button type="button" class="filtbtn" id="filtBtn" aria-label="Filters"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3.5 8h8.5M17.5 8h3M3.5 16h3M12 16h8.5"/><circle cx="14.8" cy="8" r="2.6"/><circle cx="9.2" cy="16" r="2.6"/></svg><span class="fcount" id="filtCount" hidden></span></button>
@@ -1092,18 +1107,21 @@ function kindOf(p){ if(KINDS[p.kind]) return p.kind; return {immersive:'popup',w
 // events come from the Supabase events table (plus approved community events and the feed). Nothing fake is shown while it loads.
 let events = [];
 let eventsState = 'loading';   // 'loading' | 'live' | 'error'
-// "N RSVP'd" (from going_counts) shows from this many people up: a lone "1 RSVP'd" reads as nobody going
+// "N saved" (from going_counts) shows from this many people up: a lone "1 saved" reads as nobody going
 const SOCIAL_MIN=3;
-const goingText=ev=>ev.going>=SOCIAL_MIN? `${ev.going} RSVP’d` : '';
+const goingText=ev=>ev.going>=SOCIAL_MIN? `${ev.going} saved` : '';
 // verified check-ins in the last 30 days (checkin_counts()), same minimum
 const checkedText=ev=>ev.checkedIn>=SOCIAL_MIN? `${ev.checkedIn} checked in this month` : '';
 // one line on a card: people who went beat people who plan to
 const crowdText=ev=>ev.checkedIn>=SOCIAL_MIN? `${ev.checkedIn} checked in` : goingText(ev);
 // reviews (review_summary(): 3+ "How was it?" answers) beat counts on a card
 const socialText=ev=>ev.rev? `${ev.rev.pct}% liked it` : crowdText(ev);
+// listed as free, but the description names a price ("$20 cash fee", "$10 at the door"): not shown as Free (feedback:
+// "it said free but the event page said $25"); the sheet says to check the host's page instead
+const priceClash=ev=>/^free/i.test(String(ev.price||'').trim()) && !/\bfree\b/i.test(ev.priceAmt||'') && /\$\s?\d/.test((ev.desc||'')+' '+(ev.priceAmt||''));
 // short price for a card: the amount when the listing gives one
 function priceTag(ev){ const p=String(ev.price||'');
-  return /free/i.test(p)? 'Free' : ev.priceAmt? ev.priceAmt : /donation|pay-what/i.test(p)? 'Pay what you can' : /paid/i.test(p)? 'Paid' : ''; }
+  return priceClash(ev)? 'Check price' : /free/i.test(p)? 'Free' : ev.priceAmt? ev.priceAmt : /donation|pay-what/i.test(p)? 'Pay what you can' : /paid/i.test(p)? 'Paid' : ''; }
 // card times include the end ("Sat, Nov 1 · 9 AM–2 PM") when the listing gives one
 function withEnd(ev,w){ const t0=fmtTime(ev.t0), t1=fmtTime(ev.t1); return t0 && t1 && w.endsWith(t0)? w+'–'+t1 : w; }
 function cardWhen(ev){ return ev.startsIn || !ev.start? ev.startsIn||ev.time : withEnd(ev,nextWhen(ev)); }
@@ -1199,11 +1217,11 @@ function stampSVG(top,bottom,kind,c,size,rot,fill){
   <circle cx="${-(r-21*s)}" r="${2.4*s}" fill="${c}"/><circle cx="${r-21*s}" r="${2.4*s}" fill="${c}"/>
   <g transform="scale(${s})">${glyph(kind,c)}</g></g></svg>`;
 }
-// "RSVP'D" ticket stamp shown when you RSVP: same look as the check-in stamp, Sun ink
+// "SAVED" ticket stamp shown when you save an event: same look as the check-in stamp, Sun ink
 function rsvpStamp(ev,w=240,h=160){
   const c=C.sun, t=ev.title.length>26? ev.title.slice(0,25).trim()+'…' : ev.title, when=(ev.time||'').toUpperCase(), whenFit=when.length>28? when.slice(0,27).trim()+'…' : when;
-  const word='RSVP\'D';
-  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="RSVP stamp for ${escH(ev.title)}">
+  const word='SAVED';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="Saved stamp for ${escH(ev.title)}">
   <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
   <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
   <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="32" letter-spacing="2" fill="${c}">${word}</text>
@@ -1595,13 +1613,20 @@ document.getElementById('suSocial').addEventListener('click',async e=>{
     authed=data.user; S.email=data.user.email||''; save();
     if(got.name && !suName.value.trim()) suName.value=got.name;
     // a new account without a name (Apple only shares it the first time) asks for one; everything else carries on
-    if(authMode==='signup' && !suName.value.trim()){ suUpdate(); suName.focus(); return; }
+    // (said out loud: the buttons disappear and the screen changes, which looked like nothing had happened)
+    if(authMode==='signup' && !suName.value.trim()){
+      const p=await readProfile(data.user.id).catch(()=>({}));
+      if(!p?.data?.name){ suUpdate(); toast(`Signed in with ${label}. Add your name, then tap Start exploring.`); suName.focus(); return; }
+    }
     await finishAuth();
-  }catch(err){ console.warn(label+' sign-in failed',err); toast(`Couldn't sign in with ${label}. Try again, or use your email.`); }
+  }catch(err){ console.warn(label+' sign-in failed',err);
+    // the reason helps us (and them) tell a setup problem from a dropped connection
+    const why=String(err?.message||err||'').replace(/\s+/g,' ').slice(0,90);
+    toast(`Couldn't sign in with ${label}${why? ` (${why})` : ''}. Try again, or use your email.`); }
   finally{ socialBusy=false; document.querySelectorAll('[data-social]').forEach(x=>x.disabled=false); }
 });
 let passportRestoreId=0, passportRevision=0;
-const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; badgesAt=0; return Object.assign(S,{ accountId:null, badges:null, titleKey:null, nickname:'', lbShow:'', monthLog:null, monthDb:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false }); };
+const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; badgesAt=0; return Object.assign(S,{ accountId:null, badges:null, titleKey:null, nickname:'', lbShow:'', monthLog:null, monthDb:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false, tickets:{} }); };
 // your profile row; until supabase/leaderboard_privacy.sql adds nickname and lb_show, read it without them
 const PROFILE_COLS='name,neighborhood,interests,lat,lng,points,created_at,title_key';
 async function readProfile(id){
@@ -1810,6 +1835,20 @@ function tastePenalty(ev){
   const v=Math.min(1.2,(ev.vibes||[]).reduce((n,x)=>n+0.3*((t.vibe||{})[x]||0),0));
   return c+v;
 }
+// The other direction: what you save and check in to counts toward similar events (same category, shared vibes), a
+// check-in twice as much as a save. Small and capped, so it nudges the order rather than narrowing what you see.
+let tasteMemo=null;
+function tasteLikes(){
+  const key=(S.rsvp||[]).length+':'+(S.checked||[]).length+':'+events.length; if(tasteMemo?.key===key) return tasteMemo;
+  const byId=new Map(events.map(e=>[e.id,e])), cat={}, vibe={};
+  const add=(id,w)=>{ const ev=byId.get(id); if(!ev) return; cat[ev.category]=(cat[ev.category]||0)+w; (ev.vibes||[]).forEach(v=>{ vibe[v]=(vibe[v]||0)+w; }); };
+  (S.rsvp||[]).forEach(id=>add(id,1)); (S.checked||[]).forEach(id=>add(id,2));
+  return tasteMemo={ key, cat, vibe };
+}
+function tasteBoost(ev){
+  const t=tasteLikes();
+  return Math.min(1.2,0.2*(t.cat[ev.category]||0)) + Math.min(0.8,(ev.vibes||[]).reduce((n,x)=>n+0.1*(t.vibe[x]||0),0));
+}
 function pickScore(ev,day,want){
   const shown=(S.pickShown||{})[ev.id], tapped=(S.pickTapped||{})[ev.id];
   let s=ev.mi*(want.includes(ev.category)?0.6:1);
@@ -1817,6 +1856,7 @@ function pickScore(ev,day,want){
   if(newStampFor(ev)) s-=0.8;                                     // a stamp you don't have yet
   if(justDropped(ev)) s-=1.2;                                     // new on Comuna
   s+=tastePenalty(ev);                                            // like things you said "Not for me" to
+  s-=tasteBoost(ev);                                              // like things you saved or went to
   if(kindOf(ev)==='popup' || /one-off/i.test(ev.rec||'')) s-=1.5; // only happens once
   if(lastChance(ev)) s-=2.5;                                      // a run that ends in the next few days
   if(recursOften(ev)) s+=1;                                       // will be there next week too
@@ -1829,7 +1869,7 @@ const PICK_MOODS={
   chill:  { label:'Chill',    ok:ev=>(ev.vibes||[]).some(v=>['chill','solo-friendly','creative','cultural'].includes(v)) },
   social: { label:'Social',   ok:ev=>catKey(ev.category)==='community' || (ev.vibes||[]).some(v=>['dance','live music','festive','solo-friendly'].includes(v)) },
   late:   { label:'Out late', ok:ev=>(ev.vibes||[]).includes('late night') || ev.sub==='nightlife' || String(ev.t0||'')>='20:00' },
-  cheap:  { label:'Cheap',    ok:ev=>/free|donation|pay-what/i.test(ev.price||'') }
+  cheap:  { label:'Cheap',    ok:ev=>/free|donation|pay-what/i.test(ev.price||'') && !priceClash(ev) }
 };
 function dailyPicks(mood){
   enrich();
@@ -1933,7 +1973,7 @@ function kitHtml(){
      <div class="kitstats"><div class="kitstat"><b>${drive20}</b><span>events within a 15–20 min drive</span></div><div class="kitstat"><b>${all}</b><span>events across LA right now</span></div></div>
      <ol class="kitsteps">
       <li><div><b>Explore the map</b><span>Tap any pin. Tap <b style="display:inline">?</b> anytime for what the colors mean.</span></div></li>
-      <li><div><b>Tap "RSVP"</b><span>It saves to your Plans.</span></div></li>
+      <li><div><b>Tap "Save"</b><span>It goes to your Plans. The host isn't notified.</span></div></li>
       <li><div><b>Check in when you're there</b><span>Collect the stamp and earn points.</span></div></li>
      </ol><div class="kitbadge" id="kitBadge" hidden></div>`;
 }
@@ -2000,12 +2040,16 @@ function enrich(){ const o=origin(); events.forEach(ev=>{ ev.mi=miles(o,ev); ev.
 let price='any';
 const PRICES=[['any','Any price'],['free','Free'],['u25','Under $25']];
 function priceFrom(ev){ const m=String(ev.priceAmt||'').match(/\$\s*(\d+(?:\.\d+)?)/); return m? +m[1] : null; }
-function priceOK(ev,pr=price){ if(pr==='any') return true; const free=/^free/i.test(String(ev.price||'').trim()); if(pr==='free') return free;
+function priceOK(ev,pr=price){ if(pr==='any') return true; const free=/^free/i.test(String(ev.price||'').trim()) && !priceClash(ev); if(pr==='free') return free;
   if(free || /donation|pay.what/i.test(ev.price||'')) return true; const a=priceFrom(ev); return a!==null && a<=25; }
 let searchQ='', searchPrev=null, searchHits=null;   // searchHits: event id -> score for searchQ, rebuilt when events reload
 const STOPWORDS=new Set(('a an and the to of in on at for from near me my i im is are am be any some all thing things stuff '
   +'do does what whats where wheres something anything cool fun good great best nice happening going around there here '
-  +'this that these those with by or it its can could should would want looking find show give us we you your').split(' '));
+  +'this that these those with by or it its can could should would want looking find show give us we you your '
+  // question words, so "what do you suggest for tonight?" searches for tonight rather than for the word "suggest"
+  +'suggest suggestion suggestions recommend recommendation recommendations recs idea ideas plan plans options '
+  +'event events activity activities go out how about who when which why there was were will get got need lets please '
+  +'tell know see like into have has had im ill id ive happening on up later').split(' '));
 // vibes (events.vibes, picked by the AI from a fixed list) and other words people use for them. Keep the names in step
 // with supabase/functions/_shared/vibes.ts.
 const VIBE_WORDS={ 'spooky':'halloween horror haunted scary ghost creepy costume', 'festive':'holiday seasonal celebration',
@@ -2013,7 +2057,7 @@ const VIBE_WORDS={ 'spooky':'halloween horror haunted scary ghost creepy costume
   'late night':'late night owl', 'live music':'live music band concert', 'dance':'dance dancing', 'chill':'chill relaxed low key quiet',
   'creative':'creative make craft diy art', 'cultural':'cultural culture heritage tradition', 'dog-friendly':'dog dogs pet pets' };
 const vibeLabel=v=>v[0].toUpperCase()+v.slice(1);
-const TIME_WORDS={ today:'tonight', tonight:'tonight', tonite:'tonight', week:'week', weekend:'week', month:'month' };
+const TIME_WORDS={ today:'tonight', tonight:'tonight', tonite:'tonight', now:'tonight', evening:'tonight', week:'week', weekend:'week', saturday:'week', sunday:'week', month:'month' };
 const normText=t=>' '+String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim()+' ';
 function parseSearch(q){
   const words=normText(q).trim().split(' ').filter(Boolean);
@@ -2362,7 +2406,7 @@ function renderSugg(){
       : vibes.length? '' : `<div class="psub">Search events, places and vibes</div>`);
   } else {
     const idx=searchIndex(q), n=idx.hits.size;
-    html=`<button type="button" class="sopt go" data-sq="${escH(q)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search “${escH(q)}”<small>${n? (idx.exact?'':'No exact match · ')+`${n} ${n===1?'event':'events'}` : 'No events match yet'}</small></span></button>`;
+    html=`<button type="button" class="sopt go" data-sq="${escH(q)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search “${escH(q)}”<small>${n? (idx.exact?'':'No exact match · ')+`${n} ${n===1?'event':'events'}` : 'No events match. Try a word like “jazz”, “free” or “tonight”'}</small></span></button>`;
     if(terms.length){
       const pre=t=>terms.every(w=>normText(t).includes(' '+w));
       const vibes=vibeCounts().filter(([v,n])=>n && pre(v+' '+VIBE_WORDS[v]));
@@ -2949,6 +2993,23 @@ window.addEventListener('resize',()=>{ if(current==='home') drawPaper(); if(curr
 // Saved to Supabase "event_submissions" as pending; you approve them in the Supabase dashboard,
 // then they appear on the map as "Community pick". Submitters get +100 points per approved event (first 3 each week).
 let subPlace=null, subTimer=null;
+// Links people add are checked here and again in the database (supabase/submissions_v2.sql), before the team's review:
+// https only, no shortened links that hide where they go, no raw IP addresses or look-alike (punycode) domains, nothing
+// with a login baked in, and nothing that downloads a file. The team adds bad sites to public.blocked_link_hosts.
+const SHORTENERS=/^(bit\.ly|tinyurl\.com|t\.co|goo\.gl|ow\.ly|is\.gd|buff\.ly|cutt\.ly|rebrand\.ly|shorturl\.at|rb\.gy|t\.ly|tiny\.cc|s\.id|v\.gd|qrco\.de|bl\.ink|short\.io|tiny\.one)$/i;
+const DOWNLOADS=/\.(exe|apk|aab|ipa|dmg|pkg|msi|zip|rar|7z|tar|gz|scr|bat|cmd|com|jar|js|vbs|ps1|iso|img|deb|rpm|bin|sh|app|xapk|torrent)$/i;
+function linkRisk(u){
+  let x; try{ x=new URL(u); }catch(e){ return 'That doesn\'t look like a web link.'; }
+  const h=x.hostname.toLowerCase();
+  if(x.protocol!=='https:') return 'Use the secure link, starting with https://';
+  if(x.username || x.password) return 'Links with a login in them can\'t be added.';
+  if(/^[\d.]+$/.test(h) || h.includes(':') || !h.includes('.')) return 'Use the site\'s name, not a number address.';
+  if(/(^|\.)xn--/.test(h)) return 'That site name uses look-alike characters, so it can\'t be added.';
+  if(SHORTENERS.test(h)) return 'Use the full link, not a shortened one, so people can see where it goes.';
+  if(DOWNLOADS.test(x.pathname)) return 'Links that download a file can\'t be added. Link to the event\'s page.';
+  return '';
+}
+const REPEATS=[['One-time','One time'],['Daily','Every day'],['Weekly','Every week'],['Biweekly','Every 2 weeks'],['Monthly','Every month (same weekday)']];
 function openSubmit(){
   if(!S.signedUp){ toast('Finish signing up first, then you can add events.'); return; }
   subPlace=null;
@@ -2961,12 +3022,14 @@ function openSubmit(){
         <input class="field" name="link" type="url" inputmode="url" placeholder="https://" required></label>
       <label>Event name *<input class="field" name="title" maxlength="90" required></label>
       <label>Category *<select class="field" name="category" required><option value="">Choose one</option>${cats}</select></label>
-      <div class="row2"><label>Date *<input class="field" name="date" type="date" required></label><label>Start time<input class="field" name="time" type="time"></label></div>
-      <label>End time <small style="display:inline">(optional)</small><input class="field" name="end" type="time"></label>
-      <label>How often?<select class="field" name="recurrence"><option>One-time</option><option>Weekly</option><option>Monthly</option></select></label>
+      <label>How often?<select class="field" name="recurrence">${REPEATS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
+      <div class="row2"><label><span id="subStartL">Date *</span><input class="field" name="date" type="date" required></label><label><span id="subEndL">Last day</span> <small style="display:inline">(optional)</small><input class="field" name="enddate" type="date"></label></div>
+      <small class="subhint" id="subEndHint">For a festival or anything that runs several days in a row.</small>
+      <div class="row2"><label>Start time<input class="field" name="time" type="time"></label><label>End time <small style="display:inline">(optional)</small><input class="field" name="end" type="time"></label></div>
       <label class="addr">Where is it? *<small>Search a venue, park or street address, then check the pin</small><input class="field" name="address" autocomplete="off" placeholder="e.g. Palisades Park, or 2939 Sunset Blvd" required><div class="sugg" id="subSugg"></div></label>
       <div class="pinwrap" id="subPinWrap" hidden><div id="subPinMap" class="pinmap"></div><small>Drag the pin to the exact spot if it's off.</small></div>
-      <div class="row2"><label>Price<select class="field" name="price"><option>Free</option><option>Paid</option></select></label><label class="chk"><input type="checkbox" name="host"> I'm the host</label></div>
+      <div class="row2"><label>Price<select class="field" name="price"><option>Free</option><option>Paid</option><option value="Donation / Pay-what-you-can">Pay what you can</option></select></label><label class="chk"><input type="checkbox" name="host"> I'm the host</label></div>
+      <label class="chk" style="margin-top:14px;align-items:flex-start"><input type="checkbox" name="rsvp" style="margin-top:2px"> People need to RSVP or get tickets in advance (at the link above)</label>
       <label>Short description<textarea class="field fbtext" name="desc" maxlength="300" placeholder="What should people know?" style="min-height:70px;margin-top:8px"></textarea></label>
       <button class="btn primary" type="submit" style="margin-top:14px">Submit for review</button>
     </form>`;
@@ -2974,6 +3037,14 @@ function openSubmit(){
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   const f=document.getElementById('subForm'), addr=f.address, sugg=document.getElementById('subSugg');
   f.date.min=new Date().toISOString().slice(0,10);
+  // one-time: the last day makes it a multi-day event; repeating: the date the repeats stop
+  const sync=()=>{ const once=f.recurrence.value==='One-time';
+    document.getElementById('subStartL').textContent=once? 'Date *' : 'First date *';
+    document.getElementById('subEndL').textContent=once? 'Last day' : 'Repeats until';
+    document.getElementById('subEndHint').textContent=once? 'For a festival or anything that runs several days in a row.' : 'Leave empty if it keeps going.';
+    f.enddate.min=f.date.value||f.date.min; };
+  f.recurrence.onchange=sync; f.date.addEventListener('change',sync); sync();
+  f.link.addEventListener('change',()=>{ const v=f.link.value.trim(); if(v){ const r=linkRisk(v); if(r) toast(r); } });
   addr.addEventListener('input',()=>{ subPlace=null; clearTimeout(subTimer); const q=addr.value.trim(); if(q.length<4){ sugg.innerHTML=''; return; }
     subTimer=setTimeout(async()=>{ try{
       // geocoding v5 also matches places (parks, plazas, venues), not just street addresses
@@ -2986,15 +3057,24 @@ function openSubmit(){
   f.onsubmit=async e=>{ e.preventDefault();
     const v=Object.fromEntries(new FormData(f)); const link=okLink((v.link||'').trim());
     if(!link) return toast('Add a link that starts with https://');
+    const risk=linkRisk(link); if(risk) return toast(risk);
     if(!v.title.trim()||!v.category||!v.date) return toast('Fill in the required fields (*)');
+    if(v.enddate && v.enddate<v.date) return toast(v.recurrence==='One-time'? 'The last day can\'t be before the first.' : 'The repeats can\'t stop before the first date.');
+    if(v.enddate===v.date) v.enddate='';
     if(!subPlace) return toast('Pick a place from the suggestions so it lands on the map');
     const norm=t=>String(t||'').toLowerCase().replace(/&amp;/g,'&').replace(/[^a-z0-9 ]/g,' ').replace(/\b(the|at|a|an|and|of|in)\b/g,' ').replace(/\s+/g,' ').trim();
     const nt=norm(v.title), day=parseDay(v.date), sameDay=x=>day&&x.start&&x.start.toDateString()===day.toDateString();
     const dup=events.find(x=>{ const t=norm(x.title); return t && (t===nt || (sameDay(x) && (t.includes(nt)||nt.includes(t)))); });
     if(dup) return toast('"'+dup.title.replace(/&amp;/g,'&')+'" is already on the map, so it can\'t be added again. Thanks for looking out!');
     const u=await dbUser(); if(!u) return toast('Couldn\'t connect. Try again in a moment.');
-    const { error } = await sb.from('event_submissions').insert({ user_id:u.id, link, title:v.title.trim(), category:v.category, event_date:v.date, start_time:v.time||null, end_time:v.end||null,
-      recurrence:v.recurrence, venue:(subPlace.name||subPlace.address.split(',')[0]).slice(0,80), address:subPlace.address, lat:subPlace.lat, lng:subPlace.lng, price:v.price, description:(v.desc||'').trim()||null, is_host:!!v.host });
+    const row={ user_id:u.id, link, title:v.title.trim(), category:v.category, event_date:v.date, end_date:v.enddate||null, start_time:v.time||null, end_time:v.end||null,
+      recurrence:v.recurrence, venue:(subPlace.name||subPlace.address.split(',')[0]).slice(0,80), address:subPlace.address, lat:subPlace.lat, lng:subPlace.lng, price:v.price, description:(v.desc||'').trim()||null, is_host:!!v.host, rsvp_required:!!v.rsvp };
+    let { error } = await sb.from('event_submissions').insert(row);
+    // until supabase/submissions_v2.sql runs, the table has no end_date / rsvp_required: send without them, noting the last day for the reviewer
+    if(error && /end_date|rsvp_required/.test(error.message||'')){ const { end_date, rsvp_required, ...old }=row;
+      if(end_date) old.description=[old.description,`(Runs through ${end_date})`].filter(Boolean).join(' ').slice(0,300);
+      ({ error } = await sb.from('event_submissions').insert(old)); }
+    if(error && /link_/.test(error.message||'')) return toast('That link can\'t be added: '+error.message.replace(/^.*link_\w+:\s*/,''));
     if(error) return toast(/5 events/.test(error.message)? 'You have 5 events waiting for review. Hang tight!' : 'Couldn\'t submit: '+error.message);
     overlay.classList.remove('on'); toast('Thanks! We\'ll review it and it\'ll show up on the map soon.');
   };
@@ -3056,9 +3136,9 @@ async function loadSubmissions(){
     const { data, error } = await sb.from('event_submissions').select('*').eq('status','approved'); if(error) throw error;
     // Keep raw text for sharing/storage; HTML renderers escape it once. Only http(s) links are kept.
     // hidden after reports (supabase/event_reports.sql), or reported by you: not shown
-    communityEvents=(data||[]).filter(r=>r.lat!=null && okLink(r.link) && !r.hidden_at && !(S.reported||[]).includes('SUB-'+r.id)).map(r=>({ id:200000+r.id, eid:'SUB-'+r.id, community:true, title:String(r.title||''), venue:String(r.venue||''), address:String(r.address||''),
+    communityEvents=(data||[]).filter(r=>r.lat!=null && okLink(r.link) && !linkRisk(r.link) && !r.hidden_at && !(S.reported||[]).includes('SUB-'+r.id)).map(r=>({ id:200000+r.id, eid:'SUB-'+r.id, community:true, title:String(r.title||''), venue:String(r.venue||''), address:String(r.address||''),
       lat:r.lat, lng:r.lng, sub:SUBCATS[r.category]? r.category : '', category:catKey(r.category), kind:/one/i.test(r.recurrence||'')? 'popup' : 'regular', area:'', host:r.is_host? String(r.venue||'') : 'Shared by a neighbor',
-      desc:String(r.description||''), source:okLink(r.link), price:r.price||'', rec:r.recurrence==='One-time'?'One-off':(r.recurrence||''), start:parseDay(r.event_date), t0:r.start_time? String(r.start_time).slice(0,5) : '', t1:r.end_time? String(r.end_time).slice(0,5) : '',
+      desc:String(r.description||''), source:okLink(r.link), price:r.price||'', rec:r.recurrence==='One-time'?'One-off':(r.recurrence||''), start:parseDay(r.event_date), end:r.end_date? parseDay(r.end_date) : null, rsvpReq:!!r.rsvp_required, t0:r.start_time? String(r.start_time).slice(0,5) : '', t1:r.end_time? String(r.end_time).slice(0,5) : '',
       time:'', going:0, fromGroup:0, live:false, startsIn:'' }));
     events=events.filter(x=>!x.community).concat(communityEvents);
     const u=(await sb.auth.getSession()).data.session?.user;
@@ -3166,7 +3246,8 @@ function priceLine(ev){
   const p=String(ev.price||''), hasLink=!!(okLink(ev.ticket)||okLink(ev.source));
   const tag='<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>', dollar='<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>';
   const ic=d=>`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-  const [cls,label,hint]= /free/i.test(p)? ['free',ic(tag)+'Free',ev.rsvpReq?'Registration required':'']
+  const [cls,label,hint]= priceClash(ev)? ['unknown','Price may vary',(()=>{ const m=String(ev.desc||'').match(/\$\s?\d+(?:\.\d\d)?/); return `The details mention ${m?escH(m[0].replace(/\s/,'')):'a price'}. Check the event page`; })()]
+    : /free/i.test(p)? ['free',ic(tag)+'Free',ev.rsvpReq?'Registration required':'']
     : /donation|pay-what/i.test(p)? ['paid',ic(tag)+'Pay what you can',ev.priceAmt||'Donations welcome']
     : /paid/i.test(p)? ['paid',ic(dollar)+escH(ev.priceAmt||'Paid'),hasLink?'Tickets from the host':'']
     : ['unknown','Price not listed',hasLink?'Check the event page':''];
@@ -3210,7 +3291,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
   const inn=hasPlan(ev), done=S.checked.includes(id);
   const k=kindOf(ev), recurs=ev.start&&!/one-off/i.test(ev.rec||'');
   const link=(()=>{ const ticket=okLink(ev.ticket), source=okLink(ev.source); const u=(ticket&&!isRoundup(ticket))?ticket:(source&&!isRoundup(source))?source:(ticket||source);
-    if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the RSVP button already opens it
+    if(!u || (needsRsvp(ev) && u===okRsvpLink(ev))) return '';   // the host-step box already links it
     return `<a class="evlink" href="${escH(u)}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">${ev.community?'See photos & details':isRoundup(u)?'Read about it':u===ev.ticket&&/paid/i.test(ev.price)?'Get tickets':'Event page'} ↗</a>`; })();
   const showHost=ev.host && ev.host!==ev.venue;
   const crowd=[goingText(ev),checkedText(ev)].filter(Boolean).join(' · ');
@@ -3218,8 +3299,8 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
   const icon=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const cta= done? `<button class="btn green" disabled>Stamped ✓</button>`
     : inn? `<button class="btn primary" id="checkBtn">Check in</button>`
-    : needsRsvp(ev)? `<a class="btn primary" id="rsvpBtn" href="${escH(okRsvpLink(ev))}" target="_blank" rel="external noopener noreferrer" title="Opens in a new tab or window">RSVP ↗</a>`
-    : `<button class="btn primary" id="rsvpBtn">RSVP</button>`;
+    : `<button class="btn primary" id="rsvpBtn">Save</button>`;   // saves to your Plans only; a host's RSVP or ticket is the box above
+  const step=hostStep(ev), stepDay=selectedPlanDay(ev);
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to ${escH(backLabel)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div>
     ${photoHtml(ev)}
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
@@ -3233,6 +3314,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     ${reviewLine(ev)}
     ${meta?`<div class="evmeta">${meta}</div>`:''}
     ${sourceLine(ev)}
+    ${step? `<div class="evstep">${hostStepHtml(step,inn,inn&&stepDay&&hasTicket(ev,stepDay))}</div>` : `<p class="savenote">Saving adds it to your Plans. It's just for you: the host isn't notified.</p>`}
     ${ev.community?'<button class="reportlink" id="reportBtn">Report this event</button>':''}
     ${(ev.parking||ev.alcohol!==undefined)?`<div class="practical">${ev.parking?`Parking: ${escLines(ev.parking)}<br>`:''}${ev.alcohol===true?'Drinks available, 21+ to drink':ev.alcohol===false?'Alcohol-free':''}</div>`:''}
     <div class="sheetfoot">
@@ -3285,21 +3367,29 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     if(u){ const r=await dbCheckin(ev,v.pos); if(!r.ok){ c.disabled=false; c.textContent=lab; haptic('warning'); toast(r.msg); return; } }
     checkIn(ev,v.dist,v.pos); if(u) loadBadges(true).then(celebrateBadges); };
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
+  const box=sheet.querySelector('.evstep'), bindStep=()=>{ if(!box) return;
+    box.querySelector('[data-hostgo]').addEventListener('click',()=>track(ev,'link'));
+    const ht=box.querySelector('[data-hostgot]'); if(ht) ht.onclick=()=>{ setTicket(ev,stepDay,!hasTicket(ev,stepDay)); haptic('light');
+      box.innerHTML=hostStepHtml(step,true,hasTicket(ev,stepDay)); bindStep(); if(current==='plans') renderPlans(); }; };
+  bindStep();
 }
 overlay.addEventListener('click',e=>{ if(e.target===overlay) overlay.classList.remove('on'); });
 
 /* swipe a sheet down to close (touch, or drag with a mouse). Only starts when it's scrolled to the top. */
 function swipeToClose(sheet,close){
   let y0=null, dy=0, t0=0;
-  const start=y=>{ if(sheet.scrollTop>0) return; y0=y; dy=0; t0=Date.now(); sheet.style.transition='none'; };
+  // not from inside a text box or anything else that scrolls on its own: there a drag scrolls the text (feedback notes)
+  const inner=t=>{ for(let el=t; el && el!==sheet; el=el.parentElement){ if(/^(TEXTAREA|INPUT|SELECT)$/.test(el.tagName)) return true;
+    if(el.scrollHeight>el.clientHeight+1 && /auto|scroll/.test(getComputedStyle(el).overflowY)) return true; } return false; };
+  const start=(y,t)=>{ if(sheet.scrollTop>0 || inner(t) || (document.activeElement?.tagName==='TEXTAREA' && sheet.contains(document.activeElement))) return; y0=y; dy=0; t0=Date.now(); sheet.style.transition='none'; };
   const move=(y,e)=>{ if(y0===null) return; dy=Math.max(0,y-y0); if(dy>0){ sheet.style.transform=`translateY(${dy}px)`; if(e&&e.cancelable) e.preventDefault(); } };
   const end=()=>{ if(y0===null) return; const fast=dy/(Date.now()-t0+1)>0.6; y0=null; sheet.style.transition='transform .2s ease-out';
     if(dy>110 || (fast && dy>40)){ sheet.style.transform='translateY(100%)'; setTimeout(()=>{ close(); sheet.style.transform=''; sheet.style.transition=''; },200); }
     else { sheet.style.transform=''; } dy=0; };
-  sheet.addEventListener('touchstart',e=>start(e.touches[0].clientY),{passive:true});
+  sheet.addEventListener('touchstart',e=>start(e.touches[0].clientY,e.target),{passive:true});
   sheet.addEventListener('touchmove',e=>move(e.touches[0].clientY,e),{passive:false});
   sheet.addEventListener('touchend',end); sheet.addEventListener('touchcancel',end);
-  sheet.addEventListener('mousedown',e=>{ if(e.target.closest('button,a,input')) return; start(e.clientY); });
+  sheet.addEventListener('mousedown',e=>{ if(e.target.closest('button,a,input,textarea,select,label')) return; start(e.clientY,e.target); });
   window.addEventListener('mousemove',e=>move(e.clientY)); window.addEventListener('mouseup',end);
 }
 swipeToClose(sheet,()=>overlay.classList.remove('on'));
@@ -3373,20 +3463,47 @@ function checkIn(ev,dist,pos){
   if(nudge) document.getElementById('keepSave').onclick=()=>{ m.classList.remove('on'); openAuth('signup'); };
 }
 
-// Every RSVP saves one occurrence. Only paid ticket requirements open the host page from the RSVP button.
+// Every save is one occurrence. Saving never opens the host's page; hostStep() below shows their ticket or RSVP link.
 // links to roundup articles, listicles and search pages: shown as "Read about it", never as the event page or RSVP
 const ROUNDUP=/welikela|timeout\.com|smdp\.com|hoodline|yelp\.com|wikipedia|eventbrite\.\w+\/d\/|laist\.com|secretlosangeles|atly\.com|nightlifehiker|localemagazine|fodors|opentable|westsidelosangeles|trivianearme|dolosangeles\.com\/(p|venues)\/|allevents|outxout\.com\/guides|tiktok|mommypoppins|venicepaparazzi|lamag\.com|lonelyplanet|211la|discoverlosangeles|eventsincalifornia|eventticketscenter|foodjournalmagazine|pubtrivianight|free2funla|westsidetoday|beverlypress|pasadenanow|sfvlocal|ianirarousso|clmp\.org|songkick|bandsintown|foxla\.com|pickleheads|nohoartsdistrict\.com\/noho-news|theinfatuation|patch\.com|ma\.to\//i;
 const isRoundup=u=>ROUNDUP.test(u||'');
 const okRsvpLink=ev=>{ const u=okLink(ev.ticket)||(ev.rsvpReq || /^paid$/i.test(String(ev.price||'').trim())?okLink(ev.source):''); return u && !isRoundup(u)? u : ''; };
-function needsRsvp(ev){ return /^paid$/i.test(String(ev.price||'').trim()) && !!okRsvpLink(ev); }
+// The host's own step, when there is one: buying a ticket (paid) or registering/RSVPing (free, "RSVP required") on the
+// host's page (Eventbrite, Partiful, Meetup...). Saving on Comuna never does that step for you, and the host is not told
+// about a save: it only goes to your Plans (and an anonymous "N saved" count on Comuna). So the sheet and the "Saved"
+// card both say so, with the host's link, and Plans shows whether you've got your ticket yet.
+const linkSite=u=>{ try{ const h=new URL(u).hostname.replace(/^www\./,''); const known={ 'eventbrite.com':'Eventbrite', 'partiful.com':'Partiful', 'meetup.com':'Meetup', 'lu.ma':'Luma', 'luma.com':'Luma', 'dice.fm':'DICE', 'tixr.com':'Tixr', 'posh.vip':'Posh', 'ticketmaster.com':'Ticketmaster', 'axs.com':'AXS', 'seetickets.us':'See Tickets', 'handstamp.com':'Handstamp' };
+  return known[h] || known[h.split('.').slice(-2).join('.')] || 'the host\'s site'; }catch(e){ return 'the host\'s site'; } };
+function hostStep(ev){
+  const url=okRsvpLink(ev); if(!url) return null;
+  const paid=/^paid$/i.test(String(ev.price||'').trim());
+  if(!paid && !ev.rsvpReq) return null;
+  const site=linkSite(url);
+  return paid? { kind:'ticket', url, site, need:'a ticket', go:`Get tickets on ${site}`, have:'I have my ticket', got:'Got ticket' }
+    : { kind:'rsvp', url, site, need:'a free RSVP', go:`RSVP on ${site}`, have:'I already RSVP\'d', got:'RSVP\'d with host' };
+}
+function needsRsvp(ev){ return !!hostStep(ev); }
+// "I have my ticket", per saved date, kept on this phone
+const ticketKey=(ev,day)=>ev.id+'|'+(typeof day==='string'? day : planDayKey(day));
+const hasTicket=(ev,day)=>!!(S.tickets||{})[ticketKey(ev,day)];
+function setTicket(ev,day,on){ S.tickets=S.tickets||{}; const k=ticketKey(ev,day); if(on) S.tickets[k]=1; else delete S.tickets[k]; save(); }
+const hostStepHtml=(st,saved,got)=>`<div class="hoststep${got?' done':''}"><b>${got? `✓ ${st.got}` : `Needs ${st.need} from the host`}</b>
+  <span>${got? 'Nice, you\'re all set.' : `Saving on Comuna doesn't ${st.kind==='ticket'?'buy a ticket':'RSVP'} for you, and the host isn't told. Do that on ${escH(st.site)}.`}</span>
+  <div class="row"><a class="btn yes" href="${escH(st.url)}" target="_blank" rel="external noopener noreferrer" data-hostgo>${escH(st.go)} ↗</a>${saved?`<button class="btn no" data-hostgot aria-pressed="${!!got}">${got?'Undo':escH(st.have)}</button>`:''}</div></div>`;
 function showRsvp(ev,pts=0){
   if(!ev) return;
   const m=document.getElementById('stampModal');
   m.innerHTML=`<div class="stampbox">${rsvpStamp(ev)}</div>
-    <h3>${needsRsvp(ev)?'RSVP saved. Get your tickets':'RSVP saved'}</h3>
-    <p>${escH(ev.title)}${ev.occurrenceDate?' on '+escH(planDay(ev.occurrenceDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${needsRsvp(ev)?'Complete registration or buy tickets on the host\'s page to confirm admission. ':''}${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Check in when you get there for the stamp and +${PTS.checkin} more.</p>
+    <h3>${needsRsvp(ev)? `Saved. Now ${hostStep(ev).kind==='ticket'?'get your ticket':'RSVP with the host'}` : 'Saved to your Plans'}</h3>
+    <p>${escH(ev.title)}${ev.occurrenceDate?' on '+escH(planDay(ev.occurrenceDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Saving is just for you: the host isn't notified and nobody's counting on you. Check in when you get there for the stamp and +${PTS.checkin} more.</p>
     <div class="unlocks"><button class="btn ghost" id="rsvpCal" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Remind me (+ Calendar)</button><button class="btn ghost" id="rsvpInvite" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Invite friends</button></div>
     <button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>`;
+  const st=hostStep(ev);
+  if(st){ const box=document.createElement('div'); const day=ev.occurrenceDate||selectedPlanDay(ev);
+    const draw=()=>{ box.innerHTML=hostStepHtml(st,true,hasTicket(ev,day)); box.firstChild.classList.add('dark');
+      box.querySelector('[data-hostgo]').addEventListener('click',()=>track(ev,'link'));
+      box.querySelector('[data-hostgot]').onclick=()=>{ setTicket(ev,day,!hasTicket(ev,day)); haptic('light'); draw(); if(current==='plans') renderPlans(); }; };
+    draw(); m.querySelector('.unlocks').before(box); }
   m.classList.add('on');
   document.getElementById('closeStamp').onclick=()=>m.classList.remove('on');
   document.getElementById('rsvpCal').onclick=()=>addToCalendar(ev);
@@ -3402,7 +3519,7 @@ const REMIND_ASKS=3;
 const PHONE=ANDROID_APP? 'phone' : 'iPhone';
 async function offerReminders(m){
   const R=window.comunaReminders; if(!R || !S.signedUp || (S.remindAsks||0)>=REMIND_ASKS) return;
-  if((await R.status())!=='unasked' || !m.classList.contains('on') || m.querySelector('.remindask')) return;
+  if((await R.status())!=='unasked' || !m.classList.contains('on') || m.querySelector('.remindask,.hoststep')) return;
   S.remindAsks=(S.remindAsks||0)+1; save();
   const cal=document.getElementById('rsvpCal'); if(cal) cal.textContent='Add to calendar';
   const box=document.createElement('div'); box.className='remindask';
@@ -3499,18 +3616,25 @@ const earnedBadges=()=>(S.badges||[]).filter(b=>b.earned_at).sort((a,b)=>b.earne
 // the closest badges you haven't earned (hidden ones stay secret)
 const nextBadges=()=>(S.badges||[]).filter(b=>!b.earned_at && !b.hidden).sort((a,b)=>b.progress/b.goal-a.progress/a.goal);
 const shownCount=()=>(S.badges||[]).filter(b=>!b.hidden||b.earned_at).length;
-let badgesAt=0, badgesFailed=false;
-// returns the badges this call earned (is_new), once each
+let badgesAt=0, badgesFailed=false, badgesBusy=false;
+// gives up on a request that never answers (a flaky connection), so the screen can say so instead of spinning
+const inTime=(p,ms)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error('timed out')),ms))]);
+// returns the badges this call earned (is_new), once each. Every way it can't load ends in badgesFailed
+// ('signin' when the account isn't signed in on this phone), so Badges never spins forever.
 async function loadBadges(force){
-  if(!sb || (!force && Date.now()-badgesAt<60000)) return []; badgesAt=Date.now();
-  try{ const u=(await sb.auth.getSession()).data.session?.user; if(!u) return [];
-    const { data, error } = await sb.rpc('my_achievements'); if(error) throw error;
-    const acct=S.accountId; if(acct && acct!==u.id) return [];
+  if(!force && (badgesBusy || (S.badges && Date.now()-badgesAt<60000))) return [];
+  const fail=why=>{ if(!S.badges){ badgesFailed=why; badgesAt=0; if(current==='badges') renderBadges(); else if(current==='passport') renderShelf(); } return []; };
+  if(!sb) return fail('offline');
+  badgesAt=Date.now(); badgesBusy=true;
+  try{ const u=(await inTime(sb.auth.getSession(),10000)).data.session?.user; if(!u) return fail('signin');
+    const { data, error } = await inTime(sb.rpc('my_achievements'),15000); if(error) throw error;
+    const acct=S.accountId; if(acct && acct!==u.id) return fail('signin');
     S.badges=data||[]; badgesFailed=false; if(S.badges.length) S.titleKey=S.badges.find(b=>b.worn)?.key||null; save();
     if(current==='passport') renderShelf(); else if(current==='badges') renderBadges(); else if(current==='profile') renderProfile();
     renderNames();
     return S.badges.filter(b=>b.is_new);
-  }catch(e){ console.warn('Supabase badges failed', e); badgesFailed=true; if(current==='badges') renderBadges(); return []; }
+  }catch(e){ console.warn('Supabase badges failed', e); return fail('offline'); }
+  finally{ badgesBusy=false; }
 }
 // a badge's mark: its stamp once earned, otherwise a ring that fills as you go
 // a badge's mark: its patch once earned, otherwise its shape's outline with progress stitched around the edge
@@ -3543,7 +3667,17 @@ document.getElementById('titlePill').onclick=openTitlePicker; document.getElemen
 function renderBadges(){
   const el=document.getElementById('badgeScreen'), got=earnedBadges();
   let html=`<div class="bhead"><div class="h1" style="color:var(--green)">Badges</div>${S.badges?`<span class="hand">${got.length} of ${shownCount()} earned</span>`:''}</div>`;
-  if(!S.badges){ el.innerHTML=html+`<div class="empty">${badgesFailed? 'Couldn\'t load your badges. Check your connection and try again.' : loaderHtml('badges',64)+'Loading your badges…'}</div>`; loadBadges(); return; }
+  if(!S.signedUp){   // a guest: badges come with an account (Profile > Badges and titles opens this too)
+    el.innerHTML=html+`<div class="empty">Badges and titles are earned with an account, from check-ins at events.<br><button class="btn primary" id="badgeJoin" style="margin-top:14px;max-width:240px">Create an account</button></div>`;
+    document.getElementById('badgeJoin').onclick=()=>openAuth('signup'); return; }
+  if(!S.badges){
+    el.innerHTML=html+`<div class="empty">${badgesFailed==='signin'? 'Sign in again to see your badges.<br><button class="btn primary" id="badgeRetry" style="margin-top:14px;max-width:220px">Sign in</button>'
+      : badgesFailed? 'Couldn\'t load your badges. Check your connection and try again.<br><button class="btn ghost" id="badgeRetry" style="margin-top:14px;max-width:220px">Try again</button>'
+      : loaderHtml('badges',64)+'Loading your badges…'}</div>`;
+    const r=document.getElementById('badgeRetry');
+    if(r) r.onclick=()=>{ if(badgesFailed==='signin'){ openAuth('signin'); return; } badgesFailed=false; renderBadges(); };
+    else loadBadges();
+    return; }
   const close=nextBadges().filter(b=>b.progress>0).slice(0,2);
   if(close.length) html+=`<div class="bsec">Almost there</div><div class="bclose">${close.map(b=>`<button data-badge="${escH(b.key)}"><b>${escH(b.name)}</b><span>${escH(b.blurb)}</span>${bar(b,'100%')}</button>`).join('')}</div>`;
   html+=`<div class="bbook">`;
@@ -3738,17 +3872,17 @@ function renderPlans(){
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
   const card=ev=>{ const inn=hasPlan(ev,calSel), done=S.checked.includes(ev.id);
-    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${goingText(ev)?goingText(ev)+' · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">Cancel RSVP</button>`:''}</div>`; };
+    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}${!done&&hostStep(ev)?(hasTicket(ev,calSel)?` · <span class="tixok">${hostStep(ev).got} ✓</span>`:` · <span class="tixno">${hostStep(ev).kind==='ticket'?'Ticket':'Host RSVP'} needed</span>`):''}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${goingText(ev)?goingText(ev)+' · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!S.checked.includes(ev.id)&&hostStep(ev)?`<button class="tixbtn" data-ticket="${ev.id}" aria-pressed="${hasTicket(ev,calSel)}">${hasTicket(ev,calSel)?'Undo':escH(hostStep(ev).have)}</button>`:''}${inn?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">Remove from Plans</button>`:''}</div>`; };
   const mineL=dayEvs.filter(ev=>hasPlan(ev,calSel)), also=dayEvs.filter(ev=>!hasPlan(ev,calSel) && (!isT || (nextDate(ev) && nextDate(ev)<=t))).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
-    : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "RSVP" on an event and it lands here.</div>`;
+    : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "Save" on an event and it lands here.</div>`;
   document.getElementById('alsoHead').textContent=`Also happening ${isT?'today':calSel.toLocaleString('en-US',{weekday:'long'})}`;
   document.getElementById('alsoHead').hidden=!also.length;
   document.getElementById('alsoList').innerHTML=also.slice(0,15).map(card).join('');
   // real invites will come from friends on Comuna; nothing to show until then
   document.getElementById('inviteList').innerHTML=`<div class="empty">No invites yet. When a friend invites you to something, it shows up here.</div>`;
 }
-document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open,null,undefined,planDayKey(calSel)); const s=e.target.closest('[data-share]'); if(s) shareEv({...events.find(x=>x.id===+s.dataset.share),occurrenceDate:planDayKey(calSel)}); });
+document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const tk=e.target.closest('[data-ticket]'); if(tk){ const ev=events.find(x=>x.id===+tk.dataset.ticket); if(ev){ setTicket(ev,calSel,!hasTicket(ev,calSel)); haptic('light'); renderPlans(); } return; } const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open,null,undefined,planDayKey(calSel)); const s=e.target.closest('[data-share]'); if(s) shareEv({...events.find(x=>x.id===+s.dataset.share),occurrenceDate:planDayKey(calSel)}); });
 
 // Cancels only the Comuna plan; external tickets/registrations stay with the host.
 async function cancelPlan(id,button){
@@ -3758,14 +3892,15 @@ async function cancelPlan(id,button){
   const label=button.textContent; button.disabled=true; button.textContent='Removing…';
   try{
     if(S.signedUp){
-      const u=await dbUser(); if(!u || !sb) throw new Error('Sign in or reconnect to cancel your RSVP.');
+      const u=await dbUser(); if(!u || !sb) throw new Error('Sign in or reconnect to remove this plan.');
       const {error}=await sb.from('rsvps').delete().eq('user_id',u.id).eq('event_id',eidOf(ev)).eq('occurrence_date',planDayKey(day)).select('event_id');
       if(error) throw error;
     }
     passportRevision++; forgetPlan(ev,day);
     S.guestLog=(S.guestLog||[]).filter(r=>!(r.t==='rsvp' && r.event_id===eidOf(ev) && r.occurrence_date===planDayKey(day))); save();
     renderPlans(); renderHome(); if(S.signedUp) loadGoing();
-    toast(needsRsvp(ev)?'RSVP removed from Comuna Plans. Cancel any host registration or tickets separately.':'RSVP canceled.');
+    if(hasTicket(ev,day)) setTicket(ev,day,false);
+    toast(needsRsvp(ev)?'Removed from your Plans. Cancel any ticket or RSVP with the host separately.':'Removed from your Plans.');
   }catch(error){ console.warn('RSVP cancellation failed',error); toast('Could not remove this plan. Check your connection and sign-in, then try again.'); }
   finally{ button.disabled=false; button.textContent=label; }
 }
@@ -4069,20 +4204,26 @@ async function flushFeedback(){
   if(!(S.feedbackQueue||[]).length) return; const u=await dbUser(); if(!u) return;
   const q=S.feedbackQueue.map(r=>({...r,user_id:u.id})); const { error } = await sb.from('feedback').insert(q); if(!error){ S.feedbackQueue=[]; save(); }
 }
+// the note is kept as you type, so closing the sheet (a swipe, a tap outside) never loses it; sending clears it
+let fbDraft={ mood:'', text:'' };
 function openFeedback(){
-  let mood='';
+  let mood=fbDraft.mood;
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Help shape Comuna</div>
     <h2 style="font-size:30px">How's it going?</h2><p class="sub">Bugs, ideas, events we're missing: it all helps.</p>
-    <div class="moods" id="fbMoods">${['😍','🙂','😐','😕'].map(m=>`<button data-m="${m}" aria-label="${m}">${m}</button>`).join('')}</div>
-    <textarea class="fbtext" id="fbText" placeholder="What should we fix or add?"></textarea>
+    <div class="moods" id="fbMoods">${['😍','🙂','😐','😕'].map(m=>`<button data-m="${m}" aria-label="${m}" class="${m===mood?'on':''}">${m}</button>`).join('')}</div>
+    <textarea class="fbtext grow" id="fbText" placeholder="What should we fix or add?">${escH(fbDraft.text)}</textarea>
     <button class="btn primary" id="fbSend" style="margin-top:14px">Send feedback</button>`;
   overlay.classList.add('on');
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
-  document.getElementById('fbMoods').onclick=e=>{ const b=e.target.closest('[data-m]'); if(!b) return; mood=b.dataset.m; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); };
-  document.getElementById('fbSend').onclick=async()=>{ const msg=document.getElementById('fbText').value.trim(); if(!mood && !msg){ toast('Pick a face or write a note first'); return; }
-    overlay.classList.remove('on'); await sendFeedback({kind:'app', mood, message:msg||null}); toast('Thanks! We read every note.'); };
+  const ta=document.getElementById('fbText'); growText(ta);
+  ta.addEventListener('input',()=>{ fbDraft.text=ta.value; growText(ta); });
+  document.getElementById('fbMoods').onclick=e=>{ const b=e.target.closest('[data-m]'); if(!b) return; mood=fbDraft.mood=b.dataset.m; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); };
+  document.getElementById('fbSend').onclick=async()=>{ const msg=ta.value.trim(); if(!mood && !msg){ toast('Pick a face or write a note first'); return; }
+    fbDraft={ mood:'', text:'' }; overlay.classList.remove('on'); await sendFeedback({kind:'app', mood, message:msg||null}); toast('Thanks! We read every note.'); };
 }
 document.getElementById('betaBtn').onclick=openFeedback;
+// a text box that grows with what you type, up to about half the screen; past that it scrolls inside
+function growText(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight+2, Math.round(innerHeight*0.45))+'px'; }
 // right after a check-in: quick "How was it?" about the event itself
 function askHowWasIt(ev){
   let vote=''; const tags=new Set();

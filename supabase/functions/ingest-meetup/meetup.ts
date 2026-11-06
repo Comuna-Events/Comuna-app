@@ -156,7 +156,9 @@ export function toEvent(e: MeetupEvent, laterDates: string[] = []): ExtractedEve
     zip: v.postalCode || null,
     neighborhood: v.city?.trim() || null,
     setting: null,
-    price_type: fee ? "Paid" : "Free",
+    // no Meetup fee isn't proof it's free: many groups charge at the door ("$20 cash fee"), so a description that names
+    // a price leaves the type empty for backfill-details to read from the page rather than calling it Free
+    price_type: fee ? "Paid" : /\$\s?\d/.test(`${name} ${text ?? ""}`) ? null : "Free",
     price_detail: fee ? money(fee) : null,
     rsvp_required: true,
     ticket_url: e.eventUrl.split("?")[0],

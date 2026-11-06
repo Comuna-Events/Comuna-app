@@ -42,7 +42,7 @@ const server=http.createServer((req,res)=>{
    ];
    eventsState='live';filter='mine';tier='any';when='week';go('home',false);renderHome();
   });
-  assert.equal(await page.getAttribute('#srchQ','placeholder'),'Ask Comuna');
+  assert.equal(await page.getAttribute('#srchQ','placeholder'),'Search events, places, vibes');
   const ids=()=>page.evaluate(()=>[...document.querySelectorAll('#picks [data-ev]')].map(b=>+b.dataset.ev));
   assert.deepEqual(await ids(),[3,1],'before searching: This week + Your interests (Arts)');
 
