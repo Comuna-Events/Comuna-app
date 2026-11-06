@@ -65,6 +65,9 @@ the new image. A badge with no image yet shows its category's blank patch (`badg
 
 - **Reported events**, daily: `select * from event_reports_review;` in the SQL Editor. How to restore, remove or
   block is at the top of `supabase/event_reports.sql`.
+- **Shared events waiting for review**, daily: `select * from event_submissions_review;` (after `supabase/submissions_v2.sql`).
+  Open each link and check the site name before approving. Links are already checked for shortened links, downloads,
+  look-alike domains and blocked sites; block a bad site with `insert into blocked_link_hosts (host, reason) values (...)`.
 
 ## Tests
 

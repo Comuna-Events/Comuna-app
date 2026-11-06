@@ -85,6 +85,7 @@ assert.equal(me.start_date, "2026-11-05");
 assert.equal(me.start_time, "05:30");
 assert.equal(me.venue, "Ashwin College");
 assert.equal(me.price_type, "Free");
+assert.equal(meetup.toEvent(mev({ description: "Every Wednesday. $20 cash fee walk in." })).price_type, null, "a price in the text isn't Free");
 assert.equal(me.category, "Active & Outdoors");
 assert.equal(me.description, "Morning yoga and breathwork.");
 assert.equal(me.host, "Kriya Meditation");

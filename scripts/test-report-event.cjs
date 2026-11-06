@@ -16,11 +16,11 @@ const slice=(from,to)=>{const a=source.indexOf(from);return source.slice(a,sourc
  reply={error:{message:'TypeError: Failed to fetch'}};assert.equal(await c.dbReport({eid:'SUB-7'},'Something else'),false,'a failed send is reported as failed');
  c.sb=null;assert.equal(await c.dbReport({eid:'SUB-7'},'x'),false);
  // loading: hidden events and ones you reported stay off the map
- const rows=[{id:1,lat:34,link:'https://a.test'},{id:2,lat:34,link:'https://b.test',hidden_at:'2026-10-22T00:00:00Z'},{id:3,lat:34,link:'https://c.test'}];
- const l={console:{warn(){}},S:{reported:['SUB-3']},events:[],okLink:x=>x,SUBCATS:{},catKey:x=>x,parseDay:()=>null,
+ const rows=[{id:1,lat:34,link:'https://a.test'},{id:4,lat:34,link:'https://bit.ly/x'},{id:2,lat:34,link:'https://b.test',hidden_at:'2026-10-22T00:00:00Z'},{id:3,lat:34,link:'https://c.test'}];
+ const l={console:{warn(){}},S:{reported:['SUB-3']},events:[],okLink:x=>x,linkRisk:x=>/bit\.ly/.test(x)?'shortened':'',SUBCATS:{},catKey:x=>x,parseDay:()=>null,
   sb:{from:()=>({select:()=>({eq:async()=>({data:rows,error:null})})}),auth:{getSession:async()=>({data:{session:null}})}}};
  vm.createContext(l);vm.runInContext(slice('let communityEvents=','\n\n\n')+'\nthis.shown=()=>communityEvents;',l);await l.loadSubmissions();
- assert.deepEqual(l.shown().map(e=>e.eid),['SUB-1'],'hidden and self-reported events are not shown');
+ assert.deepEqual(l.shown().map(e=>e.eid),['SUB-1'],'hidden, self-reported and risky-link events are not shown');
  assert.match(source,/\$\{ev\.community\?'<button class="reportlink" id="reportBtn">Report this event<\/button>':''\}/,'every community event page has a Report link');
  console.log('Report checks passed: signed-in and guest reports, repeats, failures, hidden and self-reported events stay off the map, report link on community events.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
