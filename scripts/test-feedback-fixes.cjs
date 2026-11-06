@@ -59,7 +59,8 @@ const server=http.createServer((req,res)=>{
   await page.click('#rsvpBtn');
   await page.waitForSelector('#stampModal.on .hoststep');
   assert.match(await page.textContent('#stampModal h3'),/Saved\. Now RSVP with the host/);
-  assert.match(await page.textContent('#stampModal'),/host isn't notified/);
+  assert.match(await page.textContent('#stampModal'),/host isn't told/);
+  assert.match(await page.textContent('#stampModal p'),/^In your Plans for .* · \+\d+ points\.$/,'one short line');
   if(process.env.SHOTS) await page.screenshot({path:process.env.SHOTS+'/saved.png'});
   await page.click('#stampModal [data-hostgot]');
   assert.match(await page.textContent('#stampModal .hoststep'),/RSVP'd with host/);
