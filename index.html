@@ -482,8 +482,9 @@ img{ max-width:100% }
 .cancel-rsvp{ flex:0 0 100%; min-height:36px; border-top:1px solid var(--line); padding:10px 0 0; text-align:left; font:inherit; font-size:12.5px; font-weight:700; color:var(--red) }
 .cancel-rsvp:disabled{ opacity:.6; cursor:wait }
 .subhint{ display:block; margin:4px 0 0; font-size:12px; color:var(--muted) }
-.tixbtn{ flex:0 0 100%; min-height:36px; border-top:1px solid var(--line); padding:10px 0 0; text-align:left; font:inherit; font-size:12.5px; font-weight:700; color:var(--green) }
-.tixbtn + .cancel-rsvp{ border-top:0; padding-top:0 }
+.tixbtn{ flex:0 0 100%; border-top:1px solid var(--line); padding:10px 0 3px; text-align:left; font:inherit; font-size:12.5px; font-weight:700; color:var(--green) }
+/* the two links read as one short list: no card gap between them, each still a full-width tap target */
+.tixbtn + .cancel-rsvp{ border-top:0; margin-top:-12px; min-height:0; padding:3px 0 4px }
 .dayev .tag .tixno{ color:var(--ink) } .dayev .tag .tixok{ color:var(--green) }
 /* the host's own step (a ticket or RSVP on their page), in the event sheet and on the dark "Saved" card */
 .hoststep{ background:var(--card); border:1.5px solid var(--ink); border-radius:16px; padding:12px 14px; margin:14px 0 4px; display:flex; flex-direction:column; gap:4px; font-size:14px }
