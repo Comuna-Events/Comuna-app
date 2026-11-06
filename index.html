@@ -1218,15 +1218,22 @@ function stampSVG(top,bottom,kind,c,size,rot,fill){
   <g transform="scale(${s})">${glyph(kind,c)}</g></g></svg>`;
 }
 // "SAVED" ticket stamp shown when you save an event: same look as the check-in stamp, Sun ink
+// the event name for the stamp: one line, or split at a space into two, the second cut short if it's still long
+function stampLines(title,max=22){
+  const t=String(title||'').trim(); if(t.length<=max) return [t];
+  let cut=t.lastIndexOf(' ',max); if(cut<8) cut=max;
+  const rest=t.slice(cut).trim();
+  return [t.slice(0,cut).trim(), rest.length>max? rest.slice(0,max-1).trim()+'…' : rest];
+}
 function rsvpStamp(ev,w=240,h=160){
-  const c=C.sun, t=ev.title.length>26? ev.title.slice(0,25).trim()+'…' : ev.title, when=(ev.time||'').toUpperCase(), whenFit=when.length>28? when.slice(0,27).trim()+'…' : when;
+  const c=C.sun, when=(ev.time||'').toUpperCase(), whenFit=when.length>28? when.slice(0,27).trim()+'…' : when;
   const word='SAVED';
   return `<svg width="${w}" height="${h}" viewBox="0 0 150 100" style="overflow:visible;display:block" aria-label="Saved stamp for ${escH(ev.title)}">
   <rect x="3" y="3" width="144" height="94" rx="9" fill="none" stroke="${c}" stroke-width="2.8"/>
   <rect x="9" y="9" width="132" height="82" rx="5" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="4 3"/>
   <text x="75" y="53" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="32" letter-spacing="2" fill="${c}">${word}</text>
-  <text x="75" y="66" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="10.5" letter-spacing=".6" fill="${c}">${escH(t.toUpperCase())}</text>
-  <text x="75" y="80" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
+  ${stampLines(ev.title).map((l,i,a)=>`<text x="75" y="${(a.length>1?64:66)+i*10}" text-anchor="middle" font-family="Big Shoulders Display" font-weight="800" font-size="${a.length>1?9.5:10.5}" letter-spacing=".6" fill="${c}"${l.length>18?' textLength="118" lengthAdjust="spacingAndGlyphs"':''}>${escH(l.toUpperCase())}</text>`).join('')}
+  <text x="75" y="${stampLines(ev.title).length>1?84:80}" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="5.6" letter-spacing=".8" fill="${c}">${escH(whenFit)}</text>
   <circle cx="75" cy="18" r="3.2" fill="${C.red}"/></svg>`;
 }
 // Place stamps: passport entry stamps drawn in code, one shape per kind of place, no illustration. They carry the
@@ -3497,7 +3504,7 @@ function showRsvp(ev,pts=0){
   const m=document.getElementById('stampModal');
   m.innerHTML=`<div class="stampbox">${rsvpStamp(ev)}</div>
     <h3>${needsRsvp(ev)? `Saved. Now ${hostStep(ev).kind==='ticket'?'get your ticket':'RSVP with the host'}` : 'Saved to your Plans'}</h3>
-    <p>${escH(ev.title)}${ev.occurrenceDate?' on '+escH(planDay(ev.occurrenceDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}${ev.venue&&ev.venue!==ev.title?` at ${escH(ev.venue)}`:''}. ${pts?`+${pts} points, and it's`:'It\'s'} in your Plans${pts?'':' (you\'ve hit today\'s 5 saves for points)'}. Saving is just for you: the host isn't notified and nobody's counting on you. Check in when you get there for the stamp and +${PTS.checkin} more.</p>
+    <p>In your Plans${ev.occurrenceDate?' for '+escH(planDay(ev.occurrenceDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})):''}${pts?` · +${pts} points`:''}.${needsRsvp(ev)?'':' The host isn\'t notified.'}</p>
     <div class="unlocks"><button class="btn ghost" id="rsvpCal" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Remind me (+ Calendar)</button><button class="btn ghost" id="rsvpInvite" style="border-color:var(--paper);color:var(--paper);padding:10px 18px">Invite friends</button></div>
     <button class="btn primary" id="closeStamp" style="max-width:260px">Nice</button>`;
   const st=hostStep(ev);
