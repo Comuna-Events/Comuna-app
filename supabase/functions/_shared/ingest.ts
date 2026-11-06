@@ -33,6 +33,16 @@ export type FetchPosts = (source: Source) => Promise<SourcePost[]>;
 // (sources are read oldest-checked first).
 const TIME_BUDGET_MS = 110_000;
 
+// The nightly jobs call each function many times (every 5 or 10 minutes for two hours) so that platforms with
+// many sources get through all of them. A source read successfully this recently is skipped, so later calls only
+// do what's left (and the ones that failed) instead of reading every source again.
+const FRESH_HOURS = 12;
+
+// A site that answers 429 is telling us to slow down: the rest of this run leaves that site's other sources alone
+// (they keep their place in line for the next run) instead of asking it again for each one.
+const RATE_LIMITED = /answered 429\b/;
+const hostOf = (handle: string) => { try { return new URL(handle.trim()).hostname; } catch { return handle; } };
+
 /**
  * The whole HTTP handler for an ingest-* function. `name` labels the run in ingest_runs; `platforms`
  * are the event_sources.platform values this function reads (defaults to just `name`).
@@ -63,6 +73,7 @@ async function runIngest(name: string, platforms: string[], fetchPosts: FetchPos
   const stats = { sources_checked: 0, posts_seen: 0, candidates_new: 0 };
   const errors: { source: string; error: string }[] = [];
   let ranOutOfTime = false;
+  const rateLimited = new Set<string>(); // hosts that answered 429 in this run
 
   const { data: run, error: runError } = await db.from("ingest_runs").insert({ platform: name }).select("id").single();
   if (runError) throw runError;
@@ -70,11 +81,16 @@ async function runIngest(name: string, platforms: string[], fetchPosts: FetchPos
   let query = db.from("event_sources").select("*").in("platform", platforms).eq("active", true)
     .order("last_checked_at", { ascending: true, nullsFirst: true });
   if (onlySourceId) query = query.eq("id", onlySourceId);
+  else {
+    const fresh = new Date(Date.now() - FRESH_HOURS * 3_600_000).toISOString();
+    query = query.or(`last_success_at.is.null,last_success_at.lt.${fresh},last_error.not.is.null`);
+  }
   const { data: sources, error: sourcesError } = await query;
   if (sourcesError) throw sourcesError;
 
   for (const source of (sources ?? []) as Source[]) {
     if (Date.now() > deadline) { ranOutOfTime = true; break; }
+    if (rateLimited.has(hostOf(source.handle))) continue;
     try {
       const posts = await fetchPosts(source);
       stats.posts_seen += posts.length;
@@ -94,6 +110,7 @@ async function runIngest(name: string, platforms: string[], fetchPosts: FetchPos
       const message = err instanceof Error ? err.message
         : (err as { message?: string })?.message ?? JSON.stringify(err);
       errors.push({ source: source.handle, error: message });
+      if (RATE_LIMITED.test(message)) rateLimited.add(hostOf(source.handle));
       await db.from("event_sources").update({ last_checked_at: new Date().toISOString(), last_error: message })
         .eq("id", source.id);
     }
@@ -104,7 +121,7 @@ async function runIngest(name: string, platforms: string[], fetchPosts: FetchPos
   const summary = {
     platform: name, status, ...stats,
     error: errors.length ? `${errors.length} source(s) failed` : null,
-    details: { errors, ran_out_of_time: ranOutOfTime },
+    details: { errors, ran_out_of_time: ranOutOfTime, rate_limited: [...rateLimited] },
   };
   await db.from("ingest_runs").update({ ...summary, finished_at: new Date().toISOString() }).eq("id", run.id);
   return summary;

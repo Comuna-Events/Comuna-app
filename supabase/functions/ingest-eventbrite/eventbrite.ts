@@ -29,7 +29,8 @@ const SITE = "https://www.eventbrite.com";
 const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36";
 const DEFAULT_PAGES = 3;
 const MAX_PAGES = 10;
-const PARALLEL = 3;          // requests at once, so a source takes seconds without hammering the site
+const PARALLEL = 2;          // requests at once, so a source takes seconds without hammering the site
+const RETRY_WAITS_MS = [5_000, 15_000]; // after a 429, wait and try again; then give up until the next run
 const HORIZON_DAYS = 90;     // auto_promote holds anything over 60 days out until it's closer
 const LONGEST_RUN_DAYS = 45; // longer is an exhibition or a standing listing, not an event
 const MAX_PRICE = 150;       // cheapest ticket above this: galas, conferences
@@ -122,9 +123,22 @@ export function pageUrls(handle: string): string[] {
 }
 
 async function readPage(url: string): Promise<{ results: Listing[]; pageCount: number; page: number }> {
-  const res = await fetch(url, { headers: { "user-agent": USER_AGENT, "accept-language": "en-US" } });
+  const res = await get(url, { "user-agent": USER_AGENT, "accept-language": "en-US" });
   if (!res.ok) throw new Error(`${url} answered ${res.status}`);
   return { ...searchResults(await res.text(), url), page: Number(new URL(url).searchParams.get("page")) };
+}
+
+// Eventbrite answers 429 when it's asked too much too fast. Wait (as long as it asks, within reason) and try again;
+// if it still says no, the error ("answered 429") makes the shared ingest leave Eventbrite's other sources for the
+// next run, 10 minutes later.
+async function get(url: string, headers: Record<string, string>): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { headers });
+    if (res.status !== 429 || attempt >= RETRY_WAITS_MS.length) return res;
+    await res.body?.cancel();
+    const asked = Number(res.headers.get("retry-after")) * 1000;
+    await new Promise((r) => setTimeout(r, asked > 0 && asked <= 30_000 ? asked : RETRY_WAITS_MS[attempt]));
+  }
 }
 
 /** The search results in a page's window.__SERVER_DATA__. */
@@ -205,7 +219,7 @@ async function readDetails(ids: string[]): Promise<Map<string, Details>> {
     await Promise.all(chunks.slice(i, i + PARALLEL).map(async (chunk) => {
       const url = `${SITE}/api/v3/destination/events/?event_ids=${chunk.join(",")}` +
         "&expand=ticket_availability,primary_organizer&page_size=20";
-      const res = await fetch(url, { headers: { "user-agent": USER_AGENT, accept: "application/json" } });
+      const res = await get(url, { "user-agent": USER_AGENT, accept: "application/json" });
       if (!res.ok) throw new Error(`Eventbrite's event API answered ${res.status}`);
       const body = await res.json() as { events?: (Details & { id: string })[] };
       for (const e of body.events ?? []) found.set(e.id, e);
