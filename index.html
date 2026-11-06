@@ -389,7 +389,7 @@ img{ max-width:100% }
 .sheetfoot{ position:sticky; bottom:calc(-26px - env(safe-area-inset-bottom,0px)); display:flex; gap:8px; align-items:stretch; background:var(--paper); margin:6px -22px calc(-26px - env(safe-area-inset-bottom,0px)); padding:12px 22px calc(26px + env(safe-area-inset-bottom,0px)); border-top:1px solid #E2D5BA }
 .sheetfoot .ib{ flex:none; width:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:14px; background:var(--card); color:var(--green); font-size:10px; font-weight:700; text-decoration:none }
 .sheetfoot .btn{ flex:1; width:auto }
-.row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+.row2{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px } .row2 > label{ min-width:0 } .subform .row2 .field{ width:100%; min-width:0 }
 
 /* ---------- stamp modal ---------- */
 .recmodal{ position:absolute; inset:0; z-index:55; display:none; align-items:flex-end; background:rgba(38,37,31,.5) }
@@ -2023,12 +2023,12 @@ const catOK=(ev,c)=> c==='All' || (c==='mine'? myCats().includes(ev.category) : 
 let filter=myCats().length?'mine':'All', when='tonight', tier='any';
 // time filter: next occurrence falls today / within 7 days / within 30 days (rolling windows)
 const WHEN=[['any','Anytime'],['tonight','Today'],['week','This week'],['month','This month']];
-function inWindow(ev){
+function inWindow(ev,w=when){
   const d=ev.start? nextDate(ev) : null;
-  if(!d) return !ev.start && when==='any';
-  if(when==='any') return true;
+  if(!d) return !ev.start && w==='any';
+  if(w==='any') return true;
   const today=eventNow(); today.setHours(0,0,0,0); const days=Math.max(0,Math.round((d-today)/864e5));
-  return days>=0 && days < ({tonight:1,week:7,month:30})[when];
+  return days>=0 && days < ({tonight:1,week:7,month:30})[w];
 }
 function enrich(){ const o=origin(); events.forEach(ev=>{ ev.mi=miles(o,ev); ev.hood=hoodOf(ev).name; }); }
 /* search: the words someone types narrow the same list the When / Type filters do. Every word has to match
@@ -2405,7 +2405,9 @@ function renderSugg(){
       + (cats.length? head('Browse')+cats.map(k=>opt(`data-scat="${k}"`,catDot(k,30),escH(CATS[k].label),escH(CATS[k].ex),events.filter(e=>e.category===k).length)).join('')
       : vibes.length? '' : `<div class="psub">Search events, places and vibes</div>`);
   } else {
-    const idx=searchIndex(q), n=idx.hits.size;
+    const idx=searchIndex(q), w=parseSearch(q).when;
+    if(w) idx.hits=new Map([...idx.hits].filter(([id])=>{ const ev=events.find(e=>e.id===id); return ev && inWindow(ev,w); }));   // "…tonight": counted as it'll be shown
+    const n=idx.hits.size;
     html=`<button type="button" class="sopt go" data-sq="${escH(q)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search “${escH(q)}”<small>${n? (idx.exact?'':'No exact match · ')+`${n} ${n===1?'event':'events'}` : 'No events match. Try a word like “jazz”, “free” or “tonight”'}</small></span></button>`;
     if(terms.length){
       const pre=t=>terms.every(w=>normText(t).includes(' '+w));
@@ -3246,7 +3248,7 @@ function priceLine(ev){
   const p=String(ev.price||''), hasLink=!!(okLink(ev.ticket)||okLink(ev.source));
   const tag='<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>', dollar='<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>';
   const ic=d=>`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-  const [cls,label,hint]= priceClash(ev)? ['unknown','Price may vary',(()=>{ const m=String(ev.desc||'').match(/\$\s?\d+(?:\.\d\d)?/); return `The details mention ${m?escH(m[0].replace(/\s/,'')):'a price'}. Check the event page`; })()]
+  const [cls,label,hint]= priceClash(ev)? ['unknown','Check price',(()=>{ const m=String(ev.desc||'').match(/\$\s?\d+(?:\.\d\d)?/); return `The details mention ${m?escH(m[0].replace(/\s/,'')):'a price'}. Check the event page`; })()]
     : /free/i.test(p)? ['free',ic(tag)+'Free',ev.rsvpReq?'Registration required':'']
     : /donation|pay-what/i.test(p)? ['paid',ic(tag)+'Pay what you can',ev.priceAmt||'Donations welcome']
     : /paid/i.test(p)? ['paid',ic(dollar)+escH(ev.priceAmt||'Paid'),hasLink?'Tickets from the host':'']
@@ -3668,11 +3670,11 @@ function renderBadges(){
   const el=document.getElementById('badgeScreen'), got=earnedBadges();
   let html=`<div class="bhead"><div class="h1" style="color:var(--green)">Badges</div>${S.badges?`<span class="hand">${got.length} of ${shownCount()} earned</span>`:''}</div>`;
   if(!S.signedUp){   // a guest: badges come with an account (Profile > Badges and titles opens this too)
-    el.innerHTML=html+`<div class="empty">Badges and titles are earned with an account, from check-ins at events.<br><button class="btn primary" id="badgeJoin" style="margin-top:14px;max-width:240px">Create an account</button></div>`;
+    el.innerHTML=html+`<div class="empty">Badges and titles are earned with an account, from check-ins at events.<br><button class="btn primary" id="badgeJoin" style="display:block;margin:14px auto 0;max-width:240px">Create an account</button></div>`;
     document.getElementById('badgeJoin').onclick=()=>openAuth('signup'); return; }
   if(!S.badges){
-    el.innerHTML=html+`<div class="empty">${badgesFailed==='signin'? 'Sign in again to see your badges.<br><button class="btn primary" id="badgeRetry" style="margin-top:14px;max-width:220px">Sign in</button>'
-      : badgesFailed? 'Couldn\'t load your badges. Check your connection and try again.<br><button class="btn ghost" id="badgeRetry" style="margin-top:14px;max-width:220px">Try again</button>'
+    el.innerHTML=html+`<div class="empty">${badgesFailed==='signin'? 'Sign in again to see your badges.<br><button class="btn primary" id="badgeRetry" style="display:block;margin:14px auto 0;max-width:220px">Sign in</button>'
+      : badgesFailed? 'Couldn\'t load your badges. Check your connection and try again.<br><button class="btn ghost" id="badgeRetry" style="display:block;margin:14px auto 0;max-width:220px">Try again</button>'
       : loaderHtml('badges',64)+'Loading your badges…'}</div>`;
     const r=document.getElementById('badgeRetry');
     if(r) r.onclick=()=>{ if(badgesFailed==='signin'){ openAuth('signin'); return; } badgesFailed=false; renderBadges(); };

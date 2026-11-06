@@ -79,7 +79,7 @@ const server=http.createServer((req,res)=>{
 
   // 4. "Free" with a price in the description isn't shown as Free
   await page.evaluate(()=>openSheet(2));
-  assert.match(await page.textContent('#sheet .evprice'),/Price may vary[\s\S]*\$20/);
+  assert.match(await page.textContent('#sheet .evprice'),/Check price[\s\S]*\$20/);
   assert.equal(await page.evaluate(()=>priceOK(events[1],'free')),false);
   await page.evaluate(()=>overlay.classList.remove('on'));
 
