@@ -2463,8 +2463,8 @@ async function logSearch(q,results,eventId){
 let map=null, markers=[], paperDrawn=false;
 // small tier glyph for tabs, badges and the legend
 function tierIcon(k,size=14){ return k==='cornerstone'? `<span class="ticon"><i style="width:${size*.8}px;height:${size*.8}px;border-radius:50%;background:${C.green};box-shadow:0 0 0 2px ${C.sun}"></i></span>` : `<span class="ticon"></span>`; }
-// hand-drawn map: the name on a pin's tag: the venue as a stamp names it, else the event
-function pinTag(ev){ const t=stampPlaceName(ev.venue||'')||ev.title||''; return t.length>40? t.slice(0,39).trim()+"…" : t; }
+// hand-drawn map: the name on a pin's tag is the event's (as its card shows it), else the venue's
+function pinTag(ev){ const t=cardTitle(ev)||stampPlaceName(ev.venue||'')||''; return t.length>40? t.slice(0,39).trim()+"…" : t; }
 // once a tag is on the map: if it would run past the map's right edge, put it on the pin's left
 function fitTag(el){ const t=el.querySelector('.tag'), mapEl=document.getElementById('map'); if(!t||!mapEl) return; t.classList.remove('flip');
   if(t.getBoundingClientRect().right>mapEl.getBoundingClientRect().right-6) t.classList.add('flip'); }
