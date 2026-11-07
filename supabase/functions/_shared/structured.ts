@@ -63,6 +63,36 @@ export function summary(text: string | null | undefined, max = 300): string | nu
   return end > 120 ? cut.slice(0, end + 1) : `${flat.slice(0, max).replace(/\s+\S*$/, "")}…`;
 }
 
+const ENTITIES: Record<string, string> = {
+  amp: "&", quot: '"', apos: "'", nbsp: " ", lt: "<", gt: ">", ndash: "–", mdash: "—", hellip: "…",
+  rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“",
+};
+/** "Rock &amp; Roll &#8217;n&#x2019; more" -> "Rock & Roll ’n’ more" */
+export const decodeHtml = (text: string) =>
+  text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, code: string) =>
+    code[0] === "#"
+      ? String.fromCodePoint(code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : Number(code.slice(1)))
+      : ENTITIES[code.toLowerCase()] ?? m);
+
+/** HTML (a WordPress or Localist description) as plain text, one line per paragraph. */
+export const htmlText = (html: string | null | undefined) =>
+  html ? decodeHtml(html.replace(/<(br|\/p|\/li|\/h\d|\/div)[^>]*>/gi, "\n").replace(/<[^>]+>/g, " "))
+    .replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim() || null : null;
+
+/** Street, city and zip from "Venue, 24247 Village Cir Dr, Valencia, CA 91354" (any part may be missing). */
+export function parseAddress(text: string | null | undefined): { street: string | null; city: string | null; zip: string | null } {
+  const parts = (text ?? "").split(",").map((p) => p.trim()).filter(Boolean);
+  const zip = (text ?? "").match(/\bCA\s+(\d{5})\b/i)?.[1] ?? null;
+  const street = parts.find((p) => /^\d+\s+\S/.test(p) && !/^\d{5}$/.test(p)) ?? null;
+  const stateAt = parts.findIndex((p) => /^CA(\s+\d{5})?$/i.test(p));
+  const city = stateAt > 0 && parts[stateAt - 1] !== street ? parts[stateAt - 1] : null;
+  return { street, city, zip };
+}
+
+// Public-body business rather than events: neighborhood council and city meetings, agendas, hearings.
+const MEETING = /\b(board|committee|general|regular|special|governing|executive|budget|stakeholder|council|commission|subcommittee|plum|land use)\b[^|]*\bmeeting\b|\bmeeting\b[^|]*\b(board|committee|council|commission)\b|\b(agenda|public hearing|board of directors)\b/i;
+export const isMeeting = (title: string) => MEETING.test(title);
+
 export const ageFrom = (text: string) =>
   /\b21\s*\+|21 and over|21 & over/i.test(text) ? "21+" : /\b18\s*\+|18 and over/i.test(text) ? "18+" : null;
 

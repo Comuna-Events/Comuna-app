@@ -50,7 +50,8 @@ revoke execute on function ingest.run_nightly() from public, anon, authenticated
 -- longest ago, so 24 calls cover a couple of hundred. Raise the hours if ingest_runs shows sources left over.
 select cron.schedule('nightly-event-ingest', '*/5 10-11 * * *', 'select ingest.run_nightly()');
 
--- Eventbrite, Luma, Meetup, Partiful and Handstamp (ingest-eventbrite, -luma, -meetup, -partiful, -handstamp) read sites
+-- Eventbrite, Luma, Meetup, Partiful, Handstamp, Ticketmaster, The Events Calendar (WordPress) and Localist
+-- (ingest-eventbrite, -luma, -meetup, -partiful, -handstamp, -ticketmaster, -events-calendar, -localist) read sites
 -- that carry their events as data, so they call no AI and a night costs nothing but page loads. They have a job of their
 -- own, so they keep running while the AI-based job above is paused: every 10 minutes from 10:00 to 11:50 UTC, done
 -- before ingest.auto_promote() at 12:10. Each call reads as many of that platform's sources as fit in its 2 minutes,
@@ -60,4 +61,5 @@ select cron.unschedule('nightly-eventbrite-ingest') where exists (select 1 from 
 select cron.unschedule('nightly-structured-ingest') where exists (select 1 from cron.job where jobname = 'nightly-structured-ingest');
 select cron.schedule('nightly-structured-ingest', '*/10 10-11 * * *',
   $$select ingest.run('ingest-eventbrite'); select ingest.run('ingest-luma'); select ingest.run('ingest-meetup');
-    select ingest.run('ingest-partiful'); select ingest.run('ingest-handstamp');$$);
+    select ingest.run('ingest-partiful'); select ingest.run('ingest-handstamp');
+    select ingest.run('ingest-ticketmaster'); select ingest.run('ingest-events-calendar'); select ingest.run('ingest-localist');$$);
