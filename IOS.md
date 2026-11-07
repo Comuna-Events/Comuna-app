@@ -6,7 +6,8 @@ Nothing about the web app changes:
 
 - `scripts/build-ios.mjs` copies the app into `ios-web/` and adds two scripts to that copy: Capacitor, and `native.js`,
   which switches location to the native iOS version (Comuna's own permission prompt) and sharing to the iOS share sheet.
-- `ios/` is the Xcode project. Its settings: iPhone only, portrait only, the location prompt's wording, and
+- `ios/` is the Xcode project. Its settings: iPhone only, portrait only, the location prompt's wording (plus an
+  "Always" wording Apple requires because the location plugin can ask for it; the app never does), and
   "no special encryption" (so App Store Connect doesn't ask about export compliance).
 - The service worker isn't used in the app; the app's files are already on the phone.
 - The app carries its own copies of the Supabase library and the fonts (the website loads them from the internet), so

@@ -26,6 +26,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Comuna uses your location only while you're using the app, to check you in at events and to show what's on near you. It never tracks you in the background.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Comuna uses your location to check you in at events and to show what's on near you.</string>
 	<key>UIApplicationSceneManifest</key>
