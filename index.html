@@ -2653,7 +2653,9 @@ if(SKETCH){ document.documentElement.classList.add('sketch');
   const bundled=[...document.fonts].some(f=>/Patrick Hand SC/.test(f.family));
   let ready=Promise.resolve();
   if(!bundled){ const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&display=swap'; document.head.appendChild(l);
-    ready=new Promise(r=>{ l.onload=r; l.onerror=r; setTimeout(r,4000); }); }
+    ready=new Promise(r=>{ l.onload=r; l.onerror=r; setTimeout(r,4000); });
+    // a stylesheet that comes after the 4 seconds only registers the font; ask for it, so the late redraw (labels below) happens
+    l.addEventListener('load',()=>document.fonts.load("20px 'Patrick Hand SC'").catch(()=>{})); }
   window.HAND_READY=ready.then(()=>document.fonts.load("20px 'Patrick Hand SC'")).catch(()=>{}); }
 const INK='#353A32', SK={ land:'#F2EADA', road:'#FBF7EE', major:'#FFFDF8', water:'#BCD0D6', waterInk:'#6F8E99', park:'#CDD6B8', parkInk:'#7D9468' };
 const HAND_FONT="'Patrick Hand SC', 'Caveat', cursive";
@@ -2905,11 +2907,23 @@ function sketchMapbox(m){
   // 3: neighborhood names as hand-lettered images (Mapbox can't use web fonts), with Mapbox still placing them and avoiding collisions
   (window.HAND_READY||Promise.resolve()).then(()=>{ if(!m.style) return; try{
     // every name drawn up front: Mapbox places a label once, so an image that arrives late would never show
-    HOODS.forEach(h=>{ const id=(h.city?'hand1:':'hand2:')+h.name.toUpperCase(); if(!m.hasImage(id)) m.addImage(id,handLabel(h.name.toUpperCase(),!!h.city),{pixelRatio:2}); });
+    const drawNames=()=>HOODS.forEach(h=>{ const id=(h.city?'hand1:':'hand2:')+h.name.toUpperCase(), img=handLabel(h.name.toUpperCase(),!!h.city);
+      if(m.hasImage(id)) m.removeImage(id); m.addImage(id,img,{pixelRatio:2}); });
+    drawNames();
     ['comuna-hood-labels','comuna-hood-labels-hoods'].forEach(id=>m.getLayer(id)&&m.setLayoutProperty(id,'visibility','none'));
     const lay=(city)=>({'symbol-sort-key':['-',['get','size']],'icon-image':['concat',city?'hand1:':'hand2:',['get','name']],'icon-size':['interpolate',['linear'],['zoom'],11,.8,15,1.05],'icon-offset':[0,-26],'icon-padding':4});
     m.addLayer({id:'sk-city-labels',type:'symbol',source:'comuna-hoods',minzoom:11,filter:['==',['get','city'],1],layout:lay(1)});
     m.addLayer({id:'sk-hood-labels',type:'symbol',source:'comuna-hoods',minzoom:12,filter:['==',['get','city'],0],layout:lay(0)});
+    // a slow connection: the font came after the wait above, so the names went out in a stand-in font (on a Mac, its
+    // script cursive). Draw them again the moment the hand font loads, and have Mapbox lay the labels out again.
+    const handIn=()=>[...document.fonts].some(f=>/Patrick Hand SC/.test(f.family) && f.status==='loaded');
+    if(!handIn()){
+      const redo=()=>{ if(!handIn() || !m.style) return; document.fonts.removeEventListener('loadingdone',redo);
+        try{ drawNames(); ['sk-city-labels','sk-hood-labels'].forEach(id=>m.getLayer(id)&&m.setLayoutProperty(id,'icon-image',m.getLayoutProperty(id,'icon-image'))); m.triggerRepaint(); }
+        catch(e){ console.warn('sketch labels redraw',e); } };
+      document.fonts.addEventListener('loadingdone',redo);
+      document.fonts.load("20px 'Patrick Hand SC'").then(redo,()=>{});   // ask again; fires once the stylesheet is in
+    }
   }catch(e){ console.warn('sketch labels',e); } });
 }
 function setMapStatus(live){ const el=document.getElementById('mapStatus'); if(el) el.textContent = live ? 'Map: live Mapbox, styled to Brand Guide v2.' : 'Map: Paper preview. The live Mapbox map loads when this file runs on the team\'s own site (Mapbox tokens are locked to approved domains).'; }
