@@ -17,6 +17,9 @@ ingest-meetup/         Meetup's in-person search around a point (no AI, see meet
 _shared/structured.ts  shared helpers for the no-AI platforms (LA County check, local times, prices, categories)
 ingest-partiful/       Partiful hosts and city Explore pages (no AI needed)
 ingest-handstamp/      Handstamp city pages and host profiles (no AI, see handstamp.ts)
+ingest-ticketmaster/   Ticketmaster Discovery API searches around LA (no AI; needs TICKETMASTER_API_KEY, see ticketmaster.ts)
+ingest-events-calendar/ WordPress sites running The Events Calendar: councils, cities, BIDs (no AI, see events-calendar.ts)
+ingest-localist/       Localist calendars: universities, cities (no AI, see localist.ts)
 _shared/vibes.ts       shared: the fixed list of vibes (spooky, date night, live music...) the AI picks from
 ingest-vibes/          picks vibes for events that don't have them (added by hand, or from before vibes)
 ```
@@ -38,11 +41,24 @@ A platform whose pages already carry the event as data (dates, address, price) c
 **Handstamp sources:** a city page (`https://www.handstamp.com/d/los-angeles`: its events plus its listed hosts') or a
 host's profile (`https://www.handstamp.com/camberplaces`).
 
-Eventbrite, Luma, Meetup, Partiful and Handstamp share a nightly job of their own (`nightly-structured-ingest` in `ingest_schedule.sql`),
+Eventbrite, Luma, Meetup, Partiful, Handstamp, Ticketmaster, The Events Calendar and Localist share a nightly job of their own (`nightly-structured-ingest` in `ingest_schedule.sql`),
 so they run even while the AI-based job is paused. Test the reading and mapping without the database:
 `node --experimental-strip-types scripts/test-ingest-eventbrite.mjs --live` and
 `node --experimental-strip-types scripts/test-ingest-luma-meetup.mjs --live` and
 `node --experimental-strip-types scripts/test-ingest-handstamp.mjs --live` (behind a proxy, add `NODE_USE_ENV_PROXY=1`).
+
+**Ticketmaster sources:** a Discovery API search as `handle`, e.g.
+`https://app.ticketmaster.com/discovery/v2/events.json?latlong=34.08,-118.32&radius=8&segmentName=Music` (no key in the
+handle: the function adds the `TICKETMASTER_API_KEY` secret, dates and paging). Each search stops at 1,000 results, so
+split a busy one by area or segment. Shows that run many nights are kept once, at the next date.
+**Events calendar sources** (platform `events_calendar`): the WordPress site, e.g. `https://palmsnc.la`, or the folder its
+calendar lives in (`https://www.cityofpasadena.net/parks-and-rec`). To check a site, open
+`<site>/wp-json/tribe/events/v1/events`: JSON with an `events` list means it works. Board and committee meetings are skipped.
+**Localist sources:** the calendar's address, e.g. `https://calendar.usc.edu` (check: `<calendar>/api/2/events` answers
+JSON). Only events whose audience includes the public are kept.
+Test the mapping with `node --experimental-strip-types scripts/test-ingest-events-calendar-localist.mjs` and
+`scripts/test-ingest-ticketmaster.mjs` (add `--live` to read real feeds; Ticketmaster's also needs the key in the environment).
+Set up all three with `supabase/structured_readers.sql`.
 
 **Web sources:** add a row with platform `city_calendar` or `venue_website` and the page's full URL as `handle`.
 `ingest-web` downloads the page, turns it into text and lets the AI find the events. If a source fails

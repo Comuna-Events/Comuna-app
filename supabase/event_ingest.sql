@@ -26,12 +26,13 @@ alter table if exists public.event_candidates set schema ingest;
 drop function if exists public.promote_candidate(bigint);
 
 -- Platforms the ingest knows about. Add a value here when someone starts a new one.
---   instagram, tiktok, eventbrite, luma, partiful, meetup, handstamp, city_calendar, venue_website, newsletter, other
+--   instagram, tiktok, eventbrite, luma, partiful, meetup, handstamp, ticketmaster, events_calendar, localist,
+--   city_calendar, venue_website, newsletter, other
 
 create table if not exists ingest.event_sources (
   id               bigint generated always as identity primary key,
   platform         text not null check (platform in ('instagram','tiktok','eventbrite','luma','partiful',
-                     'meetup','handstamp','city_calendar','venue_website','newsletter','other')),
+                     'meetup','handstamp','ticketmaster','events_calendar','localist','city_calendar','venue_website','newsletter','other')),
   handle           text not null,          -- @handle for social accounts, or the page / calendar / feed URL
   display_name     text,                   -- e.g. "Echo Park Rec Center"
   neighborhood     text,                   -- default neighborhood for events found here
@@ -169,6 +170,9 @@ begin
       when 'partiful'      then 'Partiful'
       when 'meetup'        then 'Meetup'
       when 'handstamp'     then 'Handstamp'
+      when 'ticketmaster'  then 'Ticketmaster'
+      when 'events_calendar' then 'Community calendar'
+      when 'localist'      then 'Community calendar'
       when 'city_calendar' then 'City / library calendar'
       when 'venue_website' then 'Venue website'
       when 'newsletter'    then 'Newsletter'
