@@ -18,6 +18,9 @@ comment on table  public.search_queries    is '[App users] Every search run from
 comment on view   public.search_terms      is '[App users] Last 30 days of searches, most common first, with how often each found nothing.';
 comment on table  public.guest_sessions    is '[App users] One row per guest install (skipped sign-up): neighborhood, interests, opens, and the account they made later, if any.';
 comment on view   public.guest_funnel      is '[App users] Guests per week: how many came back and how many made an account.';
+comment on table  public.app_installs      is '[App users] One row per install (iPhone app, Android app or website): opens, first and last seen, the account on it.';
+comment on view   public.app_installs_summary is '[App users] Installs by platform (iPhone, Android, website): total, new and active in the last 7 days, signed in.';
+comment on view   public.app_installs_weekly is '[App users] New installs per week, split into iPhone, Android and website.';
 comment on view   public.leaderboard_month is '[App users] Points per person since leaderboard_start() (all time for now), built from rsvps, checkins, feedback and submissions. The app reads it through leaderboard_top() and my_points_this_month().';
 
 -- [We manage]

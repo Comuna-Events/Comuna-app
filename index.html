@@ -4177,6 +4177,14 @@ async function guestSeen(){
   const { error } = await sb.rpc('guest_seen', { p_device:S.deviceId, p_neighborhood:S.nb||null, p_interests:S.interests||[] });
   if(error) console.warn('Supabase guest save failed', error);
 }
+// every install, guest or signed in: counted per platform so we can see iPhone, Android and website installs
+// (supabase/app_installs.sql). Sent quietly once per launch, after the account check so it's linked to the account.
+async function appSeen(){
+  if(!sb) return;
+  const p=window.Capacitor?.getPlatform?.();
+  const { error } = await sb.rpc('app_seen', { p_device:S.deviceId, p_platform:p==='ios'||p==='android'? p : 'web' });
+  if(error) console.warn('Supabase install count failed', error);
+}
 // a guest made an account (or signed in to one): link this install's guest activity to it
 async function guestConverted(){
   const u=await dbUser(); if(!u) return;
@@ -4430,7 +4438,9 @@ function boot(){
   else go('onb1',false);
   history=[];
   tryMapbox(); loadEvents();
-  checkAccount().then(flushFeedback);   // returning user: keep the profile in sync
+  const accountChecked=checkAccount();
+  accountChecked.then(flushFeedback);   // returning user: keep the profile in sync
+  accountChecked.catch(()=>{}).then(appSeen);   // count this install (supabase/app_installs.sql)
   guestSeen();
   refreshLoc();
 

@@ -50,6 +50,12 @@ const server=http.createServer((req,res)=>{
   assert.match(device,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   assert.equal(rpcs().length,0,'not counted before choosing to look around');
 
+  // every launch counts the install once, by platform (supabase/app_installs.sql); a browser is the website
+  await page.waitForTimeout(300);
+  const installs=writes.filter(w=>w.path==='/rest/v1/rpc/app_seen');
+  assert.equal(installs.length,1,'install counted once per launch');
+  assert.deepEqual(installs[0].body,{p_device:device,p_platform:'web'});
+
   // Start exploring -> where you are (location or a neighborhood) -> straight to the events, no interests, name or email
   await page.click('#startGuest');
   assert.equal(await run(()=>current),'onb2','everyone starts with where they are');
