@@ -27,8 +27,9 @@ begin
   if c.name is null then raise exception 'Candidate % has no name yet', p_candidate_id; end if;
 
   perform pg_advisory_xact_lock(hashtext('events.event_id'));   -- two promotes at once can't take the same id
-  select 'EVT-' || lpad((coalesce(max(substring(event_id from 5)::int), 0) + 1)::text, 4, '0')
-    into new_id from public.events;
+  -- At least 4 digits (EVT-0001), but never cut short: lpad truncates, which turned EVT-10000 into EVT-1000
+  select 'EVT-' || lpad(n::text, greatest(4, length(n::text)), '0')
+    into new_id from (select coalesce(max(substring(event_id from 5)::int), 0) + 1 n from public.events) m;
 
   insert into public.events (event_id, name, category, tags, vibes, description, start_date, end_date, start_time,
     end_time, recurrence, recurrence_detail, venue, street_address, city, zip, neighborhood, setting,
@@ -36,7 +37,11 @@ begin
     status, added_by, notes, vibes_checked_at)
   values (new_id, c.name, c.category, c.tags, c.vibes, c.description, c.start_date, c.end_date, c.start_time,
     c.end_time, c.recurrence, c.recurrence_detail, c.venue, c.street_address, c.city, c.zip, c.neighborhood,
-    c.setting, c.price_type, c.price_detail, c.rsvp_required, c.ticket_url, c.age, c.host,
+    c.setting, c.price_type, c.price_detail, c.rsvp_required, c.ticket_url,
+    case when c.age ~* '^\s*all\s+ages\s*$' then 'All ages'      -- the AI writes 'All Ages', '21 and up', 'Kids'...;
+         when c.age ~* '^\s*21\s*(\+|and (up|over|older))\s*$' then '21+'   -- events.age takes only these three,
+         when c.age ~* '^\s*18\s*(\+|and (up|over|older))\s*$' then '18+'   -- anything else is left blank
+    end, c.host,
     case c.platform
       when 'instagram'     then 'Instagram'
       when 'tiktok'        then 'TikTok'
