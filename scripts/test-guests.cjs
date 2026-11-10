@@ -1,6 +1,6 @@
 // Browser checks for guest tracking: a guest is counted, and their views and searches are saved by device_id.
 // Requires Playwright and Chromium; every Supabase request is answered locally, so no production services are contacted.
-// Run: node scripts/test-guests.cjs (optional CHROMIUM_PATH; SUPABASE_JS=path to a saved supabase-js UMD build when the browser can't reach the CDN).
+// Run: node scripts/test-guests.cjs (optional CHROMIUM_PATH; SUPABASE_JS=path to a saved copy of the exact supabase.min.js index.html links, when the browser can't reach the CDN; any other build fails its integrity check).
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
