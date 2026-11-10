@@ -161,7 +161,11 @@ begin
     status, added_by, notes, vibes_checked_at)
   values (new_id, c.name, c.category, c.tags, c.vibes, c.description, c.start_date, c.end_date, c.start_time,
     c.end_time, c.recurrence, c.recurrence_detail, c.venue, c.street_address, c.city, c.zip, c.neighborhood,
-    c.setting, c.price_type, c.rsvp_required, c.ticket_url, c.age, c.host,
+    c.setting, c.price_type, c.rsvp_required, c.ticket_url,
+    case when c.age ~* '^\s*all\s+ages\s*$' then 'All ages'      -- the AI writes 'All Ages', '21 and up', 'Kids'...;
+         when c.age ~* '^\s*21\s*(\+|and (up|over|older))\s*$' then '21+'   -- events.age takes only these three,
+         when c.age ~* '^\s*18\s*(\+|and (up|over|older))\s*$' then '18+'   -- anything else is left blank
+    end, c.host,
     case c.platform
       when 'instagram'     then 'Instagram'
       when 'tiktok'        then 'TikTok'

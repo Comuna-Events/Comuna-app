@@ -159,7 +159,14 @@ begin
       hit := null;
     else
       perform set_config('comuna.skip_geocode', 'on', true);   -- one geocode request at the end, not one per event
-      hit := ingest.promote_candidate(c.id);
+      begin
+        hit := ingest.promote_candidate(c.id);
+      exception when others then
+        -- one bad row (e.g. a value events won't take) stays 'new' for a person, and the rest still go in
+        update ingest.event_candidates set review_note = 'Auto-promote failed: ' || sqlerrm where id = c.id;
+        stats := jsonb_set(stats, '{failed}', to_jsonb(coalesce((stats ->> 'failed')::int, 0) + 1));
+        continue;
+      end;
     end if;
     insert into _accepted values (hit, c.name, c.venue, c.street_address, c.zip, c.start_time, c.start_date, c.end_date,
                                   coalesce(c.recurrence, 'One-off') <> 'One-off');
