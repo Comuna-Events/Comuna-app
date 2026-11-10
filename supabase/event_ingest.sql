@@ -151,8 +151,9 @@ begin
   if c.name is null then raise exception 'Candidate % has no name yet', p_candidate_id; end if;
 
   perform pg_advisory_xact_lock(hashtext('events.event_id'));   -- two promotes at once can't take the same id
-  select 'EVT-' || lpad((coalesce(max(substring(event_id from 5)::int), 0) + 1)::text, 4, '0')
-    into new_id from public.events;
+  -- At least 4 digits (EVT-0001), but never cut short: lpad truncates, which turned EVT-10000 into EVT-1000
+  select 'EVT-' || lpad(n::text, greatest(4, length(n::text)), '0')
+    into new_id from (select coalesce(max(substring(event_id from 5)::int), 0) + 1 n from public.events) m;
 
   insert into public.events (event_id, name, category, tags, vibes, description, start_date, end_date, start_time,
     end_time, recurrence, recurrence_detail, venue, street_address, city, zip, neighborhood, setting,
