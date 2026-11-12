@@ -173,7 +173,8 @@ async function deliver<R extends Phone>(jwt: string, fcm: Fcm | null, rows: R[],
 }
 
 Deno.serve(async (req) => {
-  if (req.headers.get("x-ingest-secret") !== Deno.env.get("INGEST_SECRET")) return new Response("forbidden", { status: 403 });
+  const secret = Deno.env.get("INGEST_SECRET");
+  if (!secret || req.headers.get("x-ingest-secret") !== secret) return new Response("forbidden", { status: 403 });
   const keyId = Deno.env.get("APNS_KEY_ID"), teamId = Deno.env.get("APNS_TEAM_ID"), p8 = Deno.env.get("APNS_KEY");
   const fcmJson = Deno.env.get("FCM_SERVICE_ACCOUNT");
   const apns = !!(keyId && teamId && p8);

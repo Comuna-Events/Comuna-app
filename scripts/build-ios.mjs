@@ -49,7 +49,7 @@ else console.warn('No MAPBOX_IOS_TOKEN in scripts/build-ios.mjs: the app will sh
 // The website loads the Supabase library and the fonts from the internet. The app carries its own copies, so it
 // starts with sign-in, syncing and the right fonts even when the phone has no signal at launch (a basement venue, a
 // festival crowd). Same versions as the website: keep package.json in step with the links in index.html.
-const supabaseCdn = /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@([\d.]+)\/dist\/umd\/supabase\.min\.js"><\/script>/;
+const supabaseCdn = /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@([\d.]+)\/dist\/umd\/supabase\.min\.js"[^>]*><\/script>/;
 const cdnVersion = html.match(supabaseCdn)?.[1];
 if (!cdnVersion) throw new Error('index.html no longer loads supabase-js from jsDelivr; update scripts/build-ios.mjs to match');
 const localVersion = JSON.parse(readFileSync(join(root, 'node_modules/@supabase/supabase-js/package.json'), 'utf8')).version;

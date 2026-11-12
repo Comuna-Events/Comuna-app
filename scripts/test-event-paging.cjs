@@ -9,7 +9,8 @@ const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(process.env.COMPARE_HTML||path.join(root,'index.html'),'utf8');
 const TOTAL=1235, CAP=1000;
-const instrument=h=>{const end=h.lastIndexOf('})();\n</script>');return h.slice(0,end)+'window.__comunaTestEval=code=>eval(code);\n'+h.slice(end);};
+// The stub below stands in for supabase-js, so drop the CDN integrity check that would refuse it.
+const instrument=h=>{h=h.replace(/ integrity="[^"]*"/g,'');const end=h.lastIndexOf('})();\n</script>');return h.slice(0,end)+'window.__comunaTestEval=code=>eval(code);\n'+h.slice(end);};
 // A stand-in for supabase-js: every call chains and resolves empty, except reads of `events`, which return
 // TOTAL rows in event_id order, honor .range() and never send more than CAP rows (like PostgREST's max_rows).
 const stub=`(()=>{

@@ -27,7 +27,8 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=DM+Sans:wght@400;500;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<!-- integrity: the browser refuses the file if the CDN ever serves anything else. Changing the version? Update the hash too. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
 <script src="places.js"></script>
 <style>
 :root{
@@ -2929,8 +2930,9 @@ function sketchMapbox(m){
 function setMapStatus(live){ const el=document.getElementById('mapStatus'); if(el) el.textContent = live ? 'Map: live Mapbox, styled to Brand Guide v2.' : 'Map: Paper preview. The live Mapbox map loads when this file runs on the team\'s own site (Mapbox tokens are locked to approved domains).'; }
 function tryMapbox(){
   if(!MAPBOX_TOKEN){ drawPaper(); setMapStatus(false); return; }
-  const css=document.createElement('link'); css.rel='stylesheet'; css.href='https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css'; document.head.appendChild(css);
-  const s=document.createElement('script'); s.src='https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js';
+  // integrity: the browser refuses a file that isn't exactly v3.6.0 (the map then falls back to Paper). New version? New hashes.
+  const css=document.createElement('link'); css.rel='stylesheet'; css.crossOrigin='anonymous'; css.integrity='sha384-u+wVUwl2ZXoPOrUMU3wYTEFmS6t764q435vp50Tj0SzRboIuzorj6aGCzOsK/YyR'; css.href='https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css'; document.head.appendChild(css);
+  const s=document.createElement('script'); s.crossOrigin='anonymous'; s.integrity='sha384-TmJWW+PnOuP/1K/pvN0A7ml6DLXEHNL/Wpxdbm6RiS8yBg3XWOiuWwk46Jf7F59u'; s.src='https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js';
   let settled=false; const fail=()=>{ if(settled) return; settled=true; map=null; drawPaper(); setMapStatus(false); };
   const timer=setTimeout(fail,6000);
   s.onerror=()=>{ clearTimeout(timer); fail(); };
