@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import UserNotifications
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,7 +8,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Friend invite notifications show answer buttons (send-reminders sets the category). Each button opens the app,
+        // and native.js sends the answer: the button's identifier is the answer (in, maybe, out).
+        let answer = [
+            UNNotificationAction(identifier: "in", title: "I'm in", options: [.foreground]),
+            UNNotificationAction(identifier: "maybe", title: "Maybe", options: [.foreground]),
+            UNNotificationAction(identifier: "out", title: "Can't", options: [.foreground])
+        ]
+        let stillIn = [
+            UNNotificationAction(identifier: "in", title: "Still in", options: [.foreground]),
+            UNNotificationAction(identifier: "out", title: "Can't make it", options: [.foreground])
+        ]
+        UNUserNotificationCenter.current().setNotificationCategories([
+            UNNotificationCategory(identifier: "INVITE", actions: answer, intentIdentifiers: [], options: []),
+            UNNotificationCategory(identifier: "STILL_IN", actions: stillIn, intentIdentifiers: [], options: [])
+        ])
         return true
     }
 

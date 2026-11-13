@@ -735,6 +735,34 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
   .onb .inner{ width:100%; max-width:640px; margin:0 auto }
   .screen:not(#homeScreen) > .scroll{ width:100%; max-width:880px; margin:0 auto; padding-left:32px; padding-right:32px }
 }
+/* friend invites */
+.navbadge{ position:absolute; top:-2px; left:50%; margin-left:6px; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--red-action); color:#fff; font-size:11px; font-weight:700; line-height:18px; text-align:center }
+.invav{ display:inline-grid; place-items:center; border-radius:50%; color:#fff; font-weight:700; flex:none; border:2px solid var(--paper) }
+.invmini{ display:flex; gap:10px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 12px; margin:10px 0 4px }
+.invmini b{ display:block; font-size:14.5px; line-height:1.25 } .invmini span{ font-size:12.5px; color:var(--muted) }
+.invh{ display:block; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:16px 0 6px } .invh span{ text-transform:none; letter-spacing:0; font-weight:500 }
+.invrow{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line) } .invrow:last-child{ border-bottom:0 }
+.invrow .nm{ flex:1; min-width:0 } .invrow .nm b{ display:block; font-size:14.5px } .invrow .nm small{ font-size:12.5px; color:var(--muted) }
+.invchk{ width:24px; height:24px; accent-color:var(--green); flex:none; margin:0 }
+.invnone{ color:var(--muted); font-size:14px; line-height:1.5; margin:4px 0 }
+.invbtns{ display:grid; gap:10px; margin-top:16px } .btn:disabled{ opacity:.55 }
+.invpill{ display:inline-block; font-size:12px; font-weight:700; padding:3px 9px; border-radius:99px; white-space:nowrap }
+.invpill.in{ background:#DCE7DF; color:var(--green) } .invpill.maybe{ background:#F2E3C2; color:#6E521A } .invpill.pending{ background:var(--paper-2); color:var(--muted) } .invpill.out{ background:#F1DCD3; color:var(--red) }
+.invnudge{ font-size:13px; font-weight:700; color:var(--green); border:1.5px solid var(--green); border-radius:99px; padding:5px 12px; min-height:32px }
+.invblock{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:14px; margin:14px 0 4px }
+.invtop{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px } .invtop b{ font-size:15px } .invcounts{ display:flex; gap:5px; flex-wrap:wrap }
+.invseg{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:12px }
+.invseg button{ min-height:44px; border-radius:12px; border:1.5px solid var(--line); background:var(--paper); font-weight:700; font-size:14px }
+.invseg button.on{ background:var(--green); border-color:var(--green); color:#fff }
+.invlist{ margin-top:8px } .invpriv{ font-size:12.5px; color:var(--muted); margin:8px 0 10px; line-height:1.45 } .invmore{ padding:12px }
+.invcard{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:14px; margin:0 0 10px } .invcard.out{ opacity:.7 }
+.invfrom{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-bottom:6px } .invfrom b{ color:var(--ink) }
+.invtitle{ display:block; text-align:left; font-family:var(--display); font-weight:900; font-size:24px; line-height:.95; text-transform:uppercase; color:var(--green) }
+.invwhen{ font-family:var(--display); font-weight:800; font-size:16px; color:var(--red); text-transform:uppercase; margin-top:4px } .invsub{ font-size:13px; color:var(--muted) }
+.invgoing{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; color:var(--muted) } .invgoing b{ color:var(--ink) }
+.invstack{ display:flex; flex:none } .invstack .invav{ margin-left:-8px } .invstack .invav:first-child{ margin-left:0 }
+.invpaste{ display:flex; gap:8px; margin:4px 0 18px } .invpaste input{ flex:1; min-width:0; border:1.5px solid var(--line); background:var(--card); border-radius:12px; padding:11px 12px; font:inherit; font-size:15px; color:var(--ink) }
+.invpaste .btn{ width:auto; padding:11px 16px }
 </style>
 </head>
 <body>
@@ -871,8 +899,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <div class="dayhead" id="dayHead"></div>
         <div class="h2">Your plans</div>
         <div id="planList"></div>
-        <div class="h2">Invites from friends</div>
-        <div id="inviteList"></div>
+        <div id="invSection"><div class="h2">Invites from friends</div>
+        <div id="inviteList"></div></div>
         <div class="h2" id="alsoHead">Also happening</div>
         <div id="alsoList" class="alsorow"></div>
       </div>
@@ -1730,7 +1758,7 @@ async function finishAuth(){
   if(error){ console.warn('Supabase profile load failed',error); toast('Could not load your account. Please reconnect and sign in again.'); return; }
   if(p && p.name){
     const again=authMode==='signup', guest=S.guest? { pts:S.points||0, fb:S.feedbackQueue||[], n:(S.guestLog||[]).length } : null;
-    applyAccountProfile(user,p);
+    applyAccountProfile(user,p); setTimeout(()=>loadInvites(true));
     // a guest signing in to an account they already have: add this phone's stamps to it
     if(guest){ S.feedbackQueue=guest.fb; S.points+=guest.pts; S.guest=false; save(); guestConverted(); await uploadGuest(user); dbProfile(); }
     await restorePassport(user);
@@ -1743,6 +1771,7 @@ async function finishAuth(){
   if(authMode==='signin'){ authMode='signup'; toast('Let\'s set up your passport'); history=[]; go('onb2'); return; }
   // real users start with an empty passport (the demo profile is only for showing the app before sign-up); guests keep theirs
   const guest=S.guest; if(!guest) freshPassport();
+  setTimeout(()=>loadInvites(true),800);   // after the profile is saved, so the invite shows their name
   S.accountId=user.id; S.onboardingComplete=true; S.signedUp=true; S.guest=false; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=guest&&S.joined||new Date().toISOString().slice(0,10); save(); renderNames();
   // the profile first, so uploaded check-ins count toward this neighborhood's board; check-ins before reviews, which need them
   dbProfile().then(()=>uploadGuest(user)).then(flushFeedback).then(()=>loadBadges(true)).then(celebrateBadges);
@@ -1754,7 +1783,7 @@ async function finishAuth(){
 // back to a signed-out, empty passport (sign out, demo reset, or an account from before email sign-in)
 async function signOutLocal(){
   try{ await window.comunaSigningOut?.(); }catch(e){}   // the iPhone app stops this phone's reminders (native.js)
-  authed=null; S.signedUp=false; S.guest=false; S.guestLog=[]; S.email=''; freshPassport(); save();
+  authed=null; S.signedUp=false; S.guest=false; S.guestLog=[]; S.email=''; freshPassport(); save(); invites=[]; paintInviteBadge();
   if(sb) try{ await sb.auth.signOut({ scope:'local' }); }catch(e){}
 }
 // signed out with nothing left on this phone, not even the install id: back to the welcome screen
@@ -3380,6 +3409,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span>· ${mins(ev.mi)} min away</span></a>
     ${recurs&&ev.recDetail?`<div class="evrec">${escLines(ev.recDetail)}</div>`:''}
     ${priceLine(ev)}
+    ${inviteBlockHtml(ev)}
     <div class="badges" style="margin:12px 0 14px"><span class="tier">${k==='cornerstone'?tierIcon('cornerstone',12):''}${k==='popup'?'One time only':k==='regular'&&/month/i.test(ev.rec||'')?'Monthly':KINDS[k].label}</span>${SUBCATS[ev.sub]?`<span>${SUBCATS[ev.sub].short}</span>`:''}${badges(ev).filter(x=>x!=='RSVP required').map(x=>`<span>${escH(x)}</span>`).join('')}</div>
     ${ev.desc?`<p class="desc">${escLines(ev.desc)}</p>`:''}
     ${reviewLine(ev)}
@@ -3394,6 +3424,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
       <button class="ib" id="shareBtn" aria-label="Invite friends">${icon('<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>')}Invite</button>
       ${cta}
     </div>`;
+  sheet.dataset.ev=id; sheet.dataset.day=occurrenceDate||'';
   overlay.classList.add('on'); track(ev,'view');
   sheet.querySelectorAll('#dirBtn,.evwhere').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); track(ev,'directions'); askMaps(ev); }));
   const el=sheet.querySelector('.evlink'); if(el) el.addEventListener('click',()=>track(ev,'link'));
@@ -3437,7 +3468,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     const u=S.guest? null : await dbUser();
     if(u){ const r=await dbCheckin(ev,v.pos); if(!r.ok){ c.disabled=false; c.textContent=lab; haptic('warning'); toast(r.msg); return; } }
     checkIn(ev,v.dist,v.pos); if(u) loadBadges(true).then(celebrateBadges); };
-  const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ track(ev,'invite'); shareEv(ev); };
+  const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ if(!S.signedUp || invitesOn===false) track(ev,'invite'); openInviteSheet(ev,()=>openSheet(id,back,backLabel,occurrenceDate)); };
   const box=sheet.querySelector('.evstep'), bindStep=()=>{ if(!box) return;
     box.querySelector('[data-hostgo]').addEventListener('click',()=>track(ev,'link'));
     const ht=box.querySelector('[data-hostgot]'); if(ht) ht.onclick=()=>{ setTicket(ev,stepDay,!hasTicket(ev,stepDay)); haptic('light');
@@ -3639,13 +3670,17 @@ const REMIND_KINDS=[
   ['plans_today','Plans today','A morning rundown on days you have plans'],
   ['tickets','Tickets the day before','When a plan needs an RSVP or tickets'],
   ['new_for_you','New for you','Thursdays: up to 3 new events in your interests'],
+  ['invites','Friend invites','Invites, nudges, and who can or can\'t make it'],
 ];
 async function drawRemindPrefs(box){
   const u=await dbUser(); if(!u || !box) return;
-  const { data, error }=await sb.from('push_prefs').select('hour_before,plans_today,tickets,new_for_you').eq('user_id',u.id).maybeSingle();
+  // invites: until supabase/invites.sql adds the column, the other four still show
+  let { data, error }=await sb.from('push_prefs').select('hour_before,plans_today,tickets,new_for_you,invites').eq('user_id',u.id).maybeSingle();
+  const noInv=!!error && /invites/.test(error.message||'');
+  if(noInv) ({ data, error }=await sb.from('push_prefs').select('hour_before,plans_today,tickets,new_for_you').eq('user_id',u.id).maybeSingle());
   if(error){ console.warn('Reminder settings unavailable', error); return; }
-  const prefs={ hour_before:true, plans_today:true, tickets:true, new_for_you:true, ...data };
-  box.innerHTML=REMIND_KINDS.map(([k,t,d])=>`<label class="prefrow"><span><b>${t}</b><small>${d}</small></span><input type="checkbox" class="switch" data-k="${k}" ${prefs[k]?'checked':''}></label>`).join('');
+  const prefs={ hour_before:true, plans_today:true, tickets:true, new_for_you:true, invites:true, ...data };
+  box.innerHTML=REMIND_KINDS.filter(([k])=>!(noInv && k==='invites')).map(([k,t,d])=>`<label class="prefrow"><span><b>${t}</b><small>${d}</small></span><input type="checkbox" class="switch" data-k="${k}" ${prefs[k]?'checked':''}></label>`).join('');
   box.onchange=async e=>{ const c=e.target.closest('[data-k]'); if(!c) return;
     haptic('selection');
     const { error }=await sb.from('push_prefs').upsert({ user_id:u.id, [c.dataset.k]:c.checked, updated_at:new Date().toISOString() });
@@ -3950,8 +3985,11 @@ function renderPlans(){
   document.getElementById('alsoHead').textContent=`Also happening ${isT?'today':calSel.toLocaleString('en-US',{weekday:'long'})}`;
   document.getElementById('alsoHead').hidden=!also.length;
   document.getElementById('alsoList').innerHTML=also.slice(0,15).map(card).join('');
-  // real invites will come from friends on Comuna; nothing to show until then
-  document.getElementById('inviteList').innerHTML=`<div class="empty">No invites yet. When a friend invites you to something, it shows up here.</div>`;
+  document.getElementById('inviteList').innerHTML=invitesHtml();
+  // invites waiting for an answer go first, above the calendar; otherwise they sit under your plans
+  const invSec=document.getElementById('invSection'), waiting=invites.some(i=>!i.is_host && i.my_answer==='pending');
+  if(waiting) invSec.parentNode.prepend(invSec); else document.getElementById('alsoHead').before(invSec);
+  if(S.signedUp && Date.now()-invitesAt>30000) loadInvites();
 }
 document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const tk=e.target.closest('[data-ticket]'); if(tk){ const ev=events.find(x=>x.id===+tk.dataset.ticket); if(ev){ setTicket(ev,calSel,!hasTicket(ev,calSel)); haptic('light'); renderPlans(); } return; } const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open,null,undefined,planDayKey(calSel)); const s=e.target.closest('[data-share]'); if(s) shareEv({...events.find(x=>x.id===+s.dataset.share),occurrenceDate:planDayKey(calSel)}); });
 
@@ -3978,6 +4016,228 @@ async function cancelPlan(id,button){
 document.getElementById('calPrev').onclick=()=>{ calView=new Date(calView.getFullYear(),calView.getMonth()-1,1); renderPlans(); };
 document.getElementById('calNext').onclick=()=>{ calView=new Date(calView.getFullYear(),calView.getMonth()+1,1); renderPlans(); };
 document.getElementById('calToday').onclick=()=>{ calSel=today0(); calView=new Date(calSel.getFullYear(),calSel.getMonth(),1); renderPlans(); };
+
+/* ---------- friend invites (supabase/invites.sql) ----------
+   Invite on an event picks friends (people who've answered an invite with you) or shares a link. Everyone answers
+   I'm in / Maybe / Can't; the people in an invite see each other's names and answers, nobody else does. "I'm in" also
+   saves it to your Plans. A link opens the App Store or Google Play when Comuna isn't installed (the /i/ page on
+   wearecomuna.com), and the web app at ?invite=CODE; pasting the link in Plans opens it too. Until invites.sql is run,
+   Invite opens the share menu as before. */
+const INVITE_URL='https://www.wearecomuna.com/i/?c=';
+const INVITE_CODE=/^[0-9a-f]{12}$/;
+let invites=[], invitesOn=null, invitesAt=0, inviteFriends=[], invitesLoading=null;
+const inviteCodeIn=t=>{ const m=String(t||'').match(/[?&](?:c|invite)=([0-9a-f]{12})\b/i) || String(t||'').trim().match(/^([0-9a-f]{12})$/i); return m? m[1].toLowerCase() : null; };
+const invEv=inv=>events.find(e=>eidOf(e)===inv.event_id);
+const invFor=(ev,day)=>{ if(!ev||!day) return null; const k=planDayKey(day), mine=invites.filter(i=>i.event_id===eidOf(ev) && i.date===k);
+  return mine.find(i=>i.is_host) || mine[0] || null; };
+const invFirst=n=>String(n||'').split(' ')[0]||'A friend';
+const AV_COLS=['#315C49','#B85A38','#7895A0','#C49A4E','#8A6F9E','#5E7F5A'];
+function invAvatar(m,size=34){ const n=m.me? (S.name||m.name||'You') : (m.name||'?');
+  const ini=n.split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+  const c=AV_COLS[[...String(m.user_id||n)].reduce((a,ch)=>a+ch.charCodeAt(0),0)%AV_COLS.length];
+  return `<span class="invav" style="background:${c};width:${size}px;height:${size}px;font-size:${Math.round(size*.38)}px" aria-hidden="true">${escH(ini)}</span>`; }
+function invAgo(iso){ const m=Math.max(0,Math.round((Date.now()-new Date(iso))/6e4));
+  return m<1? 'just now' : m<60? `${m} min ago` : m<1440? `${Math.round(m/60)} hr ago` : m<2880? 'yesterday' : `${Math.round(m/1440)} days ago`; }
+const INV_WORD={ in:'In', maybe:'Maybe', pending:'Waiting', out:"Can't" };
+const goingNames=inv=>inv.members.filter(m=>m.answer==='in').map(m=>m.me?'You':invFirst(m.name));
+function namesSaid(n){ return n.length<=1? (n[0]||'') : n.length===2? n.join(' and ') : `${n.slice(0,-1).join(', ')} and ${n[n.length-1]}`; }
+
+async function loadInvites(force){
+  if(!sb) return;
+  if(invitesLoading) return invitesLoading;
+  return invitesLoading=(async()=>{ try{
+    const u=await dbUser(); if(!u){ invites=[]; paintInviteBadge(); return; }
+    invitesAt=Date.now();
+    let opened=null;
+    if(S.pendingInvite){   // a link opened before signing in (or pasted)
+      const code=S.pendingInvite, r=await sb.rpc('join_invite',{ p_code:code });
+      if(!r.error) opened=r.data;
+      else if(/not find|function/i.test(r.error.message)){ invitesOn=false; return; }
+      else toast(/full/.test(r.error.message)? 'That invite is full.' : /not found/.test(r.error.message)? "That invite link doesn't work anymore." : "Couldn't open that invite. Try again in a moment.");
+      if(!r.error || !/fetch|network/i.test(r.error.message)){ S.pendingInvite=null; save(); }
+    }
+    const { data, error }=await sb.rpc('my_invites');
+    if(error){ if(/my_invites|function/i.test(error.message)) invitesOn=false; console.warn('Invites unavailable',error); return; }
+    invitesOn=true; invites=data||[];
+    paintInviteBadge();
+    if(current==='plans') renderPlans();
+    if(overlay.classList.contains('on') && sheet.querySelector('[data-invblock]')) refreshInviteBlock();
+    if(opened) whenEvents(()=>{ const inv=invites.find(i=>i.id===opened); if(inv) openInviteEvent(inv,true); });
+  }finally{ invitesLoading=null; } })();
+}
+// once events have loaded (up to 30 seconds; after that, without them)
+function whenEvents(fn,n=0){ if((eventsState==='live' && events.length) || n>=120) fn(); else setTimeout(()=>whenEvents(fn,n+1),250); }
+function paintInviteBadge(){
+  const b=document.querySelector('.nav [data-nav="plans"]'); if(!b) return;
+  const n=invites.filter(i=>!i.is_host && i.my_answer==='pending').length;
+  let dot=b.querySelector('.navbadge'); if(!n){ dot?.remove(); return; }
+  if(!dot){ dot=document.createElement('span'); dot.className='navbadge'; b.appendChild(dot); }
+  dot.textContent=n>9?'9+':n; b.setAttribute('aria-label',`Plans, ${n} invite${n===1?'':'s'} to answer`);
+}
+function openInviteEvent(inv,fresh){
+  const ev=invEv(inv); if(!ev){ go('plans'); return; }
+  openSheet(ev.id,null,undefined,inv.date);
+  if(fresh && !inv.is_host && inv.my_answer==='pending') toast(`${invFirst(inv.host_name)} invited you. Are you in?`);
+}
+
+async function answerInvite(inv,ans){
+  if(!inv || inv.my_answer===ans) return;
+  const { error }=await sb.rpc('answer_invite',{ p_invite:inv.id, p_answer:ans });
+  if(error){ console.warn('Invite answer failed',error); toast("Couldn't send your answer. Check your connection and try again."); return; }
+  haptic(ans==='out'? 'light' : 'success');
+  const ev=invEv(inv), day=planDay(inv.date), host=invFirst(inv.host_name);
+  if(ev && day){
+    if(ans==='in' && !hasPlan(ev,day) && occursOn(ev,day)){   // "I'm in" saves it to your Plans, like Save
+      track(ev,'rsvp'); passportRevision++; rememberPlan(ev,day); const pts=savePts(ev); S.points+=pts; save(); dbRsvp({...ev,occurrenceDate:inv.date});
+    }
+    if(ans==='out' && hasPlan(ev,day)){   // can't go: take it out of Plans so its reminders stop
+      const u=await dbUser(); if(u) await sb.from('rsvps').delete().eq('user_id',u.id).eq('event_id',eidOf(ev)).eq('occurrence_date',inv.date);
+      passportRevision++; forgetPlan(ev,day); save(); if(u) loadGoing();
+    }
+  }
+  toast(ans==='in'? "You're in. It's in your Plans." : ans==='maybe'? `Marked as maybe. ${inv.is_host?'Everyone':host} can see that.` : inv.is_host? "Got it. Everyone will know you can't make it." : `Got it. ${host} will know you can't make it.`);
+  inv.my_answer=ans; renderHome(); await loadInvites(true);
+}
+
+/* screen: pick who's coming (Invite on an event) */
+async function openInviteSheet(ev,back){
+  const day=selectedPlanDay(ev);
+  const u=S.signedUp? await dbUser() : null;
+  if(!u || invitesOn===false || !day){ shareEv(ev); return; }   // guests, or before invites.sql: the share menu as before
+  const { data:fr, error }=await sb.rpc('my_friends');
+  if(error){ if(/my_friends|function/i.test(error.message)) invitesOn=false; shareEv(ev); return; }
+  inviteFriends=fr||[];
+  const inv=invFor(ev,day), already=new Set((inv?.members||[]).map(m=>m.user_id));
+  const pickable=inviteFriends.filter(f=>!already.has(f.user_id));
+  const when=withEnd(ev,nextWhen({...ev,occurrenceDate:planDayKey(day)}));
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button>${back?`<button class="sback" id="sheetBack" aria-label="Back to the event"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>`:''}<div class="grab"></div>
+    <div class="cat">${inv?'Invite more friends':'Invite friends'}</div>
+    <div class="invmini">${catDot(ev.category,36)}<div><b>${escH(ev.title)}</b><span>${escH([when,ev.venue].filter(Boolean).join(' · '))}</span></div></div>
+    <div class="invh">Your Comuna friends</div>
+    ${pickable.length? `<div class="invfriends" id="invFriends">${pickable.map(f=>`<label class="invrow">${invAvatar(f)}<span class="nm"><b>${escH(f.name)}</b><small>${f.plans} plan${f.plans==1?'':'s'} together</small></span><input type="checkbox" class="invchk" value="${escH(f.user_id)}"></label>`).join('')}</div>`
+      : `<p class="invnone">${inviteFriends.length? 'Everyone you know on Comuna is already in this one.' : "Friends show up here once they've answered one of your invites. Start with a link: send it to anyone, and they can answer in Comuna."}</p>`}
+    <div class="invbtns">
+      ${pickable.length? `<button class="btn primary" id="invSend" disabled>Pick friends to invite</button>`:''}
+      <button class="btn ${pickable.length?'ghost':'primary'}" id="invLink">${navigator.share?'Share invite link':'Copy invite link'}</button>
+    </div>`;
+  overlay.classList.add('on');
+  document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  if(back) document.getElementById('sheetBack').onclick=back;
+  const send=document.getElementById('invSend'), picked=()=>[...sheet.querySelectorAll('.invchk:checked')].map(c=>c.value);
+  const fl=document.getElementById('invFriends');
+  if(fl) fl.onchange=()=>{ const n=picked().length; haptic('selection'); send.disabled=!n; send.textContent=n? `Send to ${n} friend${n===1?'':'s'}` : 'Pick friends to invite'; };
+  if(send) send.onclick=async()=>{
+    const ids=picked(); if(!ids.length) return; send.disabled=true; send.textContent='Sending…';
+    const r=await makeInvite(ev,day,ids);
+    if(!r){ send.disabled=false; send.textContent=`Send to ${ids.length} friend${ids.length===1?'':'s'}`; return; }
+    track(ev,'invite'); haptic('success');
+    toast(r.added? `Invite sent to ${r.added} friend${r.added===1?'':'s'}. You'll see who's coming here.` : 'They were already invited.');
+    openSheet(ev.id,null,undefined,planDayKey(day));
+  };
+  document.getElementById('invLink').onclick=async e=>{
+    const b=e.currentTarget; b.disabled=true;
+    const r=await makeInvite(ev,day,[]); b.disabled=false; if(!r) return;
+    track(ev,'invite');
+    const url=INVITE_URL+r.code, text=`${shortName()} invited you to ${ev.title}, ${nextWhen({...ev,occurrenceDate:planDayKey(day)})}. Are you in?`;
+    if(navigator.share){ try{ await navigator.share({ title:ev.title, text, url }); }catch(err){ return; } }
+    else if(navigator.clipboard){ try{ await navigator.clipboard.writeText(`${text} ${url}`); toast('Invite link copied. Paste it in your group chat.'); }catch(err){ toast("Couldn't copy the link"); return; } }
+    else { toast('Sharing isn\'t available in this browser'); return; }
+    openSheet(ev.id,null,undefined,planDayKey(day));
+  };
+}
+// makes (or adds to) your invite for this date; you're going, so it's saved to your Plans too
+async function makeInvite(ev,day,ids){
+  const { data, error }=await sb.rpc('create_invite',{ p_event_id:eidOf(ev), p_date:planDayKey(day), p_friends:ids });
+  if(error){ console.warn('Invite failed',error); toast(/too many/.test(error.message)? "That's a lot of invites today. Try again tomorrow." : /passed/.test(error.message)? 'That date has passed.' : "Couldn't make the invite. Check your connection and try again."); return null; }
+  if(!hasPlan(ev,day) && occursOn(ev,day)){ track(ev,'rsvp'); passportRevision++; rememberPlan(ev,day); const pts=savePts(ev); S.points+=pts; save(); dbRsvp({...ev,occurrenceDate:planDayKey(day)}); renderHome(); }
+  await loadInvites(true);
+  return (Array.isArray(data)? data[0] : data) || null;
+}
+
+/* screen: the plan, with names on it (inside the event sheet) */
+function inviteBlockHtml(ev){
+  const inv=invFor(ev,selectedPlanDay(ev)); if(!inv) return '';
+  const c={ in:0, maybe:0, pending:0, out:0 }; inv.members.forEach(m=>c[m.answer]++);
+  const sub=m=> m.host? (m.me? 'Invited everyone' : 'Sent the invite') : m.answer==='pending'? (m.nudged? 'Nudged' : m.via==='link'? 'Opened your link' : "Hasn't answered") : `Answered ${invAgo(m.answered_at)}`;
+  const right=m=> inv.is_host && !m.me && m.answer==='pending' && !m.nudged? `<button class="invnudge" data-nudge="${escH(m.user_id)}">Nudge</button>` : `<span class="invpill ${m.answer}">${INV_WORD[m.answer]}</span>`;
+  return `<div class="invblock" data-invblock="${escH(inv.id)}">
+    <div class="invtop"><b>${inv.is_host? 'Your plan' : `${escH(invFirst(inv.host_name))} invited you`}</b>
+      <span class="invcounts">${['in','maybe','pending'].filter(k=>c[k]).map(k=>`<span class="invpill ${k}">${c[k]} ${k==='pending'?'waiting':k}</span>`).join('')}</span></div>
+    ${!inv.is_host? `<div class="invseg" role="group" aria-label="Your answer">${['in','maybe','out'].map(a=>`<button data-inv-ans="${a}" aria-pressed="${inv.my_answer===a}" class="${inv.my_answer===a?'on':''}">${a==='in'?"I'm in":a==='maybe'?'Maybe':"Can't"}</button>`).join('')}</div>`:''}
+    <div class="invlist">${inv.members.map(m=>`<div class="invrow">${invAvatar(m)}<span class="nm"><b>${m.me?'You':escH(m.name)}</b><small>${sub(m)}</small></span>${right(m)}</div>`).join('')}</div>
+    <p class="invpriv">Only people in this plan see these names. Everyone else sees how many saved it.</p>
+    <button class="btn ghost invmore" data-inv-more>Invite more friends</button>
+  </div>`;
+}
+function refreshInviteBlock(){
+  const box=sheet.querySelector('[data-invblock]'); if(!box) return;
+  const ev=events.find(e=>e.id===+box.closest('.sheet').dataset.ev); if(!ev) return;
+  const html=inviteBlockHtml({...ev,occurrenceDate:box.closest('.sheet').dataset.day||null}); if(html) box.outerHTML=html;
+}
+sheet.addEventListener('click',async e=>{
+  const box=e.target.closest('[data-invblock]'); if(!box) return;
+  const inv=invites.find(i=>i.id===box.dataset.invblock); if(!inv) return;
+  const ans=e.target.closest('[data-inv-ans]'); if(ans){ ans.disabled=true; await answerInvite(inv,ans.dataset.invAns); ans.disabled=false; refreshInviteBlock(); return; }
+  const nd=e.target.closest('[data-nudge]');
+  if(nd){ nd.disabled=true; const { error }=await sb.rpc('nudge_invite',{ p_invite:inv.id, p_user:nd.dataset.nudge });
+    if(error){ nd.disabled=false; toast("Couldn't nudge right now. Try again in a moment."); return; }
+    haptic('light'); const m=inv.members.find(x=>x.user_id===nd.dataset.nudge); if(m) m.nudged=true;
+    toast(`Nudged ${invFirst(m?.name)}. They'll get one reminder.`); refreshInviteBlock(); return; }
+  if(e.target.closest('[data-inv-more]')){ const ev=invEv(inv); if(ev){ const o={...ev,occurrenceDate:inv.date}; openInviteSheet(o,()=>openSheet(ev.id,null,undefined,inv.date)); } }
+});
+
+/* screen: invites from friends (Plans) */
+function invitesHtml(){
+  if(!S.signedUp) return `<div class="empty">Invites need an account. Once you have one, friends can invite you to things and you can see who's coming.</div>`;
+  const list=invites.filter(i=>!i.is_host).sort((a,b)=>(a.my_answer==='pending'?0:1)-(b.my_answer==='pending'?0:1) || a.date.localeCompare(b.date));
+  const card=inv=>{ const ev=invEv(inv); if(!ev) return ''; const going=goingNames(inv), wait=inv.members.filter(m=>m.answer==='pending' && !m.me).map(m=>invFirst(m.name));
+    const evd={...ev,occurrenceDate:inv.date};
+    return `<div class="invcard${inv.my_answer==='out'?' out':''}" data-invcard="${escH(inv.id)}">
+      <div class="invfrom">${invAvatar(inv.members.find(m=>m.host)||{name:inv.host_name},26)}<span><b>${escH(invFirst(inv.host_name))}</b> invited you · ${invAgo(inv.invited_at)}</span></div>
+      <button class="invtitle" data-inv-open>${escH(ev.title)}</button>
+      <div class="invwhen">${escH(withEnd(evd,nextWhen(evd)))}</div>
+      <div class="invsub">${escH([ev.venue, ev.mi!=null? mins(ev.mi)+' min away':'', /^free/i.test(ev.price||'')?'Free':''].filter(Boolean).join(' · '))}</div>
+      ${going.length? `<div class="invgoing"><span class="invstack">${inv.members.filter(m=>m.answer==='in').slice(0,4).map(m=>invAvatar(m,28)).join('')}</span><span><b>${escH(namesSaid(going))} ${going.length===1&&going[0]!=='You'?'is':'are'} in</b>${wait.length? ` · ${escH(namesSaid(wait))} ${wait.length===1?"hasn't":"haven't"} answered`:''}</span></div>`:''}
+      <div class="invseg" role="group" aria-label="Your answer">${['in','maybe','out'].map(a=>`<button data-inv-ans="${a}" aria-pressed="${inv.my_answer===a}" class="${inv.my_answer===a?'on':''}">${a==='in'?"I'm in":a==='maybe'?'Maybe':"Can't"}</button>`).join('')}</div>
+    </div>`; };
+  const cards=list.map(card).join('');
+  return (cards || `<div class="empty">No invites yet. When a friend invites you to something, it shows up here.</div>`)
+    + `<form class="invpaste" id="invPaste"><input type="text" inputmode="url" autocomplete="off" placeholder="Got an invite link? Paste it here" aria-label="Invite link"><button class="btn green" type="submit">Open</button></form>`;
+}
+document.getElementById('inviteList').addEventListener('click',async e=>{
+  const card=e.target.closest('[data-invcard]'); if(!card) return;
+  const inv=invites.find(i=>i.id===card.dataset.invcard); if(!inv) return;
+  const ans=e.target.closest('[data-inv-ans]'); if(ans){ card.querySelectorAll('[data-inv-ans]').forEach(b=>b.disabled=true); await answerInvite(inv,ans.dataset.invAns); return; }
+  if(e.target.closest('[data-inv-open]')) openInviteEvent(inv);
+});
+document.getElementById('inviteList').addEventListener('submit',e=>{
+  if(e.target.id!=='invPaste') return; e.preventDefault();
+  const code=inviteCodeIn(e.target.querySelector('input').value);
+  if(!code){ toast("That doesn't look like a Comuna invite link."); return; }
+  S.pendingInvite=code; save(); loadInvites(true);
+});
+
+/* a link opened in the web app (?invite=CODE, from the /i/ page): join it after sign-in, or show what it's for first */
+async function inviteFromUrl(){
+  const q=new URLSearchParams(location.search), code=inviteCodeIn('?c='+(q.get('invite')||q.get('c')||''));
+  if(!code) return;
+  q.delete('invite'); q.delete('c'); window.history.replaceState?.(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash);
+  S.pendingInvite=code; save();
+  if(S.signedUp) return;   // loadInvites joins it once the account check is done
+  if(!sb) return;
+  const { data }=await sb.rpc('invite_preview',{ p_code:code }); const p=(data||[])[0]; if(!p) return;
+  whenEvents(()=>{ const ev=events.find(e=>eidOf(e)===p.event_id);
+    const m=document.getElementById('stampModal');
+    m.innerHTML=`<h3>${escH(invFirst(p.host_name))} invited you${ev?` to ${escH(ev.title)}`:''}</h3>
+      <p>${ev? escH(nextWhen({...ev,occurrenceDate:p.occurrence_date}))+' · ' : ''}${p.going} going. Create a free account to answer and see who's coming.</p>
+      <button class="btn primary" id="invJoin" style="max-width:260px">Create account</button>
+      <button class="btn ghost" id="invSignin" style="max-width:260px;margin-top:10px;border-color:var(--paper);color:var(--paper)">I have an account</button>`;
+    m.classList.add('on');
+    document.getElementById('invJoin').onclick=()=>{ m.classList.remove('on'); openAuth('signup'); };
+    document.getElementById('invSignin').onclick=()=>{ m.classList.remove('on'); openAuth('signin'); };
+  });
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && S.signedUp && Date.now()-invitesAt>30000) loadInvites(); });
 
 /* ---------- passport: places, neighborhoods and cities ---------- */
 let passTab='places';
@@ -4112,7 +4372,16 @@ window.comunaApp={
     return false;
   },
   openEvent(eid,date){ const ev=events.find(e=>eidOf(e)===eid); if(!ev) return false; openSheet(ev.id,null,'Top 4',date||null); return true; },
-  openPlans(){ go('plans'); return true; }
+  openPlans(){ go('plans'); return true; },
+  // a tapped invite notification (act: the iPhone button they tapped, in / maybe / out)
+  openInvite(id,act){
+    if(!sb || eventsState!=='live' || !events.length) return false;
+    (async()=>{ if(!(await dbUser())) return; if(!invites.some(i=>i.id===id)) await loadInvites(true);
+      const inv=invites.find(i=>i.id===id); if(!inv){ go('plans'); return; }
+      if(act) await answerInvite(inv,act);
+      openInviteEvent(invites.find(i=>i.id===id)||inv); })();
+    return true;
+  }
 };
 // status line in the dev panel (🛠) so a phone test shows whether saves reach Supabase
 function dbStatus(msg,bad){ const el=document.getElementById('dbStatus'); if(el) el.textContent='Database: '+msg;
@@ -4477,7 +4746,8 @@ function boot(){
   else go('onb1',false);
   history=[];
   tryMapbox(); loadEvents();
-  checkAccount().then(flushFeedback);   // returning user: keep the profile in sync
+  inviteFromUrl();   // ?invite=CODE from an invite link
+  checkAccount().then(flushFeedback).then(()=>loadInvites());   // returning user: keep the profile in sync
   guestSeen();
   refreshLoc();
 

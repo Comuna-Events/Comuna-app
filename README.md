@@ -61,6 +61,23 @@ shape and colors per category, and `icons-<category>.cjs` hold each badge's ribb
 edit its icon set and run `node scripts/patches/build.cjs <key>`, then bump `BADGE_ART` in `index.html` so phones load
 the new image. A badge with no image yet shows its category's blank patch (`badges/section-<category>.webp`).
 
+## Friend invites
+
+**Invite** on an event lets people pick friends or share a link. Everyone answers I'm in, Maybe or Can't, and only the
+people in that invite see each other's names. "I'm in" saves it to Plans. Everything is in `supabase/invites.sql`
+(tables, the functions the app calls, and the notifications send-reminders sends); the app side is under
+"friend invites" in `index.html`, tested by `scripts/test-invites.cjs`.
+
+- **Friends** are people who've answered an invite with you; there's no friends list to manage. Everyone else comes in
+  by link.
+- **Links** look like `https://www.wearecomuna.com/i/?c=CODE` (the `i/` page in the comuna-website repo). On iPhone it
+  goes to the App Store and on Android to Google Play once their store links are filled in there; until then, and on a
+  computer, it opens the web app with the invite. Someone who installs the app first pastes the link in Plans.
+- **Notifications** (send-reminders): "invited you", "is waiting on you" (Nudge), "Still in?" a couple of hours before,
+  and "can't make it". On iPhone the invite ones have answer buttons (`ios/App/App/AppDelegate.swift`).
+- To turn it on: run `supabase/invites.sql`, then redeploy send-reminders. Until then the Invite button shares a link
+  to the event, as before.
+
 ## Team checks
 
 - **Reported events**, daily: `select * from event_reports_review;` in the SQL Editor. How to restore, remove or
