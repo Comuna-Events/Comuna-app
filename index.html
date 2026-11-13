@@ -976,6 +976,14 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
       <a class="btn primary mapsopt" id="mapsGoogle" href="#" target="_blank" rel="noopener" style="margin-top:10px">Google Maps</a>
       <button class="btn ghost" id="mapsCancel" style="margin-top:10px">Cancel</button>
     </div></div>
+    <div class="recmodal" id="calModal" role="dialog" aria-modal="true" aria-labelledby="calTitle"><div class="box">
+      <div class="k">Add to calendar</div>
+      <div class="h1" id="calTitle">Which calendar?</div>
+      <div class="mapsto" id="calTo"></div>
+      <button class="btn primary calopt" id="calApple" style="margin-top:16px">Apple Calendar</button>
+      <a class="btn primary calopt" id="calGoogle" href="#" target="_blank" rel="noopener" style="margin-top:10px">Google Calendar</a>
+      <button class="btn ghost" id="calCancel" style="margin-top:10px">Cancel</button>
+    </div></div>
     <div class="stampmodal" id="stampModal" role="dialog" aria-modal="true"></div>
     <!-- worn rubber-stamp ink, shared by the drawn stamps: speckles where the ink didn't take, faded patches, rough edges -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="inkWear" x="-5%" y="-5%" width="110%" height="110%">
@@ -3301,18 +3309,48 @@ function askMaps(ev){
 const closeMaps=()=>mapsModal.classList.remove('on');
 mapsModal.addEventListener('click',e=>{ if(e.target===mapsModal || e.target.closest('#mapsCancel, .mapsopt')) closeMaps(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && mapsModal.classList.contains('on')) closeMaps(); });
-function addToCalendar(ev){
-  const d=selectedPlanDay(ev); if(!d) return toast('Choose an event date before adding it to your calendar.');
+// The planned occurrence's start and end on the phone's clock (LA); no end listed means two hours.
+function calTimes(ev){
+  const d=selectedPlanDay(ev); if(!d) return null;
   const a=hm(ev.t0)||[19,0], b=hm(ev.t1);
   const st=new Date(d); st.setHours(a[0],a[1],0,0); const en=new Date(st); if(b){ en.setHours(b[0],b[1],0,0); if(en<=st) en.setDate(en.getDate()+1); } else en.setHours(st.getHours()+2);
-  const f=x=>x.getFullYear()+String(x.getMonth()+1).padStart(2,'0')+String(x.getDate()).padStart(2,'0')+'T'+String(x.getHours()).padStart(2,'0')+String(x.getMinutes()).padStart(2,'0')+'00';
-  const esc=t=>String(t||'').replace(/([,;\\])/g,'\\$1').replace(/\n/g,' ');
+  return { st, en };
+}
+const calStamp=x=>x.getFullYear()+String(x.getMonth()+1).padStart(2,'0')+String(x.getDate()).padStart(2,'0')+'T'+String(x.getHours()).padStart(2,'0')+String(x.getMinutes()).padStart(2,'0')+'00';
+const calWhere=ev=>[ev.venue,ev.address].filter(Boolean).join(', ');
+// Google Calendar's "add event" page, filled in. Times are local, pinned to LA with ctz.
+function googleCalUrl(ev){
+  const t=calTimes(ev); if(!t) return '';
+  const q=new URLSearchParams({ action:'TEMPLATE', text:ev.title||'', dates:calStamp(t.st)+'/'+calStamp(t.en), ctz:'America/Los_Angeles',
+    location:calWhere(ev), details:String(ev.desc||'').slice(0,600) });
+  return 'https://calendar.google.com/calendar/render?'+q.toString();
+}
+// Apple Calendar (and Outlook): an .ics file for this occurrence, with a 2-hour reminder
+function downloadIcs(ev){
+  const t=calTimes(ev); if(!t) return;
+  const esc=x=>String(x||'').replace(/([,;\\])/g,'\\$1').replace(/\n/g,' ');
   // Calendar exports are for this occurrence only; never emit a series RRULE.
-  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Comuna//EN','BEGIN:VEVENT','UID:comuna-'+ev.id+'-'+Date.now()+'@comuna','DTSTAMP:'+f(new Date()),'DTSTART:'+f(st),'DTEND:'+f(en),
-    'SUMMARY:'+esc(ev.title),'LOCATION:'+esc([ev.venue,ev.address].filter(Boolean).join(', ')),'DESCRIPTION:'+esc(ev.desc),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc(ev.title+' starts in 2 hours'),'TRIGGER:-PT2H','END:VALARM','END:VEVENT','END:VCALENDAR'].filter(Boolean).join('\r\n');
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Comuna//EN','BEGIN:VEVENT','UID:comuna-'+ev.id+'-'+Date.now()+'@comuna','DTSTAMP:'+calStamp(new Date()),'DTSTART:'+calStamp(t.st),'DTEND:'+calStamp(t.en),
+    'SUMMARY:'+esc(ev.title),'LOCATION:'+esc(calWhere(ev)),'DESCRIPTION:'+esc(ev.desc),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc(ev.title+' starts in 2 hours'),'TRIGGER:-PT2H','END:VALARM','END:VEVENT','END:VCALENDAR'].filter(Boolean).join('\r\n');
   const url=URL.createObjectURL(new Blob([ics],{type:'text/calendar'})); const l=document.createElement('a'); l.href=url; l.download=(ev.title||'event').replace(/[^\w]+/g,'-').slice(0,40)+'.ics'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000);
   toast('Calendar file ready: open it to add the event (with a 2-hour reminder)');
 }
+/* "Add to calendar": ask Apple or Google, like Directions asks which maps app */
+const calModal=document.getElementById('calModal'); let calEv=null;
+function addToCalendar(ev){
+  if(!calTimes(ev)) return toast('Choose an event date before adding it to your calendar.');
+  if(ANDROID_APP){ location.href=googleCalUrl(ev); return; }   // no Apple Calendar on Android
+  calEv=ev;
+  document.getElementById('calGoogle').href=googleCalUrl(ev);
+  document.getElementById('calTo').textContent=ev.title||'';
+  calModal.classList.add('on');
+}
+const closeCal=()=>calModal.classList.remove('on');
+calModal.addEventListener('click',e=>{
+  if(e.target.closest('#calApple')){ if(calEv) downloadIcs(calEv); closeCal(); return; }
+  if(e.target.closest('#calGoogle')){ closeCal(); return; }
+  if(e.target===calModal || e.target.closest('#calCancel')) closeCal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && calModal.classList.contains('on')) closeCal(); });
 
 /* ---------- event sheet ---------- */
 const overlay=document.getElementById('overlay'), sheet=document.getElementById('sheet');
