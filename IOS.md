@@ -57,6 +57,22 @@ the database runs it every 10 minutes (`supabase/push.sql`, which also holds the
 
 The Xcode project already has the Push Notifications capability (`ios/App/App/App.entitlements`).
 
+## Invite links open the app (universal links)
+
+Friend invite links (`https://www.wearecomuna.com/i/?c=CODE`) open Comuna straight to the invite when it's installed,
+instead of the App Store page. Three pieces have to match:
+
+1. **The app** asks for `www.wearecomuna.com` (`ios/App/App/App.entitlements`, already in the project), and native.js
+   opens the invite (`appUrlOpen`).
+2. **Apple** has to allow it: developer.apple.com > **Certificates, IDs & Profiles** > **Identifiers** >
+   `com.wearecomuna.app` > tick **Associated Domains** > **Save**. Xcode's automatic signing picks it up on the next build.
+3. **The website** says which app may open its `/i/` links: `.well-known/apple-app-site-association` in the
+   comuna-website repo, naming the app as `<Team ID>.com.wearecomuna.app`.
+
+To try it: build, delete the app from the phone and install it again (the phone reads the website's file when the app
+is installed), then tap an invite link in Messages or Notes. Typing the link into Safari doesn't count; tapping it does.
+Apple caches the website's file, so a change to it can take up to a day to reach phones.
+
 ## Sign in with Apple and Google
 
 In the app, the sign-up and sign-in screen offers **Continue with Apple** and **Continue with Google** above the email

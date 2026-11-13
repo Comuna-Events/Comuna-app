@@ -12,12 +12,19 @@
 --
 --   invites          one per person, event and date (inviting more friends adds them to the same one)
 --   invite_members   who's in it and their answer: pending (not answered), in, maybe, out
+--   invite_removed   people the person who invited took out; their link no longer lets them back in
 --
--- Notifications (send-reminders, every 10 minutes; Profile > Reminders > Friend invites turns them all off):
---   invite    "Jess invited you to ..."              to someone added by a friend (not by link: they opened it already)
---   nudge     "Jess is waiting on you"               the person who invited taps Nudge on someone who hasn't answered
---   still_in  "Still in for ... at 7:30?"            2-2.7 hours before it starts, to everyone In or Maybe, when 2+ are
---   dropped   "Sam can't make ..."                   someone goes from In/Maybe to Can't; to the others still going
+-- Anyone but the person who invited can leave an invite; the person who invited can take someone out, or cancel it
+-- (everyone in it is told, and the invite disappears from the app).
+--
+-- Notifications (send-reminders; Profile > Reminders > Friend invites turns them all off). Invites, nudges, dropping
+-- out and cancelling send within seconds (the triggers at the bottom call send-reminders); "Still in?" goes out with
+-- the every-10-minutes run.
+--   invite     "Jess invited you to ..."             to someone added by a friend (not by link: they opened it already)
+--   nudge      "Jess is waiting on you"              the person who invited taps Nudge on someone who hasn't answered
+--   still_in   "Still in for ... at 7:30?"           2-2.7 hours before it starts, to everyone In or Maybe, when 2+ are
+--   dropped    "Sam can't make ..."                  someone goes from In/Maybe to Can't; to the others still going
+--   cancelled  "Jess cancelled ..."                  to everyone else in it who hadn't said Can't
 
 create table if not exists public.invites (
   id              uuid primary key default gen_random_uuid(),
@@ -27,8 +34,10 @@ create table if not exists public.invites (
   occurrence_date date not null,
   host_id         uuid not null references auth.users (id) on delete cascade,
   created_at      timestamptz not null default now(),
+  cancelled_at    timestamptz,
   unique (host_id, event_id, occurrence_date)
 );
+alter table public.invites add column if not exists cancelled_at timestamptz;
 create index if not exists invites_event on public.invites (event_id, occurrence_date);
 
 create table if not exists public.invite_members (
@@ -45,9 +54,17 @@ create table if not exists public.invite_members (
 );
 create index if not exists invite_members_user on public.invite_members (user_id);
 
+create table if not exists public.invite_removed (
+  invite_id  uuid not null references public.invites (id) on delete cascade,
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  removed_at timestamptz not null default now(),
+  primary key (invite_id, user_id)
+);
+
 alter table public.invites enable row level security;
 alter table public.invite_members enable row level security;
-revoke all on public.invites, public.invite_members from anon, authenticated;
+alter table public.invite_removed enable row level security;
+revoke all on public.invites, public.invite_members, public.invite_removed from anon, authenticated;
 
 -- "Maya R.": first name and last initial, from the name they gave at sign-up
 create or replace function public.invite_name(p_user uuid)
@@ -77,13 +94,15 @@ returns integer
 language plpgsql security definer set search_path = public as $$
 declare added integer;
 begin
-  if not exists (select 1 from invite_members where invite_id = p_invite and user_id = auth.uid() and answer <> 'out') then
+  if not exists (select 1 from invite_members m join invites i on i.id = m.invite_id
+                 where m.invite_id = p_invite and m.user_id = auth.uid() and m.answer <> 'out' and i.cancelled_at is null) then
     raise exception 'not in this invite';
   end if;
   insert into invite_members (invite_id, user_id, invited_by, via)
   select p_invite, f.user_id, auth.uid(), 'direct'
   from my_friends() f
   where f.user_id = any (coalesce(p_friends, '{}'))
+    and not exists (select 1 from invite_removed r where r.invite_id = p_invite and r.user_id = f.user_id)
     and (select count(*) from invite_members where invite_id = p_invite) < 25
   on conflict do nothing;
   get diagnostics added = row_count;
@@ -101,6 +120,9 @@ begin
   if auth.uid() is null then raise exception 'sign in to invite friends'; end if;
   if not exists (select 1 from events e where e.event_id = p_event_id) then raise exception 'no such event'; end if;
   if p_date < (now() at time zone 'America/Los_Angeles')::date then raise exception 'that date has passed'; end if;
+  -- inviting again after cancelling starts a fresh invite
+  delete from invites i where i.host_id = auth.uid() and i.event_id = p_event_id and i.occurrence_date = p_date
+    and i.cancelled_at is not null;
   select * into inv from invites i where i.host_id = auth.uid() and i.event_id = p_event_id and i.occurrence_date = p_date;
   if inv.id is null then
     if (select count(*) from invites i where i.host_id = auth.uid() and i.created_at > now() - interval '1 day') >= 20 then
@@ -126,7 +148,7 @@ returns table (event_id text, occurrence_date date, host_name text, going bigint
 language sql stable security definer set search_path = public as $$
   select i.event_id, i.occurrence_date, invite_name(i.host_id),
          (select count(*) from invite_members m where m.invite_id = i.id and m.answer = 'in')
-  from invites i where i.code = p_code and length(p_code) = 12;
+  from invites i where i.code = p_code and length(p_code) = 12 and i.cancelled_at is null;
 $$;
 
 -- Opening a link: join that invite (not answered yet). Returns its id.
@@ -138,6 +160,10 @@ begin
   if auth.uid() is null then raise exception 'sign in to answer'; end if;
   select * into inv from invites where code = p_code and length(p_code) = 12;
   if inv.id is null then raise exception 'invite not found'; end if;
+  if inv.cancelled_at is not null then raise exception 'this plan was cancelled'; end if;
+  if exists (select 1 from invite_removed where invite_id = inv.id and user_id = auth.uid()) then
+    raise exception 'you were taken out of this invite';
+  end if;
   if not exists (select 1 from invite_members where invite_id = inv.id and user_id = auth.uid()) then
     if (select count(*) from invite_members where invite_id = inv.id) >= 25 then raise exception 'this invite is full'; end if;
     insert into invite_members (invite_id, user_id, invited_by, via) values (inv.id, auth.uid(), inv.host_id, 'link')
@@ -151,6 +177,9 @@ returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if p_answer not in ('in', 'maybe', 'out') then raise exception 'answer is in, maybe or out'; end if;
+  if exists (select 1 from invites where id = p_invite and cancelled_at is not null) then
+    raise exception 'this plan was cancelled';
+  end if;
   update invite_members m
   set dropped_at = case when p_answer = 'out' and m.answer in ('in', 'maybe') then now()
                         when p_answer = 'out' then m.dropped_at end,
@@ -171,6 +200,42 @@ begin
   where invite_id = p_invite and user_id = p_user and answer = 'pending' and nudged_at is null;
 end $$;
 
+-- Leave an invite you were added to (the person who invited cancels instead). A link can bring you back.
+create or replace function public.leave_invite(p_invite uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if exists (select 1 from invites where id = p_invite and host_id = auth.uid()) then
+    raise exception 'cancel the plan instead';
+  end if;
+  delete from invite_members where invite_id = p_invite and user_id = auth.uid();
+end $$;
+
+-- The person who invited takes someone out; that person's link no longer works for this invite. Nobody is told.
+create or replace function public.remove_from_invite(p_invite uuid, p_user uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from invites where id = p_invite and host_id = auth.uid()) then
+    raise exception 'only the person who invited can take someone out';
+  end if;
+  if p_user = auth.uid() then raise exception 'cancel the plan instead'; end if;
+  delete from invite_members where invite_id = p_invite and user_id = p_user;
+  insert into invite_removed (invite_id, user_id) values (p_invite, p_user) on conflict do nothing;
+end $$;
+
+-- The person who invited calls it off: everyone else in it who hadn't said Can't is told, and it leaves the app.
+-- Plans people saved stay saved (they can still go).
+create or replace function public.cancel_invite(p_invite uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update invites set cancelled_at = now() where id = p_invite and host_id = auth.uid() and cancelled_at is null;
+  if not found and not exists (select 1 from invites where id = p_invite and host_id = auth.uid()) then
+    raise exception 'only the person who invited can cancel';
+  end if;
+end $$;
+
 -- Your invites from today on, with everyone in each and their answers (only the invites you're in)
 create or replace function public.my_invites()
 returns jsonb
@@ -188,15 +253,18 @@ language sql stable security definer set search_path = public as $$
         from invite_members m where m.invite_id = i.id)) as x
     from invite_members me join invites i on i.id = me.invite_id
     where me.user_id = auth.uid() and i.occurrence_date >= (now() at time zone 'America/Los_Angeles')::date
+      and i.cancelled_at is null
   ) q;
 $$;
 
 revoke execute on function public.invite_name(uuid), public.my_friends(), public.invite_more(uuid, uuid[]),
   public.create_invite(text, date, uuid[]), public.invite_preview(text), public.join_invite(text),
-  public.answer_invite(uuid, text), public.nudge_invite(uuid, uuid), public.my_invites() from public, anon;
+  public.answer_invite(uuid, text), public.nudge_invite(uuid, uuid), public.my_invites(), public.leave_invite(uuid),
+  public.remove_from_invite(uuid, uuid), public.cancel_invite(uuid) from public, anon;
 grant execute on function public.my_friends(), public.invite_more(uuid, uuid[]), public.create_invite(text, date, uuid[]),
   public.invite_preview(text), public.join_invite(text), public.answer_invite(uuid, text), public.nudge_invite(uuid, uuid),
-  public.my_invites() to authenticated;
+  public.my_invites(), public.leave_invite(uuid), public.remove_from_invite(uuid, uuid), public.cancel_invite(uuid)
+  to authenticated;
 -- a link opened before signing up shows what it's for
 grant execute on function public.invite_preview(text) to anon;
 
@@ -206,7 +274,7 @@ alter table public.push_prefs add column if not exists invites boolean not null 
 
 alter table public.push_sent drop constraint if exists push_sent_kind_check;
 alter table public.push_sent add constraint push_sent_kind_check check (kind in
-  ('plans_today', 'tickets', 'new_for_you', 'invite', 'nudge', 'still_in', 'dropped'));
+  ('plans_today', 'tickets', 'new_for_you', 'invite', 'nudge', 'still_in', 'dropped', 'cancelled'));
 
 -- One row per phone. items is one object: the invite, the event, who it's from (or who dropped), and who's going.
 create or replace function public.due_push_invites()
@@ -219,12 +287,13 @@ language sql stable security definer set search_path = public as $$
                  where g.invite_id = i.id and g.answer = 'in' order by (g.user_id = i.host_id) desc, g.answered_at) as going
     from invites i join events e on e.event_id = i.event_id
     where i.occurrence_date >= (now() at time zone 'America/Los_Angeles')::date
+      and (i.cancelled_at is null or i.cancelled_at > now() - interval '1 day')
       and e.status is distinct from 'Cancelled' and e.status is distinct from 'Past / archived'
   ),
   item as (
     select inv.id, jsonb_build_object('invite_id', inv.id, 'event_id', inv.event_id, 'name', inv.name, 'venue', inv.venue,
       'date', inv.occurrence_date, 'starts_at', inv.starts_at, 'from', invite_name(inv.host_id),
-      'going', to_jsonb(inv.going)) as j, inv.starts_at, inv.host_id
+      'going', to_jsonb(inv.going)) as j, inv.starts_at, inv.host_id, inv.cancelled_at
     from inv
   ),
   -- added by a friend in the last day, not answered yet
@@ -233,17 +302,20 @@ language sql stable security definer set search_path = public as $$
            it.j || jsonb_build_object('from', invite_name(coalesce(m.invited_by, it.host_id))) as items
     from invite_members m join item it on it.id = m.invite_id
     where m.via = 'direct' and m.answer = 'pending' and m.invited_at > now() - interval '1 day'
+      and it.cancelled_at is null
   ),
   nudged as (
     select 'nudge'::text, m.invite_id::text, m.user_id, it.j
     from invite_members m join item it on it.id = m.invite_id
     where m.answer = 'pending' and m.nudged_at > now() - interval '1 day'
+      and it.cancelled_at is null
   ),
   -- 2 to 2h40 before it starts, when at least two people are In or Maybe
   still as (
     select 'still_in'::text, m.invite_id::text, m.user_id, it.j
     from invite_members m join item it on it.id = m.invite_id
     where m.answer in ('in', 'maybe') and it.starts_at between now() + interval '2 hours' and now() + interval '160 minutes'
+      and it.cancelled_at is null
       and (select count(*) from invite_members o where o.invite_id = m.invite_id and o.answer in ('in', 'maybe')) >= 2
   ),
   -- someone dropped in the last day: tell the others still In or Maybe
@@ -253,8 +325,15 @@ language sql stable security definer set search_path = public as $$
     from invite_members d join item it on it.id = d.invite_id
     join invite_members m on m.invite_id = d.invite_id and m.user_id <> d.user_id and m.answer in ('in', 'maybe')
     where d.answer = 'out' and d.dropped_at > now() - interval '1 day'
+      and it.cancelled_at is null
   ),
-  due as (select * from invited union all select * from nudged union all select * from still union all select * from dropped)
+  cancelled as (
+    select 'cancelled'::text, m.invite_id::text, m.user_id, it.j
+    from invite_members m join item it on it.id = m.invite_id
+    where it.cancelled_at is not null and m.user_id <> it.host_id and m.answer <> 'out'
+  ),
+  due as (select * from invited union all select * from nudged union all select * from still union all select * from dropped
+          union all select * from cancelled)
   select d.kind, d.ref, d.user_id, t.token, t.environment, d.items
   from due d join push_tokens t on t.user_id = d.user_id
   where coalesce((select p.invites from push_prefs p where p.user_id = d.user_id), true)
@@ -268,3 +347,36 @@ comment on table public.invite_members is
 '[App users] Who is in each invite and their answer (pending, in, maybe, out). Only people in the invite can see it.';
 comment on function public.due_push_invites() is
 '[Team] Invite, nudge, still-in and dropped notifications due now, one row per phone. Read by send-reminders.';
+
+/* ---------- send right away ----------
+   An invite, a nudge, someone dropping out and a cancelled plan call send-reminders straight away (?only=invites),
+   rather than waiting up to 10 minutes for the next scheduled run. pg_net sends after the change is saved and never
+   holds it up; if the call fails, the next scheduled run sends it. send-reminders claims each notification before
+   sending, so this and a scheduled run at the same moment don't send it twice. Same Vault secret as push.sql. */
+create or replace function public.invite_push_now()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform net.http_post(
+    url     := 'https://sjxxiammvvfxcnukkqhg.supabase.co/functions/v1/send-reminders?only=invites',
+    headers := jsonb_build_object('content-type', 'application/json', 'x-ingest-secret',
+                 (select decrypted_secret from vault.decrypted_secrets where name = 'ingest_secret')),
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 30000);
+  return null;
+exception when others then
+  return null;   -- a notification problem never stops an invite from saving
+end $$;
+revoke execute on function public.invite_push_now() from public, anon, authenticated;
+
+drop trigger if exists invite_push_added on public.invite_members;
+create trigger invite_push_added after insert on public.invite_members
+  for each statement execute function public.invite_push_now();
+drop trigger if exists invite_push_changed on public.invite_members;
+create trigger invite_push_changed after update of nudged_at, dropped_at on public.invite_members
+  for each row when (new.nudged_at is distinct from old.nudged_at or new.dropped_at is distinct from old.dropped_at)
+  execute function public.invite_push_now();
+drop trigger if exists invite_push_cancelled on public.invites;
+create trigger invite_push_cancelled after update of cancelled_at on public.invites
+  for each row when (new.cancelled_at is not null and old.cancelled_at is null)
+  execute function public.invite_push_now();

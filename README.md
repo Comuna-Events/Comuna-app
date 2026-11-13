@@ -71,8 +71,11 @@ people in that invite see each other's names. "I'm in" saves it to Plans. Everyt
 - **Friends** are people who've answered an invite with you; there's no friends list to manage. Everyone else comes in
   by link.
 - **Links** look like `https://www.wearecomuna.com/i/?c=CODE` (the `i/` page in the comuna-website repo). On iPhone it
-  goes to the App Store and on Android to Google Play once their store links are filled in there; until then, and on a
-  computer, it opens the web app with the invite. Someone who installs the app first pastes the link in Plans.
+  goes to the App Store; on Android (until Comuna is on Google Play) and on a computer it opens the web app with the
+  invite. Someone who installs the app from the link pastes it in Plans afterwards; once universal links are set up
+  (IOS.md), a link opens the installed app straight to the invite.
+- **Leaving and cancelling:** anyone else can leave an invite; the person who invited can take someone out (their link
+  then stops working for them) or cancel it, which tells everyone in it.
 - **Notifications** (send-reminders): "invited you", "is waiting on you" (Nudge), "Still in?" a couple of hours before,
   and "can't make it". On iPhone the invite ones have answer buttons (`ios/App/App/AppDelegate.swift`).
 - To turn it on: run `supabase/invites.sql`, then redeploy send-reminders. Until then the Invite button shares a link

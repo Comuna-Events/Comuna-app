@@ -3,8 +3,9 @@
 // nothing is sent twice:
 //   "starts at 6:30 PM" an hour before each saved plan       due_push_reminders() -> push_reminders_sent
 //   "2 plans today", "Tomorrow: ... grab tickets" and "New for you"   due_push_extras() -> push_sent
-//   friend invites: "Jess invited you", "Jess is waiting on you", "Still in?", "Sam can't make it"
+//   friend invites: "Jess invited you", "Jess is waiting on you", "Still in?", "Sam can't make it", "Jess cancelled"
 //                                                            due_push_invites() (../../invites.sql) -> push_sent
+//   ?only=invites sends just those (invites.sql calls it the moment something happens)
 // Invite notifications carry an iPhone category (INVITE or STILL_IN, registered in ios/App/App/AppDelegate.swift) so
 // they show answer buttons; native.js answers with the button's id (in, maybe, out).
 // Each kind can be turned off in the app (Profile > Reminders, the push_prefs table); the SQL leaves those out.
@@ -45,7 +46,7 @@ type Extra = Phone & { kind: "plans_today" | "tickets" | "new_for_you"; ref: str
 type Push = { title: string; body: string; data: Record<string, string>; expires: number; collapse: string; category?: string };
 type InviteItem = { invite_id: string; event_id: string; name: string; venue: string | null; date: string; starts_at: string | null;
   from: string; going: string[]; dropped?: string };
-type InviteDue = Phone & { kind: "invite" | "nudge" | "still_in" | "dropped"; ref: string; items: InviteItem };
+type InviteDue = Phone & { kind: "invite" | "nudge" | "still_in" | "dropped" | "cancelled"; ref: string; items: InviteItem };
 
 const b64url = (b: ArrayBuffer | Uint8Array | string) =>
   btoa(typeof b === "string" ? b : String.fromCharCode(...new Uint8Array(b as ArrayBuffer)))
@@ -138,6 +139,8 @@ function invite(r: InviteDue): Push {
   if (r.kind === "still_in") return { title: `Still in for ${short(i.name, 45)}${i.starts_at ? ` at ${clock(i.starts_at)}` : ""}?`,
     collapse, data, expires: until, category: "STILL_IN",
     body: i.going.length ? `${names(i.going)} ${i.going.length === 1 ? "is" : "are"} going.` : "Let everyone know if you can't make it." };
+  if (r.kind === "cancelled") return { title: `${i.from} cancelled ${short(i.name, 50)}`, collapse, data, expires: until,
+    body: `It was ${at}${where}. It's still in your Plans if you saved it.` };
   const left = i.going.length;
   return { title: `${i.dropped} can't make ${short(i.name, 45)}`, collapse, data, expires: until,
     body: left > 1 ? `${left} of you are still going.` : left === 1 ? `${i.going[0]} is still going.` : "Want to invite someone else?" };
@@ -229,7 +232,12 @@ Deno.serve(async (req) => {
     return Response.json({ check: { ios, android } });
   }
 
-  const [hour, more, inv] = await Promise.all([db.rpc("due_push_reminders"), db.rpc("due_push_extras"), db.rpc("due_push_invites")]);
+  // ?only=invites: called by invites.sql's triggers the moment someone is invited, nudged, drops out or a plan is
+  // cancelled, so those don't wait for the next 10-minute run
+  const only = new URL(req.url).searchParams.get("only") === "invites";
+  const none = Promise.resolve({ data: [], error: null });
+  const [hour, more, inv] = await Promise.all([only ? none : db.rpc("due_push_reminders"), only ? none : db.rpc("due_push_extras"),
+    db.rpc("due_push_invites")]);
   if (hour.error) return Response.json({ error: hour.error.message }, { status: 500 });
   const due = (hour.data ?? []) as Due[];
   // until push.sql is re-run there's no due_push_extras(): keep sending the hour-before reminders
@@ -253,7 +261,24 @@ Deno.serve(async (req) => {
     (r) => db.from("push_reminders_sent").upsert({ user_id: r.user_id, event_id: r.event_id, occurrence_date: r.occurrence_date }));
   const b = await deliver(jwt, fcm, extras, extra, (r) => `${r.user_id}|${r.kind}|${r.ref}`,
     (r) => db.from("push_sent").upsert({ user_id: r.user_id, kind: r.kind, ref: r.ref }));
-  const c = await deliver(jwt, fcm, invites, invite, (r) => `${r.user_id}|${r.kind}|${r.ref}`,
-    (r) => db.from("push_sent").upsert({ user_id: r.user_id, kind: r.kind, ref: r.ref }));
+  // Invite notifications can be sent by two runs at once (a trigger and the schedule), so each run claims them first
+  // (a push_sent row only one run can add) and sends only its own. A claim whose sending failed is given back, so the
+  // next run tries again.
+  const inviteKey = (r: InviteDue) => `${r.user_id}|${r.kind}|${r.ref}`;
+  const wanted = [...new Map(invites.map((r) => [inviteKey(r), { user_id: r.user_id, kind: r.kind, ref: r.ref }])).values()];
+  let mine = new Set<string>();
+  if (wanted.length) {
+    const { data: got, error } = await db.from("push_sent")
+      .upsert(wanted, { onConflict: "user_id,kind,ref", ignoreDuplicates: true }).select("user_id, kind, ref");
+    if (!error) mine = new Set((got ?? []).map((r: InviteDue) => inviteKey(r)));
+  }
+  const settled = new Set<string>();
+  const c = await deliver(jwt, fcm, invites.filter((r) => mine.has(inviteKey(r))), invite, inviteKey,
+    async (r) => { settled.add(inviteKey(r)); });
+  for (const k of mine) {
+    if (settled.has(k)) continue;
+    const [user_id, kind, ref] = k.split("|");
+    await db.from("push_sent").delete().match({ user_id, kind, ref });
+  }
   return Response.json({ sent: a.sent + b.sent + c.sent, failed: [...a.failed, ...b.failed, ...c.failed], ...(fcmError ? { note: fcmError } : {}) });
 });

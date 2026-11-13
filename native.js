@@ -167,12 +167,22 @@
     }
   };
 
+  const App=cap.registerPlugin('App');
   /* Android's back button and back gesture: close what's open or go back a screen (index.html decides), and on the
      first screen send the app to the background like other Android apps, rather than closing it */
   if(android){
-    const App=cap.registerPlugin('App');
     App.addListener('backButton',()=>{ if(!window.comunaApp?.back?.()) App.minimizeApp().catch(()=>{}); });
   }
+
+  /* friend invite links (https://www.wearecomuna.com/i/?c=CODE) open the app when it's installed: universal links,
+     set up in ios/App/App/App.entitlements and the website's .well-known/apple-app-site-association (IOS.md). Whether
+     the link started the app or arrived while it was open, the invite opens; straight after launch the app may still
+     be loading, so keep trying for a few seconds. */
+  const openLink=url=>{ const m=String(url||'').match(/wearecomuna\.com\/i\/?\?(?:.*&)?c=([0-9a-f]{12})/i); if(!m) return;
+    const code=m[1].toLowerCase(), go=()=>!!window.comunaApp?.openInviteCode?.(code);
+    if(!go()){ let n=0; const t=setInterval(()=>{ if(go() || ++n>20) clearInterval(t); },500); } };
+  App.addListener('appUrlOpen',e=>openLink(e?.url));
+  App.getLaunchUrl?.().then(r=>openLink(r?.url)).catch(()=>{});
 
   // tapping a notification opens its event (or Plans, for a rundown of several); straight after launch the events may
   // still be loading, so keep trying for a few seconds
