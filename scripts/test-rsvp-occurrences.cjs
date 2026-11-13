@@ -1,15 +1,18 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
 let now=new Date(2026,9,20,12), storedICS;
-const els=new Map(),el=id=>{if(!els.has(id))els.set(id,{innerHTML:'',textContent:'',hidden:false});return els.get(id);};
+const els=new Map(),el=id=>{if(!els.has(id))els.set(id,{innerHTML:'',textContent:'',hidden:false,before(){},parentNode:{prepend(){}}});return els.get(id);};
 const c={Date,Math,Intl,Set,Object,console,S:{rsvp:[],rsvpDates:{},checked:[]},events:[],eventNow:()=>new Date(now),save(){},enrich(){},document:{getElementById:el,body:{appendChild(){}},createElement:()=>({click(){},remove(){}})},Blob,URL:{createObjectURL(blob){storedICS=blob;return 'test:';},revokeObjectURL(){}},setTimeout(){},toast(){},catDot:()=>'',escH:s=>s||'',vCheck:()=>'',mins:()=>1,goingText:()=>'',needsRsvp:()=>false,hostStep:()=>null,hasTicket:()=>false,FULL_WD:['sunday','monday','tuesday','wednesday','thursday','friday','saturday']};
 vm.createContext(c);
-for(const name of ['hm','occurrenceEnd','occursOn','nextDate','fmtTime','ordinal','addToCalendar']){
+for(const name of ['hm','occurrenceEnd','occursOn','nextDate','fmtTime','ordinal','calTimes','downloadIcs']){
  const start=source.indexOf('function '+name+'('),end=['hm','ordinal'].includes(name)?source.indexOf('\n',start):source.indexOf('\n}',start)+2;
  vm.runInContext(source.slice(start,end),c);
 }
 vm.runInContext(source.slice(source.indexOf('// Plans belong to individual'),source.indexOf('/* ---------- Tonight in <neighborhood>:')),c);
 vm.runInContext(source.slice(source.indexOf("const WD=['Sun'"),source.indexOf('function occursOn(')).replace("const FULL_WD=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];",''),c);
+for(const name of ['calStamp','calWhere']){ const start=source.indexOf('const '+name+'='); vm.runInContext(source.slice(start,source.indexOf('\n',start)),c); }
+// Plans' invite list (friend invites) is tested in test-invites.cjs
+vm.runInContext("var invites=[],invitesAt=Date.now(); function invitesHtml(){ return ''; } function loadInvites(){}",c);
 vm.runInContext(source.slice(source.indexOf('function renderPlans(){'),source.indexOf("document.querySelector('[data-s=\"plans\"]')")),c);
 const day=n=>new Date(2026,9,n),ev=(id,rec)=>({id,title:rec,rec,start:day(20),end:day(31),t0:'19:00',t1:'21:00',venue:'Venue'});
 const weekly=ev(1,'Weekly'),daily=ev(2,'Daily');c.events.push(weekly,daily);
@@ -26,7 +29,7 @@ vm.runInContext('calSel=new Date(2026,9,27);renderPlans();',c);assert.ok(el('pla
 c.S.rsvp.push(3);const legacy=ev(3,'Weekly');c.events.push(legacy);assert.equal(c.hasPlan(legacy,day(20)),true);
 now=new Date(2026,9,27,12);assert.equal(c.hasPlan(legacy,day(27)),false);
 // Calendar download uses the selected future occurrence and has no recurrence rule.
-c.addToCalendar({...weekly,occurrenceDate:'2026-10-27'});
+c.toast=()=>{}; c.downloadIcs({...weekly,occurrenceDate:'2026-10-27'});   // Apple Calendar in the Add to calendar picker
 (async()=>{
  const ics=await storedICS.text();assert.ok(ics.includes('DTSTART:20261027T190000'));assert.ok(!ics.includes('RRULE:'));
  // Exercise actual persistence and cancellation paths, not only date helpers.

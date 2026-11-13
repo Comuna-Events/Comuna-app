@@ -75,6 +75,32 @@ const server=http.createServer((req,res)=>{
   const q0=(await pick(30)).map(x=>x.id), q1=(await pick(31)).map(x=>x.id);
   assert.equal(q0.length,4); assert.equal(q1.length,4,'still four picks when there are only five events');
   assert.ok(q1.includes([1,2,3,4,5].find(id=>!q0.includes(id))),'the one not shown yesterday leads');
+  // weekends reach farther: ~1 hour on weekends vs ~15-20 min on weeknights (interviews)
+  await page.clock.setFixedTime(new Date('2026-11-18T12:00:00-08:00'));   // a Wednesday
+  const wk=await run(()=>{
+   S.pickShown={}; S.pickTapped={}; S.pickNope={};
+   const base={venue:'V',area:'X',time:'',desc:'',host:'',tags:[],vibes:[],recDetail:'',end:null,t0:'19:00',t1:'22:00',lng:S.loc.lng,kind:'popup',category:'music',sub:'',rec:'One-off'};
+   const day=s=>{ const d=new Date(s+'T00:00:00'); return d; };
+   events=[
+    {...base,id:301,eid:'EVT-301',title:'Thu 8mi',start:day('2026-11-19'),lat:S.loc.lat+0.116},
+    {...base,id:302,eid:'EVT-302',title:'Sat 8mi',start:day('2026-11-21'),lat:S.loc.lat+0.116},
+    {...base,id:303,eid:'EVT-303',title:'Fri 8pm 8mi',start:day('2026-11-20'),t0:'20:00',lat:S.loc.lat+0.116},
+    {...base,id:304,eid:'EVT-304',title:'Fri 10am 8mi',start:day('2026-11-20'),t0:'10:00',lat:S.loc.lat+0.116},
+    {...base,id:305,eid:'EVT-305',title:'Thu 15mi',start:day('2026-11-19'),lat:S.loc.lat+0.217},
+    {...base,id:306,eid:'EVT-306',title:'Sun 15mi',start:day('2026-11-22'),lat:S.loc.lat+0.217},
+   ];
+   enrich();
+   const ids=dailyPicks().map(e=>e.id), by=id=>events.find(e=>e.id===id);
+   return { ids, wknd:[301,302,303,304].map(id=>weekendPick(by(id))), why:[301,302].map(id=>pickReason(by(id))),
+     felt:[pickMi(by(301)),pickMi(by(302))].map(x=>Math.round(x*10)/10), mi:by(301).mi };
+  });
+  assert.deepEqual(wk.wknd,[false,true,true,false],'Saturday and Friday night are weekend; Thursday and Friday morning are not');
+  assert.ok(wk.mi>7.5 && wk.mi<8.5,'test events are ~8 miles out');
+  assert.equal(wk.why[0],'Worth the drive','8 miles on a Thursday is past the weeknight limit');
+  assert.notEqual(wk.why[1],'Worth the drive','8 miles on a Saturday is within the weekend limit');
+  assert.ok(wk.felt[1]<wk.felt[0],'a weekend mile counts for less than a weeknight one');
+  assert.ok(wk.ids.includes(306),'a Sunday event 15 miles out can be picked');
+  assert.ok(!wk.ids.includes(305),'a Thursday event 15 miles out is too far');
   // the card: "Today/Tonight/This week in <neighborhood>", reasons, no category icons, no buttons but the ×, mood row
   await run(()=>{ S.pickShown={}; S.pickTapped={}; S.nb='Silver Lake'; S.places={};
    const t=new Date();t.setHours(0,0,0,0);

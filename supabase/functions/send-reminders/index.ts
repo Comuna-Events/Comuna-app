@@ -3,6 +3,10 @@
 // nothing is sent twice:
 //   "starts at 6:30 PM" an hour before each saved plan       due_push_reminders() -> push_reminders_sent
 //   "2 plans today", "Tomorrow: ... grab tickets" and "New for you"   due_push_extras() -> push_sent
+//   friend invites: "Jess invited you", "Jess is waiting on you", "Still in?", "Sam can't make it"
+//                                                            due_push_invites() (../../invites.sql) -> push_sent
+// Invite notifications carry an iPhone category (INVITE or STILL_IN, registered in ios/App/App/AppDelegate.swift) so
+// they show answer buttons; native.js answers with the button's id (in, maybe, out).
 // Each kind can be turned off in the app (Profile > Reminders, the push_prefs table); the SQL leaves those out.
 //
 // One-time setup, in Supabase > Edge Functions > Secrets (from developer.apple.com > Certificates, IDs & Profiles >
@@ -38,7 +42,10 @@ type Phone = { user_id: string; token: string; environment: Env | null; platform
 type Due = Phone & { event_id: string; occurrence_date: string; title: string; venue: string | null; starts_at: string };
 type Item = { event_id: string; name: string; venue: string | null; date: string | null; starts_at: string | null };
 type Extra = Phone & { kind: "plans_today" | "tickets" | "new_for_you"; ref: string; items: Item[] };
-type Push = { title: string; body: string; data: Record<string, string>; expires: number; collapse: string };
+type Push = { title: string; body: string; data: Record<string, string>; expires: number; collapse: string; category?: string };
+type InviteItem = { invite_id: string; event_id: string; name: string; venue: string | null; date: string; starts_at: string | null;
+  from: string; going: string[]; dropped?: string };
+type InviteDue = Phone & { kind: "invite" | "nudge" | "still_in" | "dropped"; ref: string; items: InviteItem };
 
 const b64url = (b: ArrayBuffer | Uint8Array | string) =>
   btoa(typeof b === "string" ? b : String.fromCharCode(...new Uint8Array(b as ArrayBuffer)))
@@ -105,13 +112,44 @@ function extra(r: Extra): Push {
         data: {}, collapse, expires: hours(12) };
 }
 
+// "tonight", "tomorrow", "Sat, Nov 21": the date as the person reading it would say it (LA time)
+function whenSaid(i: InviteItem): string {
+  const la = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const today = la(new Date()), tomorrow = la(new Date(Date.now() + 864e5));
+  const hour = i.starts_at ? Number(new Date(i.starts_at).toLocaleTimeString("en-US",
+    { hour: "numeric", hourCycle: "h23", timeZone: "America/Los_Angeles" })) : 0;
+  const day = i.date === today ? (hour >= 17 ? "tonight" : "today")
+    : i.date === tomorrow ? "tomorrow"
+    : new Date(i.date + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return i.starts_at ? `${day} at ${clock(i.starts_at)}` : day;
+}
+// "Jess, Maya and Sam"
+const names = (n: string[]) => n.length <= 1 ? (n[0] ?? "") : n.slice(0, -1).join(", ") + " and " + n[n.length - 1];
+
+function invite(r: InviteDue): Push {
+  const i = r.items, collapse = `${r.kind}:${r.ref}`.slice(0, 64);
+  const data = { invite: i.invite_id, event_id: i.event_id, date: i.date };
+  const until = i.starts_at ? Math.floor(new Date(i.starts_at).getTime() / 1000) : hours(24);
+  const at = whenSaid(i), where = i.venue ? ` · ${i.venue}` : "";
+  if (r.kind === "invite") return { title: `${i.from} invited you to ${short(i.name, 50)}`, collapse, data, expires: until,
+    body: `${at[0].toUpperCase() + at.slice(1)}${where}.${i.going.length > 1 ? ` ${names(i.going)} are in.` : ""}`, category: "INVITE" };
+  if (r.kind === "nudge") return { title: `${i.from} is waiting on you`, collapse, data, expires: until,
+    body: `${short(i.name)}, ${at}. Are you in?`, category: "INVITE" };
+  if (r.kind === "still_in") return { title: `Still in for ${short(i.name, 45)}${i.starts_at ? ` at ${clock(i.starts_at)}` : ""}?`,
+    collapse, data, expires: until, category: "STILL_IN",
+    body: i.going.length ? `${names(i.going)} ${i.going.length === 1 ? "is" : "are"} going.` : "Let everyone know if you can't make it." };
+  const left = i.going.length;
+  return { title: `${i.dropped} can't make ${short(i.name, 45)}`, collapse, data, expires: until,
+    body: left > 1 ? `${left} of you are still going.` : left === 1 ? `${i.going[0]} is still going.` : "Want to invite someone else?" };
+}
+
 async function send(jwt: string, env: Env, token: string, p: Push): Promise<{ status: number; reason?: string }> {
   const res = await fetch(`${HOSTS[env]}/3/device/${token}`, {
     method: "POST",
     headers: { authorization: `bearer ${jwt}`, "apns-topic": BUNDLE_ID, "apns-push-type": "alert",
       "apns-priority": "10", "apns-expiration": String(p.expires), "apns-collapse-id": p.collapse },
     body: JSON.stringify({ aps: { alert: { title: p.title, body: p.body }, sound: "default",
-      "thread-id": p.collapse.split(":")[0] }, ...p.data }),
+      "thread-id": p.collapse.split(":")[0], ...(p.category ? { category: p.category } : {}) }, ...p.data }),
   });
   const reason = res.status === 200 ? undefined : (await res.json().catch(() => ({}))).reason;
   return { status: res.status, reason };
@@ -191,27 +229,31 @@ Deno.serve(async (req) => {
     return Response.json({ check: { ios, android } });
   }
 
-  const [hour, more] = await Promise.all([db.rpc("due_push_reminders"), db.rpc("due_push_extras")]);
+  const [hour, more, inv] = await Promise.all([db.rpc("due_push_reminders"), db.rpc("due_push_extras"), db.rpc("due_push_invites")]);
   if (hour.error) return Response.json({ error: hour.error.message }, { status: 500 });
   const due = (hour.data ?? []) as Due[];
   // until push.sql is re-run there's no due_push_extras(): keep sending the hour-before reminders
   const extras = (more.error ? [] : more.data ?? []) as Extra[];
-  if (!due.length && !extras.length) return Response.json({ sent: 0, ...(more.error ? { note: more.error.message } : {}) });
+  // until invites.sql is run there's no due_push_invites()
+  const invites = (inv.error ? [] : inv.data ?? []) as InviteDue[];
+  if (!due.length && !extras.length && !invites.length) return Response.json({ sent: 0, ...(more.error ? { note: more.error.message } : {}) });
 
   // which phones are Android (the due_* functions return tokens, not platforms)
-  const tokens = [...new Set([...due, ...extras].map((r) => r.token))];
+  const tokens = [...new Set([...due, ...extras, ...invites].map((r) => r.token))];
   const { data: kinds } = await db.from("push_tokens").select("token, platform").in("token", tokens);
   const platform = new Map((kinds ?? []).map((k: { token: string; platform: "ios" | "android" }) => [k.token, k.platform]));
-  for (const r of [...due, ...extras]) r.platform = platform.get(r.token) ?? "ios";
+  for (const r of [...due, ...extras, ...invites]) r.platform = platform.get(r.token) ?? "ios";
 
   const jwt = apns ? await apnsJwt(keyId!, teamId!, p8!) : "";
   let fcm: Fcm | null = null, fcmError = "";
-  if (fcmJson && [...due, ...extras].some((r) => r.platform === "android")) {
+  if (fcmJson && [...due, ...extras, ...invites].some((r) => r.platform === "android")) {
     try { fcm = await fcmAuth(fcmJson); } catch (e) { fcmError = String((e as Error).message ?? e); }
   }
   const a = await deliver(jwt, fcm, due, hourBefore, (r) => `${r.user_id}|${r.event_id}|${r.occurrence_date}`,
     (r) => db.from("push_reminders_sent").upsert({ user_id: r.user_id, event_id: r.event_id, occurrence_date: r.occurrence_date }));
   const b = await deliver(jwt, fcm, extras, extra, (r) => `${r.user_id}|${r.kind}|${r.ref}`,
     (r) => db.from("push_sent").upsert({ user_id: r.user_id, kind: r.kind, ref: r.ref }));
-  return Response.json({ sent: a.sent + b.sent, failed: [...a.failed, ...b.failed], ...(fcmError ? { note: fcmError } : {}) });
+  const c = await deliver(jwt, fcm, invites, invite, (r) => `${r.user_id}|${r.kind}|${r.ref}`,
+    (r) => db.from("push_sent").upsert({ user_id: r.user_id, kind: r.kind, ref: r.ref }));
+  return Response.json({ sent: a.sent + b.sent + c.sent, failed: [...a.failed, ...b.failed, ...c.failed], ...(fcmError ? { note: fcmError } : {}) });
 });

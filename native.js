@@ -176,9 +176,10 @@
 
   // tapping a notification opens its event (or Plans, for a rundown of several); straight after launch the events may
   // still be loading, so keep trying for a few seconds
+  // A friend invite opens the invite instead; its iPhone buttons (I'm in, Maybe, Can't: AppDelegate.swift) answer it too.
   Push.addListener('pushNotificationActionPerformed',a=>{
-    const d=a.notification?.data||{}, app=()=>window.comunaApp;
-    const open=()=>!!app() && (d.event_id? app().openEvent(d.event_id,d.date||null) : d.screen==='plans'? app().openPlans() : true);
+    const d=a.notification?.data||{}, app=()=>window.comunaApp, act=['in','maybe','out'].includes(a.actionId)? a.actionId : null;
+    const open=()=>!!app() && (d.invite? app().openInvite(d.invite,act) : d.event_id? app().openEvent(d.event_id,d.date||null) : d.screen==='plans'? app().openPlans() : true);
     if(!open()){ let n=0; const t=setInterval(()=>{ if(open() || ++n>20) clearInterval(t); },500); }
   });
 })();
