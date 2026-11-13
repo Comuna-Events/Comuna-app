@@ -202,7 +202,7 @@ img{ max-width:100% }
 .vrow .t{ font-weight:700; font-size:15px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .vrow .m{ font-size:12.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px }
 
-@keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(201,83,61,.55) } 100%{ box-shadow:0 0 0 14px rgba(201,83,61,0) } }
+@keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(166,75,44,.55) } 100%{ box-shadow:0 0 0 14px rgba(166,75,44,0) } }
 @media (prefers-reduced-motion:reduce){ .pin.live{ animation:none } }
 .youare{ position:absolute; transform:translate(-50%,-50%); pointer-events:none }
 .chip{ flex:none; border:1.5px solid var(--ink); border-radius:30px; padding:6px 13px; font-size:13px; font-weight:500 }
@@ -282,6 +282,43 @@ img{ max-width:100% }
 .pick .dist small{ display:block; font-family:var(--sans); font-weight:500; font-size:10.5px; color:var(--muted) }
 .endnote{ text-align:center; margin:20px 0 4px; font-family:var(--hand); font-size:21px; color:var(--muted) }
 .listorder{ margin:12px 0 4px; color:var(--muted); font-size:12px; text-align:center }
+/* list feed cards: photo (or a poster in the category's color) on top, details below */
+.fday{ font-family:var(--display); font-weight:800; font-size:24px; text-transform:uppercase; letter-spacing:.01em; color:var(--green); margin:22px 2px 2px; line-height:1 }
+.listorder + .fday{ margin-top:10px }
+.fcard{ position:relative; background:var(--card); border-radius:20px; overflow:hidden; overflow:clip; margin-top:12px; box-shadow:0 1px 2px rgba(38,37,31,.06) }
+.fopen{ position:absolute; inset:0; z-index:1; width:100%; border-radius:inherit }
+.fopen:focus-visible{ outline:3px solid var(--green); outline-offset:-3px }
+.fcard:active .fmedia img{ transform:scale(1.015) }
+.fmedia{ position:relative; aspect-ratio:3/2; background:var(--cat); overflow:hidden; isolation:isolate }
+.fmedia img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:transform .25s ease }
+.fmedia img.tall{ object-fit:contain }
+.fmedia .fbg{ filter:blur(22px) saturate(1.15); transform:scale(1.2); opacity:.9 }
+.fmedia::after{ content:''; position:absolute; inset:auto 0 0; height:40%; background:linear-gradient(transparent, rgba(22,20,16,.38)); pointer-events:none }
+.fposter{ aspect-ratio:16/9; color:var(--catfg); padding:16px 18px; display:flex; flex-direction:column; justify-content:flex-end; background-image:var(--grain); background-size:200px }
+.fposter::after{ display:none }
+.fpicon{ position:absolute; right:-26px; top:-22px; opacity:.16; transform:rotate(-12deg); pointer-events:none }
+.fpcat{ position:absolute; top:16px; left:18px; font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; opacity:.85 }
+.fptitle{ position:relative; font-family:var(--display); font-weight:900; font-size:30px; line-height:.98; text-transform:uppercase; overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:30px }
+.fchips{ position:absolute; left:12px; bottom:12px; z-index:2; display:flex; gap:6px; pointer-events:none }
+.fchips span{ background:rgba(250,246,238,.94); color:var(--ink); font-size:12px; font-weight:700; padding:5px 9px; border-radius:999px; white-space:nowrap }
+.fsave{ position:absolute; top:10px; right:10px; z-index:2; width:42px; height:42px; border-radius:50%; display:grid; place-items:center; background:rgba(250,246,238,.94); color:var(--ink); box-shadow:0 2px 8px rgba(0,0,0,.16) }
+.fsave[aria-pressed="true"]{ background:var(--green); color:var(--paper) }
+.fsave[aria-pressed="true"] svg path{ fill:currentColor }
+.fsave:focus-visible{ outline:3px solid var(--green); outline-offset:2px }
+.fsave.pop{ animation:fsavePop .32s ease-out }
+@keyframes fsavePop{ 40%{ transform:scale(1.18) } }
+.fbody{ padding:12px 16px 14px; pointer-events:none }
+.fwhen{ font-size:11.5px; font-weight:700; letter-spacing:.06em; color:var(--red); text-transform:uppercase }
+.flive{ color:var(--red) } .flive.on{ display:inline-flex; align-items:center; gap:6px }
+.flive i{ width:8px; height:8px; border-radius:50%; background:var(--red); animation:flivePulse 1.6s ease-out infinite }
+@keyframes flivePulse{ 0%{ box-shadow:0 0 0 0 rgba(166,75,44,.55) } 100%{ box-shadow:0 0 0 8px rgba(166,75,44,0) } }
+.fdone{ color:var(--green) }
+.ftitle{ font-weight:700; font-size:17px; line-height:1.22; margin:3px 0 2px; overflow-wrap:anywhere }
+.fvenue{ font-size:13px; color:var(--muted); overflow-wrap:anywhere }
+.fsocial{ display:flex; align-items:center; gap:6px; margin-top:7px; font-size:12.5px; font-weight:600; color:var(--green) }
+.fsocial svg{ flex:none }
+@media (prefers-reduced-motion:reduce){ .flive i, .fsave.pop{ animation:none } .fmedia img{ transition:none } }
 .listmore{ display:block; width:100%; margin:18px 0 4px; padding:14px; border:1.5px solid var(--line); border-radius:16px; background:var(--card); color:var(--green); font:inherit; font-weight:700 }
 .listmore:focus-visible{ outline:3px solid var(--green); outline-offset:3px }
 .demo-tag{ text-align:center; font-size:11px; color:var(--muted); margin-top:4px }
@@ -726,7 +763,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
   #homeScreen .srch{ grid-column:2; grid-row:1; min-width:0; margin:0; max-width:none }
   .home-list .picks{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-content:start; padding:16px 32px 110px }
   .home-list .pick{ margin:0; min-height:112px }
-  .home-list .picks > :not(.pick){ grid-column:1 / -1 }
+  .home-list .picks > :not(.pick):not(.fcard){ grid-column:1 / -1 }
+  .home-list .fcard{ margin:0 }
   #homeScreen:not(.home-list) .pick{ flex-basis:340px }
   .nav{ width:420px; max-width:calc(100% - 32px); left:50%; right:auto; transform:translateX(-50%) }
   .overlay, .recmodal{ align-items:center; justify-content:center; padding:24px }
@@ -2229,22 +2267,107 @@ function eventListFooter(){
 function loadMoreEventCards(){
   if(current!=='home' || !isEventList() || eventList.shown>=eventList.results.length) return;
   const tail=document.getElementById('eventListTail'); if(!tail) return;
-  const focusMore=document.activeElement?.id==='loadMoreEvents', firstNew=eventList.results[eventList.shown].id;
+  const focusMore=document.activeElement?.id==='loadMoreEvents', firstNew=eventList.results[eventList.shown].ev.id;
   const next=Math.min(eventList.shown+EVENT_LIST_PAGE_SIZE,eventList.results.length);
-  tail.insertAdjacentHTML('beforebegin',eventList.results.slice(eventList.shown,next).map(cardHtml).join(''));
+  tail.insertAdjacentHTML('beforebegin',feedHtml(eventList.results,eventList.shown,next));
   eventList.shown=next; tail.innerHTML=eventListFooter();
   if(focusMore) document.querySelector(`#picks [data-ev="${firstNew}"]`)?.focus({preventScroll:true});
   if(next===eventList.results.length && eventListObserver) eventListObserver.disconnect();
 }
+/* ---------- the list feed ----------
+   Each event is a big card: its photo when it has one (two thirds do), otherwise a poster in its category's color
+   with the title set large. Bookmark to save without opening it; who's going and live timing sit on the card.
+   Events are grouped under day headers, soonest first; within the same half hour, the closer one comes first. */
+const FEED_CLOCK=d=>{ const t=hm(d); return t? t[0]*60+t[1] : null; };
+// when this event next happens, as a sortable start (minutes since today's midnight; days without a time sort at noon)
+function feedSlot(ev,now){
+  const day=ev.start? nextDate(ev,now) : selectedPlanDay(ev);
+  if(!day) return { day:null, at:1e9 };
+  const today=new Date(now); today.setHours(0,0,0,0);
+  const dayN=Math.round((day-today)/864e5), t=FEED_CLOCK(ev.t0);
+  return { day, dayN, t, at:dayN*1440+(t??720) };
+}
+// "Happening now" / "Starts in 40 min" for today's events; '' otherwise (the card shows its usual date and time)
+function liveText(ev,slot,now){
+  if(!slot.day || slot.t==null || slot.dayN>0) return null;
+  const start=new Date(slot.day); start.setHours(Math.floor(slot.t/60),slot.t%60,0,0);
+  const end=occurrenceEnd(ev,slot.day), m=Math.round((start-now)/6e4);
+  if(m<=0 && end && end>now) return { now:true, txt:'Happening now' };
+  if(m>0 && m<=90) return { now:false, txt:`Starts in ${m} min` };
+  if(m>90 && m<=180) return { now:false, txt:`Starts in ${Math.round(m/60*2)/2} hr` };
+  return null;
+}
+// sort order: by day, then within a day what's on now, then morning / afternoon / evening / late, closest first in each
+// (strict start-time order put events an hour's drive away at the top just because they started first)
+function feedBlock(r,now){
+  const {slot}=r; if(!slot.day) return 1e9;
+  const live=liveText(r.ev,slot,now), t=slot.t??720;
+  return Math.max(0,slot.dayN)*10 + (live&&live.now? 0 : t<720? 1 : t<1020? 2 : t<1260? 3 : 4);
+}
+function feedDayLabel(slot){
+  if(!slot.day) return 'Other dates';
+  if(slot.dayN<=0) return eventNow().getHours()>=16? 'Tonight' : 'Today';
+  if(slot.dayN===1) return 'Tomorrow';
+  return slot.day.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+}
+// saves, check-ins and reviews together, strongest first
+function feedSocial(ev){ return [ev.rev? `${ev.rev.pct}% liked it` : '', checkedText(ev), goingText(ev)].filter(Boolean).join(' · '); }
+const BOOKMARK='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.6L5 21V4.5a1 1 0 0 1 1-1z"/></svg>';
+const PEOPLE='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.2A6.5 6.5 0 0 1 21.5 20"/></svg>';
+function feedCardHtml(ev,slot,now){
+  const done=S.checked.includes(ev.id), inn=hasPlan(ev), c=CATS[catKey(ev.category)], live=liveText(ev,slot,now);
+  const title=escH(cardTitle(ev)), price=priceTag(ev), social=feedSocial(ev);
+  const when=live? `<span class="flive${live.now?' on':''}">${live.now?'<i></i>':''}${escH(live.txt)}</span>` : escH(cardWhen(ev));
+  const chips=`<div class="fchips">${price?`<span>${escH(price)}</span>`:''}<span>${mins(ev.mi)} min away</span></div>`;
+  const media=ev.photo
+    ? `<div class="fmedia" style="--cat:${c.bg}"><img class="fimg" src="${escH(ev.photo)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">${chips}</div>`
+    : `<div class="fmedia fposter" style="--cat:${c.bg};--catfg:${c.fg}"><span class="fpicon">${catIcon(ev.category,150,c.fg)}</span><span class="fpcat">${escH(c.short)}</span><span class="fptitle">${title}</span>${chips}</div>`;
+  return `<article class="fcard${ev.photo?'':' noimg'}">
+    <button class="fopen" data-ev="${ev.id}" aria-label="${escH(cardTitle(ev))}"></button>${media}
+    <button class="fsave" data-save="${ev.id}" aria-pressed="${inn}" aria-label="${inn?'Saved to Plans. Remove':'Save to Plans'}">${BOOKMARK}</button>
+    <div class="fbody"><div class="fwhen">${when}${done?' · <span class="fdone">Stamped ✓</span>':''}</div>
+      ${ev.photo?`<div class="ftitle">${title}${vCheck(ev,15)}</div>`:''}
+      <div class="fvenue">${escH([ev.venue, ev.area||ev.hood].filter((x,i,a)=>x && a.indexOf(x)===i).join(' · '))}${ev.photo?'':vCheck(ev,14)}</div>
+      ${social?`<div class="fsocial">${PEOPLE}<span>${escH(social)}</span></div>`:''}</div></article>`;
+}
+// cards for list[from..to), with a day header wherever the day changes
+function feedHtml(list,from,to){
+  const now=eventNow(); let out='';
+  for(let i=from;i<to;i++){ const r=list[i], label=feedDayLabel(r.slot);
+    if(i===0 || feedDayLabel(list[i-1].slot)!==label) out+=`<h3 class="fday">${escH(label)}</h3>`;
+    out+=feedCardHtml(r.ev,r.slot,now); }
+  return out;
+}
+// a photo link that stopped working: the card becomes a poster; a tall flyer shows whole over a blurred copy
+document.getElementById('picks').addEventListener('error',e=>{ const im=e.target; if(!im.classList?.contains('fimg')) return;
+  const card=im.closest('.fcard'), ev=card && events.find(x=>x.id===+card.querySelector('[data-ev]').dataset.ev);
+  if(ev){ const tmp=document.createElement('div'); tmp.innerHTML=feedCardHtml({...ev,photo:''},feedSlot(ev,eventNow()),eventNow()); card.replaceWith(tmp.firstElementChild); } },true);
+document.getElementById('picks').addEventListener('load',e=>{ const im=e.target; if(!im.classList?.contains('fimg')) return;
+  if(im.naturalHeight>im.naturalWidth*.9){ const bg=im.cloneNode(); bg.className='fbg'; bg.removeAttribute('loading'); im.before(bg); im.classList.add('tall'); } },true);
+async function toggleFeedSave(btn){
+  const ev=events.find(x=>x.id===+btn.dataset.save); if(!ev || btn.disabled) return;
+  const day=selectedPlanDay(ev);
+  if(day && hasPlan(ev,day)){
+    btn.disabled=true;
+    try{ await removePlan(ev,day); haptic('light'); toast('Removed from your Plans.'); renderHome(); if(current==='plans') renderPlans(); if(S.signedUp) loadGoing(); }
+    catch(error){ console.warn('RSVP cancellation failed',error); toast('Could not remove this plan. Check your connection and sign-in, then try again.'); btn.disabled=false; }
+    return;
+  }
+  const saved=savePlan(ev,btn); if(!saved) return;
+  btn.setAttribute('aria-pressed','true'); btn.setAttribute('aria-label','Saved to Plans. Remove'); btn.classList.add('pop');
+  toast(saved.pts? `Saved to your Plans · +${saved.pts} points` : 'Saved to your Plans');
+  if(current==='plans') renderPlans();
+}
 function renderEventList(results){
   if(eventListObserver) eventListObserver.disconnect();
-  const row=document.getElementById('picks'), o=origin();
-  const ordered=results.slice().sort((a,b)=>mins(a.mi)-mins(b.mi) || a.mi-b.mi || a.id-b.id);
-  const key=JSON.stringify([when,filter,tier,searchQ,o.lat,o.lng,ordered.map(ev=>ev.id)]);
+  const row=document.getElementById('picks'), o=origin(), now=eventNow();
+  const ordered=results.map(ev=>({ev,slot:feedSlot(ev,now)}))
+    .sort((a,b)=>feedBlock(a,now)-feedBlock(b,now) || a.ev.mi-b.ev.mi || a.ev.id-b.ev.id);
+  const key=JSON.stringify([when,filter,tier,searchQ,o.lat,o.lng,ordered.map(r=>r.ev.id)]);
   const reset=key!==eventList.key, top=reset?0:row.scrollTop;
   eventList={key,results:ordered,shown:Math.min(ordered.length,reset?EVENT_LIST_PAGE_SIZE:Math.max(EVENT_LIST_PAGE_SIZE,eventList.shown))};
-  row.innerHTML='<div class="listorder">Closest to you · estimated drive times</div>'
-    +ordered.slice(0,eventList.shown).map(cardHtml).join('')
+  row.innerHTML='<div class="listorder">Soonest first · drive times are estimates</div>'
+    +feedHtml(ordered,0,eventList.shown)
     +'<div id="eventListTail">'+eventListFooter()+'</div>';
   row.scrollLeft=0; row.scrollTop=top;
   if(eventList.shown<ordered.length && typeof IntersectionObserver!=='undefined'){
@@ -2387,7 +2510,7 @@ function centerOnLocation(){
     haptic('selection'); toast('Map centered on your location.');
   },failed,{enableHighAccuracy:true,timeout:15000,maximumAge:0}); }catch(error){ failed(error); }
 }
-document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#loadMoreEvents')){ loadMoreEventCards(); return; } if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadEvents(); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
+document.getElementById('picks').addEventListener('click',e=>{ if(e.target.closest('#loadMoreEvents')){ loadMoreEventCards(); return; } if(e.target.closest('#retryEvents')){ eventsState='loading'; renderHome(); loadEvents(); return; } const sv=e.target.closest('[data-save]'); if(sv){ toggleFeedSave(sv); return; } const p=e.target.closest('[data-ev]'); if(p) openSheet(+p.dataset.ev); });
 /* pull to refresh on the event list: the mark's rings break apart as you pull; past the line it spins until events reload */
 (()=>{ const list=document.getElementById('picks'), home=document.getElementById('homeScreen'), ptr=document.getElementById('ptr');
   ptr.innerHTML=loaderHtml('ptr',36);
@@ -3455,14 +3578,8 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
   document.getElementById('srcBtn').onclick=()=>openSources(()=>openSheet(id,back,backLabel,occurrenceDate));
   const rb=document.getElementById('reportBtn'); if(rb) rb.onclick=()=>openReport(ev,()=>openSheet(id,back,backLabel,occurrenceDate));
   const r=document.getElementById('rsvpBtn'); if(r) r.onclick=()=>{
-    const day=selectedPlanDay(ev); if(!day || !occursOn(ev,day)){ toast('Choose a published event date before saving.'); return false; }
-    const occurrence={...ev,occurrenceDate:planDayKey(day)};
-    if(hasPlan(ev,day)) return;
-    track(ev,'rsvp'); passportRevision++; rememberPlan(ev,day); haptic('light');
-    const pts=savePts(ev); S.points+=pts; save(); dbRsvp(occurrence);
-    logGuest('rsvp',{ event_id:eidOf(ev), event_title:ev.title, kind:'rsvp', occurrence_date:occurrence.occurrenceDate });
-    const flown=flyToPlans(r);   // measure the button before the sheet closes
-    overlay.classList.remove('on'); renderHome(); if(current==='plans') renderPlans(); flown.then(()=>showRsvp(occurrence,pts));
+    const saved=savePlan(ev,r); if(!saved) return false;   // measures the button before the sheet closes
+    overlay.classList.remove('on'); renderHome(); if(current==='plans') renderPlans(); saved.flown.then(()=>showRsvp(saved.occurrence,saved.pts));
   };
   const c=document.getElementById('checkBtn'); if(c) c.onclick=async()=>{ c.disabled=true; const lab=c.textContent; c.textContent='Checking…';
     const v=await verifyHere(ev); if(!v.ok){ c.disabled=false; c.textContent=lab; haptic('warning'); toast(v.msg); return; }
@@ -3996,21 +4113,36 @@ function renderPlans(){
 document.querySelector('[data-s="plans"]').addEventListener('click',e=>{ const tk=e.target.closest('[data-ticket]'); if(tk){ const ev=events.find(x=>x.id===+tk.dataset.ticket); if(ev){ setTicket(ev,calSel,!hasTicket(ev,calSel)); haptic('light'); renderPlans(); } return; } const cancel=e.target.closest('[data-cancel-rsvp]'); if(cancel){ cancelPlan(+cancel.dataset.cancelRsvp,cancel); return; } const dy=e.target.closest('[data-day]'); if(dy){ calSel=new Date(calView.getFullYear(),calView.getMonth(),+dy.dataset.day); renderPlans(); return; } const o=e.target.closest('[data-open]'); if(o) openSheet(+o.dataset.open,null,undefined,planDayKey(calSel)); const s=e.target.closest('[data-share]'); if(s) shareEv({...events.find(x=>x.id===+s.dataset.share),occurrenceDate:planDayKey(calSel)}); });
 
 // Cancels only the Comuna plan; external tickets/registrations stay with the host.
+// Save an event's next date to Plans (the sheet's Save button and the list cards' bookmark). Returns null when it
+// can't be saved or is already saved; otherwise the saved occurrence, its points and the fly-to-Plans animation.
+function savePlan(ev,from){
+  const day=selectedPlanDay(ev); if(!day || !occursOn(ev,day)){ toast('Choose a published event date before saving.'); return null; }
+  const occurrence={...ev,occurrenceDate:planDayKey(day)};
+  if(hasPlan(ev,day)) return null;
+  track(ev,'rsvp'); passportRevision++; rememberPlan(ev,day); haptic('light');
+  const pts=savePts(ev); S.points+=pts; save(); dbRsvp(occurrence);
+  logGuest('rsvp',{ event_id:eidOf(ev), event_title:ev.title, kind:'rsvp', occurrence_date:occurrence.occurrenceDate });
+  return { occurrence, pts, flown:flyToPlans(from) };
+}
+// Take one saved date off your Plans (and off the account when signed in). Throws when the account can't be reached.
+async function removePlan(ev,day){
+  if(S.signedUp){
+    const u=await dbUser(); if(!u || !sb) throw new Error('Sign in or reconnect to remove this plan.');
+    const {error}=await sb.from('rsvps').delete().eq('user_id',u.id).eq('event_id',eidOf(ev)).eq('occurrence_date',planDayKey(day)).select('event_id');
+    if(error) throw error;
+  }
+  passportRevision++; forgetPlan(ev,day);
+  S.guestLog=(S.guestLog||[]).filter(r=>!(r.t==='rsvp' && r.event_id===eidOf(ev) && r.occurrence_date===planDayKey(day))); save();
+  if(hasTicket(ev,day)) setTicket(ev,day,false);
+}
 async function cancelPlan(id,button){
   const ev=events.find(e=>e.id===id);
   const day=new Date(calSel);
   if(!ev || !hasPlan(ev,day) || button.disabled) return;
   const label=button.textContent; button.disabled=true; button.textContent='Removing…';
   try{
-    if(S.signedUp){
-      const u=await dbUser(); if(!u || !sb) throw new Error('Sign in or reconnect to remove this plan.');
-      const {error}=await sb.from('rsvps').delete().eq('user_id',u.id).eq('event_id',eidOf(ev)).eq('occurrence_date',planDayKey(day)).select('event_id');
-      if(error) throw error;
-    }
-    passportRevision++; forgetPlan(ev,day);
-    S.guestLog=(S.guestLog||[]).filter(r=>!(r.t==='rsvp' && r.event_id===eidOf(ev) && r.occurrence_date===planDayKey(day))); save();
+    await removePlan(ev,day);
     renderPlans(); renderHome(); if(S.signedUp) loadGoing();
-    if(hasTicket(ev,day)) setTicket(ev,day,false);
     toast(needsRsvp(ev)?'Removed from your Plans. Cancel any ticket or RSVP with the host separately.':'Removed from your Plans.');
   }catch(error){ console.warn('RSVP cancellation failed',error); toast('Could not remove this plan. Check your connection and sign-in, then try again.'); }
   finally{ button.disabled=false; button.textContent=label; }
