@@ -1815,6 +1815,9 @@ function forgetPlan(ev,day){
 // Every reason comes from the listing or from you (your stamps), never from other people, so it works with few users.
 const PICK_MAX_MI=5;        // ~18 "min away": the usual limit
 const PICK_WILD_MI=12;      // the wildcard ("Worth the drive") can come from up to here
+// Weekends stretch both: interviews put the limit at ~15-20 min on weeknights but ~1 hour on weekends.
+const PICK_WKND_MAX_MI=10;  // ~34 "min away"
+const PICK_WKND_WILD_MI=18; // ~60 "min away"
 const PICK_FORGET_DAYS=5;   // a pick you didn't tap stays pushed down this long
 const PICK_KEEP_DAYS=14;    // how long the shown/tapped log is kept
 const pickDayNum=()=>Math.round(today0().getTime()/864e5);
@@ -1824,6 +1827,12 @@ function lastChance(ev,t0=today0()){ return !!(ev.end && ev.start && ev.start<t0
 function newStampFor(ev){ const H=visitedHoods(); return Object.keys(H).length>0 && !!ev.hood && !H[ev.hood]; }
 function pickDay(ev){ return ev.start? nextDate(ev) : evDate(ev); }
 const pickToday=ev=>{ const d=pickDay(ev); return !!d && d<=today0(); };
+// the next time it's on falls on Saturday, Sunday, or Friday from 5pm
+function weekendPick(ev){ const d=pickDay(ev); if(!d) return false; const w=d.getDay(); return w===0 || w===6 || (w===5 && String(ev.t0||'')>='17:00'); }
+const pickMaxMi=ev=>weekendPick(ev)? PICK_WKND_MAX_MI : PICK_MAX_MI;
+const pickWildMi=ev=>weekendPick(ev)? PICK_WKND_WILD_MI : PICK_WILD_MI;
+// distance as it feels: a weekend mile counts half a weeknight one
+const pickMi=ev=>ev.mi*PICK_MAX_MI/pickMaxMi(ev);
 // added to Comuna in the last two days (the nightly import, or by hand)
 const JUST_DROPPED_MS=48*36e5;
 const justDropped=ev=>!!ev.added && Date.now()-ev.added>=0 && Date.now()-ev.added<JUST_DROPPED_MS;
@@ -1859,7 +1868,7 @@ function tasteBoost(ev){
 }
 function pickScore(ev,day,want){
   const shown=(S.pickShown||{})[ev.id], tapped=(S.pickTapped||{})[ev.id];
-  let s=ev.mi*(want.includes(ev.category)?0.6:1);
+  let s=pickMi(ev)*(want.includes(ev.category)?0.6:1);
   if(pickToday(ev)) s-=1.5;                                       // "Tonight in…" leads with tonight
   if(newStampFor(ev)) s-=0.8;                                     // a stamp you don't have yet
   if(justDropped(ev)) s-=1.2;                                     // new on Comuna
@@ -1886,16 +1895,16 @@ function dailyPicks(mood){
   const t0=today0(), soon=ev=>{ const d=ev.start? nextDate(ev) : evDate(ev); return !!d && d>=t0 && d-t0<7*864e5; };
   const moodOK=PICK_MOODS[mood]? PICK_MOODS[mood].ok : ()=>true;
   const nope=S.pickNope||{};
-  const open=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && nope[ev.id]==null && ev.mi!=null && ev.mi<=PICK_WILD_MI && soon(ev) && moodOK(ev));
+  const open=events.filter(ev=>!S.checked.includes(ev.id) && !hasPlan(ev) && nope[ev.id]==null && ev.mi!=null && ev.mi<=pickWildMi(ev) && soon(ev) && moodOK(ev));
   const thisWeek=ev=>recursOften(ev) && shown[ev.id]!=null && day-shown[ev.id]<7 && day-shown[ev.id]>0;   // weekly: once a week
   const pool=open.filter(ev=>!thisWeek(ev)), score=new Map(open.map(ev=>[ev,pickScore(ev,day,want)]));
   const byScore=(x,y)=>score.get(x)-score.get(y), order=['cornerstone','regular','niche','popup'];
   // if there aren't enough fresh ones nearby, the weekly repeats come back after everything else (oldest shown first)
   const ranked=[...pool].sort(byScore).concat(open.filter(thisWeek).sort((x,y)=>shown[x.id]-shown[y.id]||byScore(x,y)));
-  const near=ranked.filter(ev=>ev.mi<=PICK_MAX_MI);
-  // the wildcard: outside your interests (when you picked some) or past the usual 5 miles, picked for rarity, not distance
-  const wildOK=ev=>ev.mi>PICK_MAX_MI || (want.length && !want.includes(ev.category));
-  const wildScore=ev=>score.get(ev)-ev.mi*(want.includes(ev.category)?0.6:1)+ev.mi*0.15;
+  const near=ranked.filter(ev=>ev.mi<=pickMaxMi(ev));
+  // the wildcard: outside your interests (when you picked some) or past the usual 5 miles (10 on weekends), picked for rarity, not distance
+  const wildOK=ev=>ev.mi>pickMaxMi(ev) || (want.length && !want.includes(ev.category));
+  const wildScore=ev=>score.get(ev)-pickMi(ev)*(want.includes(ev.category)?0.6:1)+pickMi(ev)*0.15;
   const wild=pool.filter(wildOK).sort((x,y)=>wildScore(x)-wildScore(y))[0];   // never a repeat from this week
   // three from nearby: the best of each type first, never two of the same category, then relax the category rule if short
   const picks=[], cats=()=>picks.map(ev=>ev.category), slots=wild? 3 : 4;
@@ -1907,7 +1916,7 @@ function dailyPicks(mood){
   for(const ev of ranked){ if(picks.length>=slots) break; if(!picks.includes(ev) && ev!==wild) picks.push(ev); }   // a quiet area: farther ones fill in
   picks.sort((x,y)=>order.indexOf(kindOf(x))-order.indexOf(kindOf(y)) || byScore(x,y));
   // the wildcard says why it's here, unless it's about to end or brand new (those say more)
-  if(wild){ wild.pickWhy=lastChance(wild)||justDropped(wild)? pickReason(wild) : wild.mi>PICK_MAX_MI? 'Worth the drive' : 'Out of your lane'; picks.push(wild); }
+  if(wild){ wild.pickWhy=lastChance(wild)||justDropped(wild)? pickReason(wild) : wild.mi>pickMaxMi(wild)? 'Worth the drive' : 'Out of your lane'; picks.push(wild); }
   picks.forEach(ev=>{ if(ev!==wild) ev.pickWhy=pickReason(ev); });
   return picks.slice(0,4);
 }
@@ -1921,7 +1930,7 @@ function pickReason(ev){
   if(lastChance(ev)) return 'Last chance';
   if(justDropped(ev)) return 'Just dropped';
   if(newStampFor(ev)) return 'New stamp for you';
-  if(ev.mi>PICK_MAX_MI) return 'Worth the drive';
+  if(ev.mi>pickMaxMi(ev)) return 'Worth the drive';
   if(kindOf(ev)==='popup' || /one-off/i.test(ev.rec||'')) return 'One night only';
   if(pickToday(ev) && ev.t0 && ev.t0<'12:00' && new Date().getHours()<12) return 'This morning';
   return KINDS[kindOf(ev)].label;
