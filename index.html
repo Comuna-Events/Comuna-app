@@ -748,6 +748,8 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
 .invbtns{ display:grid; gap:10px; margin-top:16px } .btn:disabled{ opacity:.55 }
 .invpill{ display:inline-block; font-size:12px; font-weight:700; padding:3px 9px; border-radius:99px; white-space:nowrap }
 .invpill.in{ background:#DCE7DF; color:var(--green) } .invpill.maybe{ background:#F2E3C2; color:#6E521A } .invpill.pending{ background:var(--paper-2); color:var(--muted) } .invpill.out{ background:#F1DCD3; color:var(--red) }
+.invx{ width:32px; height:32px; margin-left:4px; border-radius:50%; color:var(--muted); font-size:20px; line-height:1; flex:none } .invx.armed{ width:auto; padding:0 10px; border-radius:99px; background:#F1DCD3; color:var(--red); font-size:13px; font-weight:700 }
+.invquit{ display:block; margin:10px auto 0; min-height:40px; padding:0 8px; font-size:13.5px; color:var(--red); text-decoration:underline; text-underline-offset:2px } .invquit.armed{ font-weight:700; text-decoration:none }
 .invnudge{ font-size:13px; font-weight:700; color:var(--green); border:1.5px solid var(--green); border-radius:99px; padding:5px 12px; min-height:32px }
 .invblock{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:14px; margin:14px 0 4px }
 .invtop{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px } .invtop b{ font-size:15px } .invcounts{ display:flex; gap:5px; flex-wrap:wrap }
@@ -4053,7 +4055,8 @@ async function loadInvites(force){
       const code=S.pendingInvite, r=await sb.rpc('join_invite',{ p_code:code });
       if(!r.error) opened=r.data;
       else if(/not find|function/i.test(r.error.message)){ invitesOn=false; return; }
-      else toast(/full/.test(r.error.message)? 'That invite is full.' : /not found/.test(r.error.message)? "That invite link doesn't work anymore." : "Couldn't open that invite. Try again in a moment.");
+      else { const em=r.error.message||''; toast(/full/.test(em)? 'That invite is full.' : /taken out/.test(em)? "You were taken out of that invite, so its link doesn't work for you."
+        : /cancelled/.test(em)? 'That plan was cancelled.' : /not found/.test(em)? "That invite link doesn't work anymore." : "Couldn't open that invite. Try again in a moment."); }
       if(!r.error || !/fetch|network/i.test(r.error.message)){ S.pendingInvite=null; save(); }
     }
     const { data, error }=await sb.rpc('my_invites');
@@ -4159,7 +4162,9 @@ function inviteBlockHtml(ev){
   const inv=invFor(ev,selectedPlanDay(ev)); if(!inv) return '';
   const c={ in:0, maybe:0, pending:0, out:0 }; inv.members.forEach(m=>c[m.answer]++);
   const sub=m=> m.host? (m.me? 'Invited everyone' : 'Sent the invite') : m.answer==='pending'? (m.nudged? 'Nudged' : m.via==='link'? 'Opened your link' : "Hasn't answered") : `Answered ${invAgo(m.answered_at)}`;
-  const right=m=> inv.is_host && !m.me && m.answer==='pending' && !m.nudged? `<button class="invnudge" data-nudge="${escH(m.user_id)}">Nudge</button>` : `<span class="invpill ${m.answer}">${INV_WORD[m.answer]}</span>`;
+  const status=m=> inv.is_host && !m.me && m.answer==='pending' && !m.nudged? `<button class="invnudge" data-nudge="${escH(m.user_id)}">Nudge</button>` : `<span class="invpill ${m.answer}">${INV_WORD[m.answer]}</span>`;
+  // the person who invited can take anyone else out (two taps, like the other buttons here that can't be undone)
+  const right=m=> status(m)+(inv.is_host && !m.me? `<button class="invx" data-inv-remove="${escH(m.user_id)}" aria-label="Take ${escH(invFirst(m.name))} out of this plan">&times;</button>` : '');
   return `<div class="invblock" data-invblock="${escH(inv.id)}">
     <div class="invtop"><b>${inv.is_host? 'Your plan' : `${escH(invFirst(inv.host_name))} invited you`}</b>
       <span class="invcounts">${['in','maybe','pending'].filter(k=>c[k]).map(k=>`<span class="invpill ${k}">${c[k]} ${k==='pending'?'waiting':k}</span>`).join('')}</span></div>
@@ -4167,6 +4172,7 @@ function inviteBlockHtml(ev){
     <div class="invlist">${inv.members.map(m=>`<div class="invrow">${invAvatar(m)}<span class="nm"><b>${m.me?'You':escH(m.name)}</b><small>${sub(m)}</small></span>${right(m)}</div>`).join('')}</div>
     <p class="invpriv">Only people in this plan see these names. Everyone else sees how many saved it.</p>
     <button class="btn ghost invmore" data-inv-more>Invite more friends</button>
+    ${inv.is_host? `<button class="invquit" data-inv-cancel>Cancel this plan</button>` : `<button class="invquit" data-inv-leave>Leave this invite</button>`}
   </div>`;
 }
 function refreshInviteBlock(){
@@ -4183,6 +4189,26 @@ sheet.addEventListener('click',async e=>{
     if(error){ nd.disabled=false; toast("Couldn't nudge right now. Try again in a moment."); return; }
     haptic('light'); const m=inv.members.find(x=>x.user_id===nd.dataset.nudge); if(m) m.nudged=true;
     toast(`Nudged ${invFirst(m?.name)}. They'll get one reminder.`); refreshInviteBlock(); return; }
+  // remove / cancel / leave: the first tap asks, the second does it
+  const two=e.target.closest('[data-inv-remove],[data-inv-cancel],[data-inv-leave]');
+  if(two){
+    if(!two.dataset.armed){ two.dataset.armed='1'; two.dataset.was=two.innerHTML;
+      two.textContent=two.dataset.invRemove? 'Remove?' : two.dataset.invCancel!==undefined? 'Tap again to cancel it for everyone' : 'Tap again to leave';
+      two.classList.add('armed'); haptic('warning');
+      setTimeout(()=>{ if(two.isConnected && two.dataset.armed){ delete two.dataset.armed; two.innerHTML=two.dataset.was; two.classList.remove('armed'); } },4000);
+      return; }
+    two.disabled=true;
+    const who=inv.members.find(m=>m.user_id===two.dataset.invRemove);
+    const [fn,args,done]= two.dataset.invRemove? ['remove_from_invite',{ p_invite:inv.id, p_user:two.dataset.invRemove },`${invFirst(who?.name)} is out of this plan. Their link won't let them back in.`]
+      : two.dataset.invCancel!==undefined? ['cancel_invite',{ p_invite:inv.id },"Plan cancelled. Everyone in it will be told. It's still in your Plans if you want to go."]
+      : ['leave_invite',{ p_invite:inv.id },"You left the invite. If you saved it, it's still in your Plans."];
+    const { error }=await sb.rpc(fn,args);
+    if(error){ two.disabled=false; toast("Couldn't do that right now. Check your connection and try again."); return; }
+    haptic('success'); toast(done);
+    const ev=invEv(inv); await loadInvites(true);
+    if(ev && overlay.classList.contains('on')) openSheet(ev.id,null,undefined,inv.date);
+    return;
+  }
   if(e.target.closest('[data-inv-more]')){ const ev=invEv(inv); if(ev){ const o={...ev,occurrenceDate:inv.date}; openInviteSheet(o,()=>openSheet(ev.id,null,undefined,inv.date)); } }
 });
 
@@ -4224,8 +4250,13 @@ async function inviteFromUrl(){
   q.delete('invite'); q.delete('c'); window.history.replaceState?.(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash);
   S.pendingInvite=code; save();
   if(S.signedUp) return;   // loadInvites joins it once the account check is done
+  showInvitePreview(code);
+}
+// before signing in: who invited, to what, and how many are going, with a way to make an account
+async function showInvitePreview(code){
   if(!sb) return;
-  const { data }=await sb.rpc('invite_preview',{ p_code:code }); const p=(data||[])[0]; if(!p) return;
+  const { data }=await sb.rpc('invite_preview',{ p_code:code }); const p=(data||[])[0];
+  if(!p){ toast("That invite link doesn't work anymore."); S.pendingInvite=null; save(); return; }
   whenEvents(()=>{ const ev=events.find(e=>eidOf(e)===p.event_id);
     const m=document.getElementById('stampModal');
     m.innerHTML=`<h3>${escH(invFirst(p.host_name))} invited you${ev?` to ${escH(ev.title)}`:''}</h3>
@@ -4374,6 +4405,13 @@ window.comunaApp={
   openEvent(eid,date){ const ev=events.find(e=>eidOf(e)===eid); if(!ev) return false; openSheet(ev.id,null,'Top 4',date||null); return true; },
   openPlans(){ go('plans'); return true; },
   // a tapped invite notification (act: the iPhone button they tapped, in / maybe / out)
+  // an invite link opened in the app (native.js: universal links on iPhone)
+  openInviteCode(code){
+    if(!INVITE_CODE.test(code||'')) return true;
+    S.pendingInvite=code; save();
+    if(S.signedUp) loadInvites(true); else showInvitePreview(code);
+    return true;
+  },
   openInvite(id,act){
     if(!sb || eventsState!=='live' || !events.length) return false;
     (async()=>{ if(!(await dbUser())) return; if(!invites.some(i=>i.id===id)) await loadInvites(true);

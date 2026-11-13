@@ -28,7 +28,7 @@ const stub=`(()=>{
     const inv=id=>db.invites.find(i=>i.id===id);
     switch(fn){
       case 'my_friends': return ok(db.friends?.[u] ?? friendsOf(u));
-      case 'my_invites': return ok(db.invites.filter(i=>i.members.some(m=>m.user_id===u)).map(i=>view(i,u)));
+      case 'my_invites': return ok(db.invites.filter(i=>!i.cancelled && i.members.some(m=>m.user_id===u)).map(i=>view(i,u)));
       case 'create_invite': { let i=db.invites.find(x=>x.host===u&&x.event_id===a.p_event_id&&x.date===a.p_date);
         if(!i){ i={ id:'inv'+(db.invites.length+1), code:'abcdef12345'+db.invites.length, event_id:a.p_event_id, date:a.p_date, host:u,
           created_at:new Date().toISOString(), members:[{user_id:u,answer:'in',via:'host',invited_at:new Date().toISOString(),answered_at:new Date().toISOString(),nudged:false}] }; db.invites.push(i); }
@@ -37,7 +37,11 @@ const stub=`(()=>{
       case 'answer_invite': { const m=inv(a.p_invite)?.members.find(m=>m.user_id===u); if(!m) return bad('not in this invite'); m.answer=a.p_answer; m.answered_at=new Date().toISOString(); return ok(null); }
       case 'nudge_invite': { const m=inv(a.p_invite).members.find(m=>m.user_id===a.p_user); m.nudged=true; return ok(null); }
       case 'join_invite': { const i=db.invites.find(x=>x.code===a.p_code); if(!i) return bad('invite not found');
+        if((i.removed||[]).includes(u)) return bad('you were taken out of this invite');
         if(!i.members.some(m=>m.user_id===u)) i.members.push({user_id:u,answer:'pending',via:'link',invited_at:new Date().toISOString(),answered_at:null,nudged:false}); return ok(i.id); }
+      case 'leave_invite': { const i=inv(a.p_invite); i.members=i.members.filter(m=>m.user_id!==u); return ok(null); }
+      case 'remove_from_invite': { const i=inv(a.p_invite); if(i.host!==u) return bad('only the person who invited'); i.members=i.members.filter(m=>m.user_id!==a.p_user); (i.removed=i.removed||[]).push(a.p_user); return ok(null); }
+      case 'cancel_invite': { const i=inv(a.p_invite); if(i.host!==u) return bad('only the person who invited'); i.cancelled=true; return ok(null); }
       case 'invite_preview': { const i=db.invites.find(x=>x.code===a.p_code); return ok(i? [{event_id:i.event_id,occurrence_date:i.date,host_name:nm(i.host),going:i.members.filter(m=>m.answer==='in').length}] : []); }
     } return ok(null); };
   const chain=st=>new Proxy(function(){},{
@@ -139,6 +143,33 @@ const stub=`(()=>{
   await page.waitForSelector('[data-invblock] .invseg');
   assert.deepEqual(await run(()=>window.__db.calls.filter(c=>c[0]==='join_invite').map(c=>c[1])),[{p_code:'abcdef123450'}]);
   await page.fill('#invPaste input','not a link').catch(()=>{});
+
+  // 5b. Dani leaves (two taps); a link opened in the app brings them back (universal links: comunaApp.openInviteCode)
+  await page.click('[data-invblock] [data-inv-leave]');
+  assert.match(await page.textContent('[data-invblock] [data-inv-leave]'),/Tap again/,'first tap asks');
+  assert.equal(await run(()=>window.__db.calls.filter(c=>c[0]==='leave_invite').length),0);
+  await page.click('[data-invblock] [data-inv-leave]');
+  await page.waitForFunction(()=>!document.querySelector('[data-invblock]'));
+  assert.equal(await run(()=>invites.length),0,'gone from her invites');
+  await run(()=>window.comunaApp.openInviteCode('abcdef123450'));
+  await page.waitForSelector('[data-invblock] .invseg');
+
+  // 5c. Jess takes Dani out (Dani's link stops working), then cancels the plan: it leaves everyone's app
+  await as('jess');
+  await run(()=>openSheet(1)); await page.waitForSelector('[data-invblock] [data-inv-remove="dani"]');
+  assert.equal(await page.locator('[data-invblock] [data-inv-leave]').count(),0,'the person who invited cancels instead of leaving');
+  await page.click('[data-inv-remove="dani"]'); await page.click('[data-inv-remove="dani"]');
+  await page.waitForFunction(()=>!document.querySelector('[data-inv-remove="dani"]'));
+  assert.deepEqual(await run(()=>window.__db.calls.filter(c=>c[0]==='remove_from_invite').map(c=>c[1].p_user)),['dani']);
+  await shot('6-manage');
+  await as('dani'); await run(()=>window.comunaApp.openInviteCode('abcdef123450'));
+  await page.waitForFunction(()=>/taken out/.test(document.getElementById('toast').textContent));
+  await as('jess'); await run(()=>openSheet(1)); await page.waitForSelector('[data-inv-cancel]');
+  await page.click('[data-inv-cancel]'); await page.click('[data-inv-cancel]');
+  await page.waitForFunction(()=>!document.querySelector('[data-invblock]'));
+  assert.equal(await run(()=>window.__db.invites[0].cancelled),true);
+  await as('maya'); assert.equal(await run(()=>invites.length),0,'cancelled plans leave the app');
+  await run(()=>{ window.__db.invites[0].cancelled=false; });   // the link check below uses it
 
   // 6. A link opened in the web app before signing in: says who invited, how many are going, and asks for an account
   const db=await run(()=>window.__db);
