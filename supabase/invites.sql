@@ -261,6 +261,8 @@ revoke execute on function public.invite_name(uuid), public.my_friends(), public
   public.create_invite(text, date, uuid[]), public.invite_preview(text), public.join_invite(text),
   public.answer_invite(uuid, text), public.nudge_invite(uuid, uuid), public.my_invites(), public.leave_invite(uuid),
   public.remove_from_invite(uuid, uuid), public.cancel_invite(uuid) from public, anon;
+-- invite_name is only for the functions here (they run as its owner); it isn't for looking people up
+revoke execute on function public.invite_name(uuid) from authenticated;
 grant execute on function public.my_friends(), public.invite_more(uuid, uuid[]), public.create_invite(text, date, uuid[]),
   public.invite_preview(text), public.join_invite(text), public.answer_invite(uuid, text), public.nudge_invite(uuid, uuid),
   public.my_invites(), public.leave_invite(uuid), public.remove_from_invite(uuid, uuid), public.cancel_invite(uuid)
