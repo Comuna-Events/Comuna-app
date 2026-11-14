@@ -1890,11 +1890,11 @@ function forgetPlan(ev,day){
 // - no two picks share a category; one slot is a wildcard from outside your interests or a bit farther away;
 // - today's events come first, and a neighborhood you haven't stamped yet gets a nudge.
 // Every reason comes from the listing or from you (your stamps), never from other people, so it works with few users.
-const PICK_MAX_MI=5;        // ~18 "min away": the usual limit
+const PICK_MAX_MI=5;        // ~20 min off-peak (more at rush hour): the usual limit
 const PICK_WILD_MI=12;      // the wildcard ("Worth the drive") can come from up to here
 // Weekends stretch both: interviews put the limit at ~15-20 min on weeknights but ~1 hour on weekends.
-const PICK_WKND_MAX_MI=10;  // ~34 "min away"
-const PICK_WKND_WILD_MI=18; // ~60 "min away"
+const PICK_WKND_MAX_MI=10;  // ~33 min off-peak
+const PICK_WKND_WILD_MI=18; // ~55 min off-peak
 const PICK_FORGET_DAYS=5;   // a pick you didn't tap stays pushed down this long
 const PICK_KEEP_DAYS=14;    // how long the shown/tapped log is kept
 const pickDayNum=()=>Math.round(today0().getTime()/864e5);
@@ -2048,7 +2048,7 @@ function renderPicks(picks){
   const row=ev=>{ const when=(ev.start? nextWhen(ev) : ev.time||'').replace(/^Today · /,''), sig=pickSignal(ev);
     return `<div class="pickrow"><div class="pickhd"><span>${escH(ev.pickWhy||KINDS[kindOf(ev)].label)}</span><button class="nope" data-nope="${ev.id}" aria-label="Not for me: ${escH(ev.title)}">Not for me</button></div><button class="pick" data-rec="${ev.id}">
     <div><div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="m">${[escH(ev.venue),escH(when),escH(priceTag(ev))].filter(Boolean).join(' · ')}</div>${sig?`<div class="sig">${escH(sig)}</div>`:''}</div>
-    <div class="dist">${mins(ev.mi)}<small>min away</small></div></button></div>`; };
+    <div class="dist">${mins(ev.mi,departAt(ev))}<small>min away</small></div></button></div>`; };
   document.getElementById('recList').innerHTML=picks.length? picks.map(row).join('') : '<p class="recnone">Nothing nearby fits that this week. Try another one.</p>';
   // measuring (supabase/pick_stats.sql): each pick once per card and mood, with why it's here and where
   picks.forEach((ev,i)=>{ const k=ev.id+'|'+pickMood; if(pickSeen.has(k)) return; pickSeen.add(k);
@@ -2209,7 +2209,7 @@ function cardHtml(ev){
     const done=S.checked.includes(ev.id), inn=hasPlan(ev);
     return `<button class="pick" data-ev="${ev.id}"><div class="n">${catDot(ev.category,32)}${done?CHK_BADGE:''}</div>
       <div><div class="when">${ev.live?'\u{1F534} ':''}${escH(cardWhen(ev))}</div><div class="t">${escH(cardTitle(ev))}${vCheck(ev,14)}</div><div class="m">${cardMeta(ev,inn&&!done)}</div><div class="m2">${ev.live?'\u{1F534} ':''}<b>${escH(cardWhen(ev))}</b> · ${cardMeta(ev,inn&&!done)}</div></div>
-      <div class="dist">${mins(ev.mi)}<small>min away</small></div></button>`; }
+      <div class="dist">${mins(ev.mi,departAt(ev))}<small>min away</small></div></button>`; }
 // after you pan or zoom the map, the cards below show the events in view, closest to the map's center first
 let userMoved=false;
 function cardsForView(){
@@ -2253,7 +2253,26 @@ const CLUSTER_ZOOM=12, PIN_ZOOM=13.5, OPEN_ZOOM=14;
 // the header floats over the top of the map and the cards over the bottom: frame events in the space between
 function mapInsets(){ const hs=document.getElementById('homeScreen'), head=hs.querySelector('.homehead'), nav=document.getElementById('nav').getBoundingClientRect(), app=hs.getBoundingClientRect();
   return { t:head?head.offsetHeight:150, b:(nav.height? app.bottom-nav.top : 70)+104 }; }
-function mins(mi){ return Math.max(2, Math.round(mi*3.2+2)); }
+/* Drive time estimate, free (no routing service): straight-line miles → road miles (×1.3, LA's grid and detours),
+   the first 3 road miles at surface-street speed (~18 mph), the rest at freeway-ish speed (~30 mph), times LA traffic
+   for the hour you'd leave (`at`, LA time; default now), plus 3 min to get going and park.
+   Off-peak: 1 mi ≈ 7 min, 5 mi ≈ 20, 10 mi ≈ 33; weekday 3–7:30 pm: 10 mi ≈ 48. */
+function trafficFactor(at){
+  const h=at.getHours()+at.getMinutes()/60, weekday=at.getDay()>0 && at.getDay()<6;
+  if(weekday){ if(h>=6.5 && h<9.5) return 1.4; if(h>=9.5 && h<15) return 1.15; if(h>=15 && h<19.5) return 1.55; if(h>=19.5 && h<22) return 1; return .9; }
+  if(h>=11 && h<19) return 1.15; if(h>=19 && h<22) return 1; return .9;
+}
+function mins(mi,at=eventNow()){
+  const road=(mi||0)*1.3, drive=Math.min(road,3)*60/18 + Math.max(road-3,0)*60/30;
+  return Math.max(4, Math.round(3 + drive*trafficFactor(at)));
+}
+// when you'd leave for an event: half an hour before it starts, or now if it has started (or has no time)
+function departAt(ev){
+  const now=eventNow(), day=ev.start? nextDate(ev,now) : selectedPlanDay(ev), t=hm(ev.t0);
+  if(!day || !t) return now;
+  const start=new Date(day); start.setHours(t[0],t[1]-30,0,0);
+  return start>now? start : now;
+}
 // List browsing is independent of the map viewport. Render in batches so a large
 // catalogue doesn't block the first screen; scrolling or the button reveals all matches.
 const EVENT_LIST_PAGE_SIZE=30;
@@ -2318,7 +2337,7 @@ function feedCardHtml(ev,slot,now){
   const done=S.checked.includes(ev.id), inn=hasPlan(ev), c=CATS[catKey(ev.category)], live=liveText(ev,slot,now);
   const title=escH(cardTitle(ev)), price=priceTag(ev), social=feedSocial(ev);
   const when=live? `<span class="flive${live.now?' on':''}">${live.now?'<i></i>':''}${escH(live.txt)}</span>` : escH(cardWhen(ev));
-  const chips=`<div class="fchips">${price?`<span>${escH(price)}</span>`:''}<span>${mins(ev.mi)} min away</span></div>`;
+  const chips=`<div class="fchips">${price?`<span>${escH(price)}</span>`:''}<span>~${mins(ev.mi,departAt(ev))} min drive</span></div>`;
   const media=ev.photo
     ? `<div class="fmedia" style="--cat:${c.bg}"><img class="fimg" src="${escH(ev.photo)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">${chips}</div>`
     : `<div class="fmedia fposter" style="--cat:${c.bg};--catfg:${c.fg}"><span class="fpicon">${catIcon(ev.category,150,c.fg)}</span><span class="fpcat">${escH(c.short)}</span><span class="fptitle">${title}</span>${chips}</div>`;
@@ -2366,7 +2385,7 @@ function renderEventList(results){
   const key=JSON.stringify([when,filter,tier,searchQ,o.lat,o.lng,ordered.map(r=>r.ev.id)]);
   const reset=key!==eventList.key, top=reset?0:row.scrollTop;
   eventList={key,results:ordered,shown:Math.min(ordered.length,reset?EVENT_LIST_PAGE_SIZE:Math.max(EVENT_LIST_PAGE_SIZE,eventList.shown))};
-  row.innerHTML='<div class="listorder">Soonest first · drive times are estimates</div>'
+  row.innerHTML='<div class="listorder">Soonest first · drive times estimated with typical LA traffic</div>'
     +feedHtml(ordered,0,eventList.shown)
     +'<div id="eventListTail">'+eventListFooter()+'</div>';
   row.scrollLeft=0; row.scrollTop=top;
@@ -2739,7 +2758,7 @@ function openVenue(list){
   sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div>
     <div class="cat">${evs.length} events here</div>
     <h2>${escH(name)}</h2>
-    <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(streetOf(ev)||ev.area||ev.hood||'')} <span>· ${mins(ev.mi)} min away</span></a>
+    <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(streetOf(ev)||ev.area||ev.hood||'')} <span>· ${mins(ev.mi,departAt(ev))} min away</span></a>
     ${rows}`;
   overlay.classList.add('on'); sheet.scrollTop=0;
   sheet.querySelector('.evwhere').addEventListener('click',e=>{ e.preventDefault(); track(ev,'directions'); askMaps(ev); });
@@ -3531,7 +3550,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
     <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
     <div class="evwhen">${escH(ev.start?withEnd(ev,nextWhen(ev)):(ev.time||'Soon'))}</div>
-    <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span>· ${mins(ev.mi)} min away</span></a>
+    <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span>· ~${mins(ev.mi,departAt(ev))} min drive</span></a>
     ${recurs&&ev.recDetail?`<div class="evrec">${escLines(ev.recDetail)}</div>`:''}
     ${priceLine(ev)}
     ${inviteBlockHtml(ev)}
@@ -4097,7 +4116,7 @@ function renderPlans(){
   document.getElementById('dayHead').innerHTML=`${calSel.toLocaleString('en-US',{weekday:'long'})} <span>${calSel.toLocaleString('en-US',{month:'long'})} ${ordinal(calSel.getDate())}</span>`;
   const dayEvs=byDay[ymd(calSel)]||[], isT=+calSel===+t;
   const card=ev=>{ const inn=hasPlan(ev,calSel), done=S.checked.includes(ev.id);
-    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}${!done&&hostStep(ev)?(hasTicket(ev,calSel)?` · <span class="tixok">${hostStep(ev).got} ✓</span>`:` · <span class="tixno">${hostStep(ev).kind==='ticket'?'Ticket':'Host RSVP'} needed</span>`):''}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${goingText(ev)?goingText(ev)+' · ':''}${mins(ev.mi)} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!S.checked.includes(ev.id)&&hostStep(ev)?`<button class="tixbtn" data-ticket="${ev.id}" aria-pressed="${hasTicket(ev,calSel)}">${hasTicket(ev,calSel)?'Undo':escH(hostStep(ev).have)}</button>`:''}${inn?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">Remove from Plans</button>`:''}</div>`; };
+    return `<div class="dayev"><button data-open="${ev.id}" style="display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left">${catDot(ev.category,16)}<div class="x">${inn?`<div class="tag">${done?'Stamped':"Saved"}${!done&&hostStep(ev)?(hasTicket(ev,calSel)?` · <span class="tixok">${hostStep(ev).got} ✓</span>`:` · <span class="tixno">${hostStep(ev).kind==='ticket'?'Ticket':'Host RSVP'} needed</span>`):''}</div>`:''}<div class="t">${escH(ev.title)}${vCheck(ev,14)}</div><div class="u">${escH([ev.venue, ev.t0? fmtTime(ev.t0) : String(ev.time||'').split('·').pop().trim()].filter(Boolean).join(' · '))}</div><div class="u">${goingText(ev)?goingText(ev)+' · ':''}${mins(ev.mi,departAt(ev))} min away</div></div></button>${inn?`<button data-share="${ev.id}" aria-label="Copy Partiful invite" title="Copy Partiful invite"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26251F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg></button>`:''}${inn&&!S.checked.includes(ev.id)&&hostStep(ev)?`<button class="tixbtn" data-ticket="${ev.id}" aria-pressed="${hasTicket(ev,calSel)}">${hasTicket(ev,calSel)?'Undo':escH(hostStep(ev).have)}</button>`:''}${inn?`<button class="cancel-rsvp" data-cancel-rsvp="${ev.id}">Remove from Plans</button>`:''}</div>`; };
   const mineL=dayEvs.filter(ev=>hasPlan(ev,calSel)), also=dayEvs.filter(ev=>!hasPlan(ev,calSel) && (!isT || (nextDate(ev) && nextDate(ev)<=t))).sort((a,b)=>(a.mi??99)-(b.mi??99));
   document.getElementById('planList').innerHTML = mineL.length? mineL.map(card).join('')
     : `<div class="empty"><span class="hand">free ${isT?'today':'that day'}?</span>Nothing saved for this day yet. Tap "Save" on an event and it lands here.</div>`;
@@ -4354,7 +4373,7 @@ function invitesHtml(){
       <div class="invfrom">${invAvatar(inv.members.find(m=>m.host)||{name:inv.host_name},26)}<span><b>${escH(invFirst(inv.host_name))}</b> invited you · ${invAgo(inv.invited_at)}</span></div>
       <button class="invtitle" data-inv-open>${escH(ev.title)}</button>
       <div class="invwhen">${escH(withEnd(evd,nextWhen(evd)))}</div>
-      <div class="invsub">${escH([ev.venue, ev.mi!=null? mins(ev.mi)+' min away':'', /^free/i.test(ev.price||'')?'Free':''].filter(Boolean).join(' · '))}</div>
+      <div class="invsub">${escH([ev.venue, ev.mi!=null? mins(ev.mi,departAt(ev))+' min away':'', /^free/i.test(ev.price||'')?'Free':''].filter(Boolean).join(' · '))}</div>
       ${going.length? `<div class="invgoing"><span class="invstack">${inv.members.filter(m=>m.answer==='in').slice(0,4).map(m=>invAvatar(m,28)).join('')}</span><span><b>${escH(namesSaid(going))} ${going.length===1&&going[0]!=='You'?'is':'are'} in</b>${wait.length? ` · ${escH(namesSaid(wait))} ${wait.length===1?"hasn't":"haven't"} answered`:''}</span></div>`:''}
       <div class="invseg" role="group" aria-label="Your answer">${['in','maybe','out'].map(a=>`<button data-inv-ans="${a}" aria-pressed="${inv.my_answer===a}" class="${inv.my_answer===a?'on':''}">${a==='in'?"I'm in":a==='maybe'?'Maybe':"Can't"}</button>`).join('')}</div>
     </div>`; };
