@@ -13,8 +13,8 @@
 --   weekend_picks "Your weekend, picked for you": Fridays noon-2 PM, up to 4 events Friday evening to Sunday,
 --                 favoring events added that week (this replaced Thursday's "New for you")
 --   Picks (push_pick_window(), push_picks()) are scored per person: their interests, kinds of things they've saved or
---   checked in to, how close (profiles.lat/lng), verified and Headliner events, what others are saving, a photo; at
---   most one per category until each category has had a turn, nothing they've already saved or been to.
+--   checked in to, how close (profiles.lat/lng), verified and Headliner events, what others are saving, a photo;
+--   spread across categories and days, nothing they've already saved or been to, and at least 2 or nothing is sent.
 -- Times are Los Angeles time.
 --
 -- The schedule at the bottom only does anything once the APNS_* secrets (iPhone) or the FCM_SERVICE_ACCOUNT secret
