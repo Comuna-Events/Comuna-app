@@ -2266,6 +2266,27 @@ function mins(mi,at=eventNow()){
   const road=(mi||0)*1.3, drive=Math.min(road,3)*60/18 + Math.max(road-3,0)*60/30;
   return Math.max(4, Math.round(3 + drive*trafficFactor(at)));
 }
+/* Real drive time on the event page only (lists keep the free estimate above): one Mapbox Directions request
+   (driving-traffic) each time an event is opened, from where you are, leaving when you'd leave (depart_at, LA time),
+   so tonight's show gets tonight's traffic. Nothing is stored. Without your location, or if Mapbox says no,
+   the estimate stays. Cost: one request per event opened; Mapbox's free monthly allowance covers ~100,000. */
+let sheetDriveOff=false;
+async function sheetDrive(ev,el){
+  if(!el || sheetDriveOff || !MAPBOX_TOKEN || !S.loc || ev.lat==null || ev.lng==null) return;
+  const now=eventNow(), at=departAt(ev), later=at-now>15*60e3, p=n=>String(n).padStart(2,'0');
+  const when=`${at.getFullYear()}-${p(at.getMonth()+1)}-${p(at.getDate())}T${p(at.getHours())}:${p(at.getMinutes())}`;
+  const c=[[S.loc.lng,S.loc.lat],[ev.lng,ev.lat]].map(x=>(+x[0]).toFixed(5)+','+(+x[1]).toFixed(5)).join(';');
+  const get=dep=>fetch(`https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${c}?overview=false&alternatives=false${dep?'&depart_at='+dep:''}&access_token=${MAPBOX_TOKEN}`);
+  try{
+    let r=await get(later? when : ''), timed=later;
+    if(r.status===401 || r.status===403){ sheetDriveOff=true; return; }
+    if(!r.ok && later){ r=await get(''); timed=false; }   // a departure time Mapbox won't take: fall back to traffic now
+    if(!r.ok) return;
+    const j=await r.json(), sec=j.routes?.[0]?.duration; if(j.code!=='Ok' || sec==null || !el.isConnected) return;
+    const m=Math.max(1,Math.round(sec/60)), t=fmtTime(p(at.getHours())+':'+p(at.getMinutes()));
+    el.textContent=`· ${m} min drive ${timed? 'leaving at '+t : 'in current traffic'}`; el.classList.add('real');
+  }catch(e){ console.warn('Drive time failed',e); }
+}
 // when you'd leave for an event: half an hour before it starts, or now if it has started (or has no time)
 function departAt(ev){
   const now=eventNow(), day=ev.start? nextDate(ev,now) : selectedPlanDay(ev), t=hm(ev.t0);
@@ -3550,7 +3571,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     <div class="cat quiet" style="display:flex;align-items:center;gap:8px">${catDot(ev.category,12)}${escH(ev.area||ev.hood)}</div>
     <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
     <div class="evwhen">${escH(ev.start?withEnd(ev,nextWhen(ev)):(ev.time||'Soon'))}</div>
-    <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span>· ~${mins(ev.mi,departAt(ev))} min drive</span></a>
+    <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span class="evdrive">· ~${mins(ev.mi,departAt(ev))} min drive</span></a>
     ${recurs&&ev.recDetail?`<div class="evrec">${escLines(ev.recDetail)}</div>`:''}
     ${priceLine(ev)}
     ${inviteBlockHtml(ev)}
@@ -3606,6 +3627,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     const u=S.guest? null : await dbUser();
     if(u){ const r=await dbCheckin(ev,v.pos); if(!r.ok){ c.disabled=false; c.textContent=lab; haptic('warning'); toast(r.msg); return; } }
     checkIn(ev,v.dist,v.pos); if(u) loadBadges(true).then(celebrateBadges); };
+  sheetDrive(ev,sheet.querySelector('.evdrive'));
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ if(!S.signedUp || invitesOn===false) track(ev,'invite'); openInviteSheet(ev,()=>openSheet(id,back,backLabel,occurrenceDate)); };
   const box=sheet.querySelector('.evstep'), bindStep=()=>{ if(!box) return;
     box.querySelector('[data-hostgo]').addEventListener('click',()=>track(ev,'link'));
