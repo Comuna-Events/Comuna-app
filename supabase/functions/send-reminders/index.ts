@@ -2,7 +2,8 @@
 // due through Apple's push service (APNs, iPhone) or Firebase Cloud Messaging (FCM, Android) and records it, so
 // nothing is sent twice:
 //   "starts at 6:30 PM" an hour before each saved plan       due_push_reminders() -> push_reminders_sent
-//   "2 plans today", "Tomorrow: ... grab tickets" and "New for you"   due_push_extras() -> push_sent
+//   "2 plans today", "Tomorrow: ... grab tickets", and picks: "Your week, picked for you" (Mondays) and
+//   "Your weekend, picked for you" (Fridays)                 due_push_extras() -> push_sent
 //   friend invites: "Jess invited you", "Jess is waiting on you", "Still in?", "Sam can't make it", "Jess cancelled"
 //                                                            due_push_invites() (../../invites.sql) -> push_sent
 //   ?only=invites sends just those (invites.sql calls it the moment something happens)
@@ -42,7 +43,7 @@ type Env = keyof typeof HOSTS;
 type Phone = { user_id: string; token: string; environment: Env | null; platform?: "ios" | "android" };
 type Due = Phone & { event_id: string; occurrence_date: string; title: string; venue: string | null; starts_at: string };
 type Item = { event_id: string; name: string; venue: string | null; date: string | null; starts_at: string | null };
-type Extra = Phone & { kind: "plans_today" | "tickets" | "new_for_you"; ref: string; items: Item[] };
+type Extra = Phone & { kind: "plans_today" | "tickets" | "new_for_you" | "week_picks" | "weekend_picks"; ref: string; items: Item[] };
 type Push = { title: string; body: string; data: Record<string, string>; expires: number; collapse: string; category?: string };
 type InviteItem = { invite_id: string; event_id: string; name: string; venue: string | null; date: string; starts_at: string | null;
   from: string; going: string[]; dropped?: string };
@@ -103,6 +104,16 @@ function extra(r: Extra): Push {
     : { title: `${r.items.length} plans today`, collapse, expires,
         body: r.items.map((i) => at(i) ? `${short(i.name, 40)} at ${at(i)}` : short(i.name, 40)).join(" · "),
         data: { screen: "plans" } };
+  // "Tue: Open Mic · Thu: Locals' Night · Sat: Farmers Market"; tapping opens the picks in the app
+  if (r.kind === "week_picks" || r.kind === "weekend_picks") {
+    const week = r.kind === "week_picks";
+    const day = (i: Item) => i.date ? new Date(i.date + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }) : "";
+    return { title: week ? "Your week, picked for you" : "Your weekend, picked for you", collapse,
+      body: r.items.map((i) => [day(i), short(i.name, 32)].filter(Boolean).join(": ")).join(" · "),
+      // gone by the end of Sunday (LA), when the picks are over
+      expires: Math.floor(Date.now() / 1000) + (week ? 6 : 2) * 86400 + 12 * 3600,
+      data: { screen: "picks", picks: r.items.map((i) => `${i.event_id}|${i.date ?? ""}`).join(","), range: week ? "week" : "weekend" } };
+  }
   if (r.kind === "tickets") return { title: `Tomorrow: ${short(first.name)}`, collapse, expires,
     body: `${at(first) ? `Starts at ${at(first)}. ` : ""}It needs an RSVP or tickets, so grab yours on the host's page before it fills up.`,
     data: { event_id: first.event_id, date: first.date ?? "" } };
