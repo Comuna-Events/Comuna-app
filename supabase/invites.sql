@@ -276,7 +276,7 @@ alter table public.push_prefs add column if not exists invites boolean not null 
 
 alter table public.push_sent drop constraint if exists push_sent_kind_check;
 alter table public.push_sent add constraint push_sent_kind_check check (kind in
-  ('plans_today', 'tickets', 'new_for_you', 'week_picks', 'weekend_picks', 'invite', 'nudge', 'still_in', 'dropped', 'cancelled'));
+  ('plans_today', 'tickets', 'new_for_you', 'week_picks', 'weekend_picks', 'follows', 'invite', 'nudge', 'still_in', 'dropped', 'cancelled'));
 
 -- One row per phone. items is one object: the invite, the event, who it's from (or who dropped), and who's going.
 create or replace function public.due_push_invites()

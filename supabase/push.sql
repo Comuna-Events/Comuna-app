@@ -1,5 +1,5 @@
 -- Comuna: notifications on the iPhone and Android apps. Run once in Supabase > SQL Editor; safe to re-run (re-run it
--- after changes).
+-- after changes). Run follows.sql first: the picks and the follows notification read its table.
 --
 -- How it works: the app asks about reminders on the "RSVP saved" card, and saves the phone's push token with
 -- save_push_token(). Every 10 minutes the send-reminders Edge Function (scheduled below) reads what's due, sends each
@@ -12,6 +12,8 @@
 --   week_picks    "Your week, picked for you": Mondays 9-11 AM, up to 4 events Monday to Sunday
 --   weekend_picks "Your weekend, picked for you": Fridays noon-2 PM, up to 4 events Friday evening to Sunday,
 --                 favoring events added that week (this replaced Thursday's "New for you")
+--   follows       "New from Hollywood Improv": 6-8 PM, not Mondays or Fridays, up to 3 events that venues and hosts you
+--                 follow (follows.sql) added since your last one (at most 3 days back); one a day at most
 --   Picks (push_pick_window(), push_picks()) are scored per person: their interests, kinds of things they've saved or
 --   checked in to, how close (profiles.lat/lng), verified and Headliner events, what others are saving, a photo;
 --   spread across categories and days, nothing they've already saved or been to, and at least 2 or nothing is sent.
@@ -82,6 +84,7 @@ create table if not exists public.push_prefs (
 );
 alter table public.push_prefs add column if not exists week_picks boolean not null default true;
 alter table public.push_prefs add column if not exists weekend_picks boolean not null default true;
+alter table public.push_prefs add column if not exists follows boolean not null default true;
 alter table public.push_prefs enable row level security;
 revoke all on public.push_prefs from anon, authenticated;
 -- (update covers user_id too: an upsert from the app sets it again, and the policy keeps it your own)
@@ -136,7 +139,7 @@ revoke all on public.push_sent from anon, authenticated;
 -- every kind, including invites.sql's (keep the two lists the same)
 alter table public.push_sent drop constraint if exists push_sent_kind_check;
 alter table public.push_sent add constraint push_sent_kind_check check (kind in
-  ('plans_today', 'tickets', 'new_for_you', 'week_picks', 'weekend_picks', 'invite', 'nudge', 'still_in', 'dropped', 'cancelled'));
+  ('plans_today', 'tickets', 'new_for_you', 'week_picks', 'weekend_picks', 'follows', 'invite', 'nudge', 'still_in', 'dropped', 'cancelled'));
 
 -- Events the app shows that happen between p_from and p_to, each with its first day in that range (event_occurs_on(),
 -- checkin_verify.sql). On p_from itself, only events starting at p_first_from or later (or with no time). Does the
@@ -161,7 +164,7 @@ end $$;
 revoke execute on function public.push_pick_window(boolean, date, date, time) from public, anon, authenticated;
 
 -- Up to 4 picks for one person from the window's events (push_pick_window(): [{event_id, day}]), best first.
--- Score: in their interests +3; a kind of thing they've saved or checked in to +1; within 3 miles +2, within 7 +1,
+-- Score: a venue or host they follow +4; in their interests +3; a kind of thing they've saved or checked in to +1; within 3 miles +2, within 7 +1,
 -- further than 15 left out; verified +1; Headliner +1; 3+ people saved it in the last 30 days +1; a photo +0.5; on
 -- Fridays, added in the last week +2 (what Thursday's "New for you" used to send). Nothing they've saved or checked
 -- in to, one event per name, and spread out: a new category on a new day first. Listed in date order.
@@ -174,12 +177,15 @@ language sql stable security definer set search_path = public as $$
     union select e.category from checkins k join events e on e.event_id = k.event_id where k.user_id = p_user
   ),
   popular as (select event_id from rsvps where created_at > now() - interval '30 days' group by event_id having count(*) >= 3),
+  followed as (select kind, key from follows where user_id = p_user),
   cand as (
     select e.event_id, e.name, e.venue, e.category, (w->>'day')::date as day, e.start_time,
       case when me.lat is null or e.lat is null then null
            else 7917.6 * asin(sqrt(power(sin(radians(e.lat - me.lat) / 2), 2)
                  + cos(radians(me.lat)) * cos(radians(e.lat)) * power(sin(radians(e.lng - me.lng) / 2), 2))) end as mi,
-      coalesce(e.category = any (me.interests), false)::int * 3
+      exists (select 1 from followed f where (f.kind = 'venue' and f.key = lower(btrim(e.venue)))
+                                       or (f.kind = 'host' and f.key = lower(btrim(e.host))))::int * 4
+      + coalesce(e.category = any (me.interests), false)::int * 3
       + coalesce(e.category in (select category from liked where category is not null), false)::int
       + coalesce(e.verified, false)::int + coalesce(e.tier = 'Headliner', false)::int
       + (e.event_id in (select event_id from popular))::int
@@ -271,7 +277,36 @@ language sql stable security definer set search_path = public as $$
     select k.kind, k.ref, k.user_id, push_picks(k.user_id, k.kind = 'weekend_picks', (select events from win)) as items
     from pickers k
   ),
-  due as (select * from today union all select * from tickets union all select * from picks)
+  -- 6-8 PM, not Mondays or Fridays (the picks go out then): what the venues and hosts you follow added since your last
+  -- one of these (at most 3 days back, a day the first time), still to come, not saved; up to 3, soonest first
+  fusers as (
+    select distinct f.user_id from clock c join follows f on true
+    where extract(isodow from c.local) not in (1, 5) and c.local::time >= '18:00' and c.local::time < '20:00'
+      and exists (select 1 from push_tokens t where t.user_id = f.user_id)
+      and coalesce((select p.follows from push_prefs p where p.user_id = f.user_id), true)
+  ),
+  followed as (
+    select 'follows'::text, c.today::text, u.user_id,
+      (select jsonb_agg(z.item order by z.sd nulls last, z.st nulls last) from (
+         select y.* from (
+           select distinct on (e.event_id) e.event_id, e.start_date as sd, e.start_time as st,
+             jsonb_build_object('event_id', e.event_id, 'name', e.name, 'venue', e.venue, 'from', f.name,
+               'date', case when e.start_date >= c.today then e.start_date end,
+               'starts_at', case when e.start_date >= c.today then (e.start_date + e.start_time) at time zone 'America/Los_Angeles' end) as item
+           from follows f join shown e on (f.kind = 'venue' and lower(btrim(e.venue)) = f.key)
+                                       or (f.kind = 'host' and lower(btrim(e.host)) = f.key)
+           where f.user_id = u.user_id and e.created_at <= p_now
+             and e.created_at > greatest(p_now - interval '3 days', coalesce(
+                   (select max(s.sent_at) from push_sent s where s.user_id = u.user_id and s.kind = 'follows'), p_now - interval '1 day'))
+             and (coalesce(e.end_date, e.start_date) >= c.today or e.start_date is null
+                  or coalesce(e.recurrence, '') ~* '(daily|weekly|monthly)')
+             and not exists (select 1 from rsvps r where r.user_id = u.user_id and r.event_id = e.event_id)
+             and not (e.start_date = c.today and e.start_time is not null and e.start_time < c.local::time)   -- already started
+           order by e.event_id, f.kind desc) y   -- 'venue' before 'host' names where it's from
+         order by y.sd nulls last, y.st nulls last limit 3) z)
+    from clock c cross join fusers u
+  ),
+  due as (select * from today union all select * from tickets union all select * from picks union all select * from followed)
   select d.kind, d.ref, d.user_id, t.token, t.environment, d.items
   from due d join push_tokens t on t.user_id = d.user_id
   where d.items is not null and jsonb_array_length(d.items) > case when d.kind in ('week_picks', 'weekend_picks') then 1 else 0 end
