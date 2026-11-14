@@ -627,6 +627,10 @@ img{ max-width:100% }
 .remindask span{ color:#DDD1B8; font-size:13.5px; line-height:1.4 }
 .remindask .row{ display:flex; gap:8px; margin-top:8px } .remindask .btn{ flex:1; padding:11px 8px; font-size:14px }
 .remindask .yes{ background:var(--paper); color:var(--green) } .remindask .no{ border:1.5px solid rgba(243,231,209,.5); color:var(--paper) }
+/* in today's picks pop-up (light): above the list */
+#recModal .remindask{ background:var(--card); border-color:var(--line); max-width:none; margin:12px 0 4px; color:var(--ink) }
+#recModal .remindask span{ color:var(--muted) }
+#recModal .remindask .yes{ background:var(--green); color:var(--paper) } #recModal .remindask .no{ border-color:var(--line); color:var(--ink) }
 .prefs{ margin-top:6px }
 .prefrow{ display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px 0; border-top:1px solid var(--line) }
 .prefrow:last-child{ border-bottom:1px solid var(--line) }
@@ -2038,7 +2042,7 @@ const pickInfo=(ev,i)=>({ pick_reason:ev.pickWhy||KINDS[kindOf(ev)].label, pick_
 function showPicks(picks){
   pickMood=''; pickSeen=new Set();
   renderPicks(picks);
-  setTimeout(()=>{ document.getElementById('recModal').classList.add('on'); fitLine(document.getElementById('recTitle')); },350);
+  setTimeout(()=>{ document.getElementById('recModal').classList.add('on'); fitLine(document.getElementById('recTitle')); offerPicksPush(); },350);
 }
 // "Today in" before 4pm, "Tonight in" after; "This week in" when fewer than two picks are today
 function renderPicks(picks){
@@ -3781,27 +3785,48 @@ function showRsvp(ev,pts=0){
   document.getElementById('rsvpInvite').onclick=()=>{ m.classList.remove('on'); openSheet(ev.id,null,undefined,ev.occurrenceDate); setTimeout(()=>document.getElementById('shareBtn')?.click(),50); };
 }
 
-/* iPhone app reminders (window.comunaReminders, from native.js). iOS shows its permission prompt only once, and a
-   "Don't Allow" is for good, so we ask in our own words first and show Apple's prompt only after a yes. The ask rides
-   on the "RSVP saved" card, the moment a reminder obviously helps, for someone's first 3 saves while iOS hasn't asked
-   yet; after that it's only in Profile > Reminders. Guests can't get reminders: the token needs an account. */
-const REMIND_ASKS=3;
+/* Phone app notifications (window.comunaReminders, from native.js). iOS shows its permission prompt only once, and a
+   "Don't Allow" is for good, so we ask in our own words first and show Apple's prompt only after a yes.
+   Where we ask: in today's picks pop-up (the first one comes right after sign-up's starter kit), offering picks like
+   these every Monday and Friday; and on the "Plan saved" card, offering a heads-up before plans. Whichever comes
+   first, at most 3 asks in all and at least a week apart, and only while the phone hasn't been asked yet; after that
+   it's only in Profile > Reminders. Guests can't get notifications: the phone's token needs an account. */
+const REMIND_ASKS=3, REMIND_GAP=7*864e5;
 const PHONE=ANDROID_APP? 'phone' : 'iPhone';
-async function offerReminders(m){
-  const R=window.comunaReminders; if(!R || !S.signedUp || (S.remindAsks||0)>=REMIND_ASKS) return;
-  if((await R.status())!=='unasked' || !m.classList.contains('on') || m.querySelector('.remindask,.hoststep')) return;
-  S.remindAsks=(S.remindAsks||0)+1; save();
-  const cal=document.getElementById('rsvpCal'); if(cal) cal.textContent='Add to calendar';
+async function remindAskOk(){
+  const R=window.comunaReminders;
+  if(!R || !S.signedUp || (S.remindAsks||0)>=REMIND_ASKS || Date.now()-(S.remindAskAt||0)<REMIND_GAP) return false;
+  return (await R.status())==='unasked';
+}
+// the card: what it offers (b, span), where it goes (before), and the toast on a yes
+function remindAsk(before,b,span,onYes){
+  S.remindAsks=(S.remindAsks||0)+1; S.remindAskAt=Date.now(); save();
   const box=document.createElement('div'); box.className='remindask';
-  box.innerHTML=`<b>Get a heads-up before your plans?</b><span>Reminders before the plans you save, plus a few picks for your week (Mondays) and weekend (Fridays). Choose what you get in Profile > Reminders.</span>
-    <div class="row"><button class="btn yes">Remind me</button><button class="btn no">Not now</button></div>`;
-  document.getElementById('closeStamp').before(box);
+  box.innerHTML=`<b>${b}</b><span>${span}</span>
+    <div class="row"><button class="btn yes">Turn on</button><button class="btn no">Not now</button></div>`;
+  before.before(box);
   box.querySelector('.no').onclick=()=>box.remove();
   box.querySelector('.yes').onclick=async()=>{
-    const st=await R.turnOn(); box.remove(); renderRemindRow();
-    if(st==='on'){ S.remindAsks=REMIND_ASKS; save(); haptic('success'); toast("Reminders on. We'll give you a heads-up before your plans."); }
-    else toast('No reminders for now. You can turn them on in Profile > Reminders.');
+    const st=await window.comunaReminders.turnOn(); box.remove(); renderRemindRow();
+    if(st==='on'){ S.remindAsks=REMIND_ASKS; save(); haptic('success'); toast(onYes); }
+    else toast('No notifications for now. You can turn them on in Profile > Reminders.');
   };
+  return box;
+}
+async function offerReminders(m){
+  if(!(await remindAskOk()) || !m.classList.contains('on') || m.querySelector('.remindask,.hoststep')) return;
+  const cal=document.getElementById('rsvpCal'); if(cal) cal.textContent='Add to calendar';
+  remindAsk(document.getElementById('closeStamp'), 'Get a heads-up before your plans?',
+    'Reminders before the plans you save, plus a few picks for your week (Mondays) and weekend (Fridays). Choose what you get in Profile > Reminders.',
+    "Notifications on. We'll give you a heads-up before your plans.");
+}
+// today's picks pop-up: the same picks, every Monday and Friday
+async function offerPicksPush(){
+  const m=document.getElementById('recModal');
+  if(!(await remindAskOk()) || !m.classList.contains('on') || m.querySelector('.remindask')) return;
+  remindAsk(document.getElementById('recList'), 'Want picks like these every week?',
+    'A few for your week on Mondays, and your weekend on Fridays.',
+    "Notifications on. Your first picks come Monday or Friday, whichever's next.");
 }
 /* "Your week / weekend, picked for you" (send-reminders, Mondays and Fridays): tapping the notification lists the
    picks; each opens its event, with a back button to the list. Events no longer listed are left out. */
@@ -4728,6 +4753,14 @@ async function guestSeen(){
   const { error } = await sb.rpc('guest_seen', { p_device:S.deviceId, p_neighborhood:S.nb||null, p_interests:S.interests||[] });
   if(error) console.warn('Supabase guest save failed', error);
 }
+// every launch, guest or signed in: one row per install in app_installs (supabase/app_installs.sql), by platform, so
+// we know how many people use the iPhone and Android apps (the only places notifications work) and the website
+async function appSeen(){
+  if(!sb) return;
+  const native=window.Capacitor?.isNativePlatform?.(), platform=ANDROID_APP? 'android' : native? 'ios' : 'web';
+  const { error } = await sb.rpc('app_seen', { p_device:S.deviceId, p_platform:platform });
+  if(error) console.warn('Supabase app_seen failed', error);
+}
 // a guest made an account (or signed in to one): link this install's guest activity to it
 async function guestConverted(){
   const u=await dbUser(); if(!u) return;
@@ -4983,7 +5016,7 @@ function boot(){
   tryMapbox(); loadEvents();
   inviteFromUrl();   // ?invite=CODE from an invite link
   checkAccount().then(flushFeedback).then(()=>loadInvites());   // returning user: keep the profile in sync
-  guestSeen();
+  guestSeen(); appSeen();
   refreshLoc();
 
 }
