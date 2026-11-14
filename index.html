@@ -380,6 +380,14 @@ img{ max-width:100% }
 .practical{ font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:12px }
 /* event sheet: title, then when (biggest), where, tags, description; one primary action pinned at the bottom */
 .sheet .cat.quiet{ color:var(--muted) }
+.pkl{ margin-top:14px; display:grid; gap:8px }
+.pkl button{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--card); border-radius:16px; padding:12px 14px }
+.pkl button:focus-visible{ outline:3px solid var(--green); outline-offset:2px }
+.pkl span{ flex:1; min-width:0; display:grid; gap:1px }
+.pkl small{ font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--red) }
+.pkl b{ font-size:15px; line-height:1.25; overflow-wrap:anywhere }
+.pkl em{ font-style:normal; font-size:12.5px; color:var(--muted) }
+.pkl i{ font-style:normal; font-size:11.5px; font-weight:700; color:var(--green) }
 .sheet .vbtn{ display:inline; padding:0; vertical-align:baseline }
 .evwhen{ font-family:var(--display); font-weight:900; font-size:26px; line-height:1; text-transform:uppercase; color:var(--red); margin:12px 0 4px }
 .evwhere{ display:block; font-size:14px; color:var(--ink); text-decoration:none; line-height:1.4 } .evwhere span{ color:var(--muted) }
@@ -3785,7 +3793,7 @@ async function offerReminders(m){
   S.remindAsks=(S.remindAsks||0)+1; save();
   const cal=document.getElementById('rsvpCal'); if(cal) cal.textContent='Add to calendar';
   const box=document.createElement('div'); box.className='remindask';
-  box.innerHTML=`<b>Get a heads-up before your plans?</b><span>Reminders before the plans you save, plus what's new in your interests once a week. Choose what you get in Profile > Reminders.</span>
+  box.innerHTML=`<b>Get a heads-up before your plans?</b><span>Reminders before the plans you save, plus a few picks for your week (Mondays) and weekend (Fridays). Choose what you get in Profile > Reminders.</span>
     <div class="row"><button class="btn yes">Remind me</button><button class="btn no">Not now</button></div>`;
   document.getElementById('closeStamp').before(box);
   box.querySelector('.no').onclick=()=>box.remove();
@@ -3794,6 +3802,20 @@ async function offerReminders(m){
     if(st==='on'){ S.remindAsks=REMIND_ASKS; save(); haptic('success'); toast("Reminders on. We'll give you a heads-up before your plans."); }
     else toast('No reminders for now. You can turn them on in Profile > Reminders.');
   };
+}
+/* "Your week / weekend, picked for you" (send-reminders, Mondays and Fridays): tapping the notification lists the
+   picks; each opens its event, with a back button to the list. Events no longer listed are left out. */
+function openPicksSheet(spec,range){
+  const picks=String(spec||'').split(',').map(x=>{ const [eid,date]=x.split('|'); return { ev:events.find(e=>eidOf(e)===eid), date:date||null }; }).filter(x=>x.ev);
+  const week=range!=='weekend', back=()=>openPicksSheet(spec,range);
+  const dayOf=d=>d? new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : '';
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Picked for you</div>
+    <h2>Your ${week?'week':'weekend'}</h2><p class="sub">${picks.length? `Chosen from your interests, what's near you and what people are saving.` : 'These picks have passed. Have a look at the list for what\'s on now.'}</p>
+    <div class="pkl">${picks.map(({ev,date})=>`<button data-pick="${ev.id}" data-date="${escH(date||'')}">${catDot(ev.category,34)}<span><small>${escH([dayOf(date),fmtTime(ev.t0)].filter(Boolean).join(' · '))}</small><b>${escH(cardTitle(ev))}</b><em>${escH(ev.venue||'')}</em></span>${hasPlan({...ev,occurrenceDate:date})?'<i>Saved</i>':''}</button>`).join('')}</div>`;
+  document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  sheet.querySelector('.pkl').onclick=e=>{ const b=e.target.closest('[data-pick]'); if(!b) return;
+    openSheet(+b.dataset.pick,back,'your picks',b.dataset.date||null); };
+  overlay.classList.add('on');
 }
 async function renderRemindRow(){   // a function declaration with nothing outside it, so renderProfile can call it any time
   const R=window.comunaReminders, row=document.getElementById('pfRemind'); row.hidden=!R; if(!R) return;
@@ -3829,18 +3851,18 @@ const REMIND_KINDS=[
   ['hour_before','An hour before','Each plan you save, with the time and venue'],
   ['plans_today','Plans today','A morning rundown on days you have plans'],
   ['tickets','Tickets the day before','When a plan needs an RSVP or tickets'],
-  ['new_for_you','New for you','Thursdays: up to 3 new events in your interests'],
+  ['week_picks','Your week','Mondays: a few events picked for you for the week ahead'],
+  ['weekend_picks','Your weekend','Fridays: weekend picks, with what\'s new that week'],
   ['invites','Friend invites','Invites, nudges, and who can or can\'t make it'],
 ];
 async function drawRemindPrefs(box){
   const u=await dbUser(); if(!u || !box) return;
   // invites: until supabase/invites.sql adds the column, the other four still show
-  let { data, error }=await sb.from('push_prefs').select('hour_before,plans_today,tickets,new_for_you,invites').eq('user_id',u.id).maybeSingle();
-  const noInv=!!error && /invites/.test(error.message||'');
-  if(noInv) ({ data, error }=await sb.from('push_prefs').select('hour_before,plans_today,tickets,new_for_you').eq('user_id',u.id).maybeSingle());
+  // select('*'): a switch whose column isn't there yet (push.sql or invites.sql not re-run) is left out, not an error
+  const { data, error }=await sb.from('push_prefs').select('*').eq('user_id',u.id).maybeSingle();
   if(error){ console.warn('Reminder settings unavailable', error); return; }
-  const prefs={ hour_before:true, plans_today:true, tickets:true, new_for_you:true, invites:true, ...data };
-  box.innerHTML=REMIND_KINDS.filter(([k])=>!(noInv && k==='invites')).map(([k,t,d])=>`<label class="prefrow"><span><b>${t}</b><small>${d}</small></span><input type="checkbox" class="switch" data-k="${k}" ${prefs[k]?'checked':''}></label>`).join('');
+  const prefs={ hour_before:true, plans_today:true, tickets:true, week_picks:true, weekend_picks:true, invites:true, ...data };
+  box.innerHTML=REMIND_KINDS.filter(([k])=>!data || k in data).map(([k,t,d])=>`<label class="prefrow"><span><b>${t}</b><small>${d}</small></span><input type="checkbox" class="switch" data-k="${k}" ${prefs[k]?'checked':''}></label>`).join('');
   box.onchange=async e=>{ const c=e.target.closest('[data-k]'); if(!c) return;
     haptic('selection');
     const { error }=await sb.from('push_prefs').upsert({ user_id:u.id, [c.dataset.k]:c.checked, updated_at:new Date().toISOString() });
@@ -4577,6 +4599,8 @@ window.comunaApp={
   },
   openEvent(eid,date){ const ev=events.find(e=>eidOf(e)===eid); if(!ev) return false; openSheet(ev.id,null,'Top 4',date||null); return true; },
   openPlans(){ go('plans'); return true; },
+  // the Monday / Friday picks notification: "eventId|date,eventId|date", range 'week' or 'weekend'
+  openPicks(spec,range){ if(!events.length) return false; openPicksSheet(spec,range); return true; },
   // a tapped invite notification (act: the iPhone button they tapped, in / maybe / out)
   // an invite link opened in the app (native.js: universal links on iPhone)
   openInviteCode(code){
