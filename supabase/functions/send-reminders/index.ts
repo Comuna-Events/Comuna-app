@@ -3,7 +3,8 @@
 // nothing is sent twice:
 //   "starts at 6:30 PM" an hour before each saved plan       due_push_reminders() -> push_reminders_sent
 //   "2 plans today", "Tomorrow: ... grab tickets", and picks: "Your week, picked for you" (Mondays) and
-//   "Your weekend, picked for you" (Fridays)                 due_push_extras() -> push_sent
+//   "Your weekend, picked for you" (Fridays), "New from Hollywood Improv" (places you follow, ../../follows.sql)
+//                                                            due_push_extras() -> push_sent
 //   friend invites: "Jess invited you", "Jess is waiting on you", "Still in?", "Sam can't make it", "Jess cancelled"
 //                                                            due_push_invites() (../../invites.sql) -> push_sent
 //   ?only=invites sends just those (invites.sql calls it the moment something happens)
@@ -42,8 +43,8 @@ type Env = keyof typeof HOSTS;
 
 type Phone = { user_id: string; token: string; environment: Env | null; platform?: "ios" | "android" };
 type Due = Phone & { event_id: string; occurrence_date: string; title: string; venue: string | null; starts_at: string };
-type Item = { event_id: string; name: string; venue: string | null; date: string | null; starts_at: string | null };
-type Extra = Phone & { kind: "plans_today" | "tickets" | "new_for_you" | "week_picks" | "weekend_picks"; ref: string; items: Item[] };
+type Item = { event_id: string; name: string; venue: string | null; date: string | null; starts_at: string | null; from?: string };
+type Extra = Phone & { kind: "plans_today" | "tickets" | "new_for_you" | "week_picks" | "weekend_picks" | "follows"; ref: string; items: Item[] };
 type Push = { title: string; body: string; data: Record<string, string>; expires: number; collapse: string; category?: string };
 type InviteItem = { invite_id: string; event_id: string; name: string; venue: string | null; date: string; starts_at: string | null;
   from: string; going: string[]; dropped?: string };
@@ -113,6 +114,18 @@ function extra(r: Extra): Push {
       // gone by the end of Sunday (LA), when the picks are over
       expires: Math.floor(Date.now() / 1000) + (week ? 6 : 2) * 86400 + 12 * 3600,
       data: { screen: "picks", picks: r.items.map((i) => `${i.event_id}|${i.date ?? ""}`).join(","), range: week ? "week" : "weekend" } };
+  }
+  // "New from Hollywood Improv": one event opens it; several open the list ("from" is the venue or host they follow)
+  if (r.kind === "follows") {
+    const day = (i: Item) => i.date ? new Date(i.date + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }) : "";
+    const froms = [...new Set(r.items.map((i) => i.from ?? ""))].filter(Boolean);
+    return one
+      ? { title: `New from ${short(first.from ?? first.venue ?? "a place you follow", 50)}`, collapse, expires: hours(24),
+          body: [short(first.name, 80), [day(first), at(first)].filter(Boolean).join(" at ")].filter(Boolean).join(" · "),
+          data: { event_id: first.event_id, date: first.date ?? "" } }
+      : { title: froms.length === 1 ? `New from ${short(froms[0], 50)}` : "New from places you follow", collapse, expires: hours(24),
+          body: r.items.map((i) => froms.length === 1 ? short(i.name, 40) : `${short(i.from ?? "", 24)}: ${short(i.name, 32)}`).join(" · "),
+          data: { screen: "picks", picks: r.items.map((i) => `${i.event_id}|${i.date ?? ""}`).join(","), range: "follows" } };
   }
   if (r.kind === "tickets") return { title: `Tomorrow: ${short(first.name)}`, collapse, expires,
     body: `${at(first) ? `Starts at ${at(first)}. ` : ""}It needs an RSVP or tickets, so grab yours on the host's page before it fills up.`,

@@ -380,6 +380,20 @@ img{ max-width:100% }
 .practical{ font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:12px }
 /* event sheet: title, then when (biggest), where, tags, description; one primary action pinned at the bottom */
 .sheet .cat.quiet{ color:var(--muted) }
+/* Follow buttons (event page, Following list) and the card tag */
+.fols{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 2px }
+.fol{ display:inline-flex; align-items:center; gap:4px; max-width:100%; padding:7px 12px; border-radius:999px; border:1.5px solid var(--green); color:var(--green); font-size:13px; font-weight:700; background:transparent }
+.fol b{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0 }
+.fol::before{ content:'+'; font-size:15px; line-height:1 }
+.fol[aria-pressed="true"]{ background:var(--green); color:var(--paper) } .fol[aria-pressed="true"]::before{ content:'✓'; font-size:12px }
+.fol:disabled{ opacity:.6 } .fol:focus-visible{ outline:3px solid var(--focus); outline-offset:2px }
+.sheet .remindask{ background:var(--card); border-color:var(--line); max-width:none; margin:10px 0 4px; color:var(--ink) }
+.sheet .remindask span{ color:var(--muted) }
+.sheet .remindask .yes{ background:var(--green); color:var(--paper) } .sheet .remindask .no{ border-color:var(--line); color:var(--ink) }
+.folist{ margin-top:14px; display:grid; gap:8px }
+.folrow{ display:flex; align-items:center; gap:10px; background:var(--card); border-radius:16px; padding:12px 14px }
+.folrow span{ flex:1; min-width:0; display:grid } .folrow b{ font-size:15px; overflow-wrap:anywhere } .folrow small{ font-size:12.5px; color:var(--muted) }
+.ffol{ display:inline-block; margin-left:4px; padding:1px 7px; border-radius:999px; background:var(--green); color:var(--paper); font-size:10.5px; font-weight:700; letter-spacing:.03em; vertical-align:1px }
 .pkl{ margin-top:14px; display:grid; gap:8px }
 .pkl button{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--card); border-radius:16px; padding:12px 14px }
 .pkl button:focus-visible{ outline:3px solid var(--green); outline-offset:2px }
@@ -994,6 +1008,7 @@ a.linkrow, a.linkrow span{ text-decoration:none; color:inherit } a.linkrow span{
         <button class="linkrow" id="pfNbBtn">Your neighborhood <span id="pfNb"></span></button>
         <button class="linkrow" id="pfLbBtn" hidden>Leaderboard name <span id="pfLb"></span></button>
         <button class="linkrow" data-go="plans">Your plans <span>This week</span></button>
+        <button class="linkrow" id="pfFollow">Following <span id="pfFollowTxt"></span></button>
         <button class="linkrow" id="pfRemind" hidden>Reminders <span id="pfRemindTxt"></span></button>
         <button class="linkrow" data-go="alerts">Alerts <span id="pfAlerts">All caught up</span></button>
         <button class="linkrow" id="pfSources">How we find events <span>Where they come from</span></button>
@@ -1722,7 +1737,7 @@ document.getElementById('suSocial').addEventListener('click',async e=>{
   finally{ socialBusy=false; document.querySelectorAll('[data-social]').forEach(x=>x.disabled=false); }
 });
 let passportRestoreId=0, passportRevision=0;
-const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; badgesAt=0; return Object.assign(S,{ accountId:null, badges:null, titleKey:null, nickname:'', lbShow:'', monthLog:null, monthDb:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false, tickets:{} }); };
+const freshPassport=()=>{ passportRestoreId++; myPtsAt=0; badgesAt=0; return Object.assign(S,{ accountId:null, badges:null, titleKey:null, nickname:'', lbShow:'', monthLog:null, monthDb:null, places:{}, points:0, monthPts:null, streak:0, visits:0, rsvp:[], rsvpDates:{}, checked:[], redeemed:[], rated:[], subCredited:[], saveDay:null, feedbackQueue:[], alertsSeen:[], alertsRead:false, tickets:{}, follows:[] }); };
 // your profile row; until supabase/leaderboard_privacy.sql adds nickname and lb_show, read it without them
 const PROFILE_COLS='name,neighborhood,interests,lat,lng,points,created_at,title_key';
 async function readProfile(id){
@@ -1810,7 +1825,7 @@ async function finishAuth(){
   if(error){ console.warn('Supabase profile load failed',error); toast('Could not load your account. Please reconnect and sign in again.'); return; }
   if(p && p.name){
     const again=authMode==='signup', guest=S.guest? { pts:S.points||0, fb:S.feedbackQueue||[], n:(S.guestLog||[]).length } : null;
-    applyAccountProfile(user,p); setTimeout(()=>loadInvites(true));
+    applyAccountProfile(user,p); setTimeout(()=>loadInvites(true)); loadFollows();
     // a guest signing in to an account they already have: add this phone's stamps to it
     if(guest){ S.feedbackQueue=guest.fb; S.points+=guest.pts; S.guest=false; save(); guestConverted(); await uploadGuest(user); dbProfile(); }
     await restorePassport(user);
@@ -1824,6 +1839,7 @@ async function finishAuth(){
   // real users start with an empty passport (the demo profile is only for showing the app before sign-up); guests keep theirs
   const guest=S.guest; if(!guest) freshPassport();
   setTimeout(()=>loadInvites(true),800);   // after the profile is saved, so the invite shows their name
+  loadFollows();
   S.accountId=user.id; S.onboardingComplete=true; S.signedUp=true; S.guest=false; S.name=suName.value.trim().replace(/\s+/g,' '); S.joined=guest&&S.joined||new Date().toISOString().slice(0,10); save(); renderNames();
   // the profile first, so uploaded check-ins count toward this neighborhood's board; check-ins before reviews, which need them
   dbProfile().then(()=>uploadGuest(user)).then(flushFeedback).then(()=>loadBadges(true)).then(celebrateBadges);
@@ -1967,6 +1983,7 @@ function pickScore(ev,day,want){
   if(lastChance(ev)) s-=2.5;                                      // a run that ends in the next few days
   if(recursOften(ev)) s+=1;                                       // will be there next week too
   if(ev.rev && ev.rev.pct>=85) s-=0.5;       // people who went loved it
+  if(followsEv(ev)) s-=2;                    // a venue or host you follow
   if(shown!=null && tapped==null){ const age=day-shown; if(age>=1 && age<PICK_FORGET_DAYS) s+=3*(1-age/PICK_FORGET_DAYS); }
   return s+((ev.id*7919+day*104729)%97)/97*0.8;                   // a daily shuffle big enough to reorder near-ties
 }
@@ -2379,7 +2396,7 @@ function feedCardHtml(ev,slot,now){
     <button class="fsave" data-save="${ev.id}" aria-pressed="${inn}" aria-label="${inn?'Saved to Plans. Remove':'Save to Plans'}">${BOOKMARK}</button>
     <div class="fbody"><div class="fwhen">${when}${done?' · <span class="fdone">Stamped ✓</span>':''}</div>
       ${ev.photo?`<div class="ftitle">${title}${vCheck(ev,15)}</div>`:''}
-      <div class="fvenue">${escH([ev.venue, ev.area||ev.hood].filter((x,i,a)=>x && a.indexOf(x)===i).join(' · '))}${ev.photo?'':vCheck(ev,14)}</div>
+      <div class="fvenue">${escH([ev.venue, ev.area||ev.hood].filter((x,i,a)=>x && a.indexOf(x)===i).join(' · '))}${ev.photo?'':vCheck(ev,14)}${followsEv(ev)?' <span class="ffol">Following</span>':''}</div>
       ${social?`<div class="fsocial">${PEOPLE}<span>${escH(social)}</span></div>`:''}</div></article>`;
 }
 // cards for list[from..to), with a day header wherever the day changes
@@ -3584,6 +3601,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     <h2>${ev.verified? escH(ev.title).replace(/\s*(\S+)$/,` <span style="white-space:nowrap">$1<button class="vbtn" id="vBtn">${vCheck(ev,22)}</button></span>`) : escH(ev.title)}</h2>
     <div class="evwhen">${escH(ev.start?withEnd(ev,nextWhen(ev)):(ev.time||'Soon'))}</div>
     <a class="evwhere" href="${escH(directionsUrl(ev))}" target="_blank" rel="noopener">${escH(ev.venue)} <span class="evdrive">· ~${mins(ev.mi,departAt(ev))} min drive</span></a>
+    ${followBtns(ev)}
     ${recurs&&ev.recDetail?`<div class="evrec">${escLines(ev.recDetail)}</div>`:''}
     ${priceLine(ev)}
     ${inviteBlockHtml(ev)}
@@ -3640,6 +3658,7 @@ function openSheet(id,back,backLabel='today\'s picks',occurrenceDate=null){   //
     if(u){ const r=await dbCheckin(ev,v.pos); if(!r.ok){ c.disabled=false; c.textContent=lab; haptic('warning'); toast(r.msg); return; } }
     checkIn(ev,v.dist,v.pos); if(u) loadBadges(true).then(celebrateBadges); };
   sheetDrive(ev,sheet.querySelector('.evdrive'));
+  sheet.querySelectorAll('.fols [data-follow]').forEach(b=>b.onclick=()=>toggleFollow(b));
   const sh=document.getElementById('shareBtn'); if(sh) sh.onclick=()=>{ if(!S.signedUp || invitesOn===false) track(ev,'invite'); openInviteSheet(ev,()=>openSheet(id,back,backLabel,occurrenceDate)); };
   const box=sheet.querySelector('.evstep'), bindStep=()=>{ if(!box) return;
     box.querySelector('[data-hostgo]').addEventListener('click',()=>track(ev,'link'));
@@ -3832,10 +3851,10 @@ async function offerPicksPush(){
    picks; each opens its event, with a back button to the list. Events no longer listed are left out. */
 function openPicksSheet(spec,range){
   const picks=String(spec||'').split(',').map(x=>{ const [eid,date]=x.split('|'); return { ev:events.find(e=>eidOf(e)===eid), date:date||null }; }).filter(x=>x.ev);
-  const week=range!=='weekend', back=()=>openPicksSheet(spec,range);
+  const week=range!=='weekend', fol=range==='follows', back=()=>openPicksSheet(spec,range);
   const dayOf=d=>d? new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : '';
-  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Picked for you</div>
-    <h2>Your ${week?'week':'weekend'}</h2><p class="sub">${picks.length? `Chosen from your interests, what's near you and what people are saving.` : 'These picks have passed. Have a look at the list for what\'s on now.'}</p>
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">${fol?'Places you follow':'Picked for you'}</div>
+    <h2>${fol?'Just added':`Your ${week?'week':'weekend'}`}</h2><p class="sub">${!picks.length? 'These have passed. Have a look at the list for what\'s on now.' : fol? 'New from venues and hosts you follow.' : `Chosen from your interests, what's near you and what people are saving.`}</p>
     <div class="pkl">${picks.map(({ev,date})=>`<button data-pick="${ev.id}" data-date="${escH(date||'')}">${catDot(ev.category,34)}<span><small>${escH([dayOf(date),fmtTime(ev.t0)].filter(Boolean).join(' · '))}</small><b>${escH(cardTitle(ev))}</b><em>${escH(ev.venue||'')}</em></span>${hasPlan({...ev,occurrenceDate:date})?'<i>Saved</i>':''}</button>`).join('')}</div>`;
   document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
   sheet.querySelector('.pkl').onclick=e=>{ const b=e.target.closest('[data-pick]'); if(!b) return;
@@ -3878,6 +3897,7 @@ const REMIND_KINDS=[
   ['tickets','Tickets the day before','When a plan needs an RSVP or tickets'],
   ['week_picks','Your week','Mondays: a few events picked for you for the week ahead'],
   ['weekend_picks','Your weekend','Fridays: weekend picks, with what\'s new that week'],
+  ['follows','Places you follow','Evenings: when venues and hosts you follow add events'],
   ['invites','Friend invites','Invites, nudges, and who can or can\'t make it'],
 ];
 async function drawRemindPrefs(box){
@@ -3886,7 +3906,7 @@ async function drawRemindPrefs(box){
   // select('*'): a switch whose column isn't there yet (push.sql or invites.sql not re-run) is left out, not an error
   const { data, error }=await sb.from('push_prefs').select('*').eq('user_id',u.id).maybeSingle();
   if(error){ console.warn('Reminder settings unavailable', error); return; }
-  const prefs={ hour_before:true, plans_today:true, tickets:true, week_picks:true, weekend_picks:true, invites:true, ...data };
+  const prefs={ hour_before:true, plans_today:true, tickets:true, week_picks:true, weekend_picks:true, follows:true, invites:true, ...data };
   box.innerHTML=REMIND_KINDS.filter(([k])=>!data || k in data).map(([k,t,d])=>`<label class="prefrow"><span><b>${t}</b><small>${d}</small></span><input type="checkbox" class="switch" data-k="${k}" ${prefs[k]?'checked':''}></label>`).join('');
   box.onchange=async e=>{ const c=e.target.closest('[data-k]'); if(!c) return;
     haptic('selection');
@@ -3894,6 +3914,7 @@ async function drawRemindPrefs(box){
     if(error){ c.checked=!c.checked; toast("Couldn't save that. Try again in a moment."); console.warn('Reminder settings save failed', error); } };
 }
 document.getElementById('pfRemind').onclick=openReminders;
+document.getElementById('pfFollow').onclick=()=>{ if(!S.signedUp){ toast('Make an account to follow venues and hosts.'); openAuth('signup'); return; } openFollowing(); };
 // back from the iPhone's Settings: show whether notifications are allowed now
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState!=='visible' || !window.comunaReminders) return;
   if(current==='profile') renderRemindRow();
@@ -4264,6 +4285,71 @@ const INV_WORD={ in:'In', maybe:'Maybe', pending:'Waiting', out:"Can't" };
 const goingNames=inv=>inv.members.filter(m=>m.answer==='in').map(m=>m.me?'You':invFirst(m.name));
 function namesSaid(n){ return n.length<=1? (n[0]||'') : n.length===2? n.join(' and ') : `${n.slice(0,-1).join(', ')} and ${n[n.length-1]}`; }
 
+/* ---------- following venues and hosts (supabase/follows.sql) ----------
+   The event page has Follow buttons for its venue and (when it's someone else) its host. What you follow comes back
+   as an evening "New from ..." notification when they add events (push.sql), ranks higher in picks, and is marked
+   "Following" on cards. Names match case- and space-insensitively, as the database's key column does. Needs an
+   account; S.follows is a copy for drawing the app, the table is the truth. */
+const followKey=name=>String(name||'').trim().toLowerCase();
+const isFollowing=(kind,name)=>!!name && (S.follows||[]).some(f=>f.kind===kind && f.key===followKey(name));
+const followsEv=ev=>isFollowing('venue',ev.venue) || isFollowing('host',ev.host);
+async function loadFollows(){
+  const u=S.signedUp && await dbUser(); if(!u) return;
+  const { data, error }=await sb.from('follows').select('kind,name,key').eq('user_id',u.id).order('created_at');
+  if(error){ console.warn('Loading follows failed (has supabase/follows.sql been run?)', error); return; }
+  S.follows=data||[]; save();
+  if(current==='home') renderHome();
+}
+// the buttons on an event page
+function followBtns(ev){
+  const one=(kind,name)=>{ const on=isFollowing(kind,name);
+    return `<button class="fol" data-follow="${kind}" data-name="${escH(name)}" aria-pressed="${on}">${on?'Following':'Follow'} <b>${escH(name)}</b></button>`; };
+  const b=[ev.venue? one('venue',ev.venue) : '', ev.host && followKey(ev.host)!==followKey(ev.venue)? one('host',ev.host) : ''].filter(Boolean);
+  return b.length? `<div class="fols">${b.join('')}</div>` : '';
+}
+async function toggleFollow(btn){
+  const kind=btn.dataset.follow, name=btn.dataset.name, on=btn.getAttribute('aria-pressed')==='true';
+  if(!S.signedUp){ toast(`Make an account to follow ${name} and hear when they add events.`); overlay.classList.remove('on'); openAuth('signup'); return; }
+  const u=await dbUser(); if(!u || btn.disabled) return;
+  btn.disabled=true;
+  const paint=v=>{ btn.setAttribute('aria-pressed',String(v)); btn.firstChild.textContent=v?'Following ':'Follow '; };
+  paint(!on); haptic('light');
+  const { error }= on
+    ? await sb.from('follows').delete().match({ user_id:u.id, kind, key:followKey(name) })
+    : await sb.from('follows').insert({ user_id:u.id, kind, name });
+  btn.disabled=false;
+  if(error && !/duplicate/i.test(error.message||'')){ paint(on); console.warn('Follow failed', error); toast(/300/.test(error.message||'')? 'You can follow up to 300 places.' : "Couldn't save that. Try again in a moment."); return; }
+  S.follows=on? (S.follows||[]).filter(f=>!(f.kind===kind && f.key===followKey(name))) : [...(S.follows||[]), { kind, name, key:followKey(name) }];
+  save(); if(current==='home') renderHome();
+  if(on){ toast(`Unfollowed ${name}`); return; }
+  // the moment a notification obviously helps: ask (within the usual limits), else just confirm
+  if(await remindAskOk()) remindAsk(btn.parentElement.nextElementSibling||btn.parentElement, `Hear when ${name} adds events?`,
+    'An evening heads-up when places you follow add something, plus your week and weekend picks.', `Notifications on. We'll tell you when ${name} adds events.`);
+  else toast(`Following ${name}. ${window.comunaReminders? "You'll hear when they add events." : 'They\'ll show up first in your picks.'}`);
+}
+// Profile > Following: what you follow, how many upcoming events each has here, and Unfollow
+function openFollowing(){
+  const list=S.follows||[], count=f=>events.filter(ev=>followKey(f.kind==='venue'? ev.venue : ev.host)===f.key && (ev.start? !!nextDate(ev) : true)).length;
+  sheet.innerHTML=`<button class="x" id="sheetX" aria-label="Close">&times;</button><div class="grab"></div><div class="cat">Following</div>
+    <h2>Places you follow</h2><p class="sub">${list.length? "You'll hear when they add events, and they show up first in your picks." : 'Follow a venue or host from any event page to hear when they add events.'}</p>
+    <div class="folist">${list.map(f=>{ const n=count(f);
+      return `<div class="folrow"><span><b>${escH(f.name)}</b><small>${f.kind==='host'?'Host':'Venue'} · ${n? n+' upcoming' : 'nothing upcoming right now'}</small></span><button class="fol" data-follow="${f.kind}" data-name="${escH(f.name)}" aria-pressed="true">Following</button></div>`; }).join('')}</div>`;
+  document.getElementById('sheetX').onclick=()=>overlay.classList.remove('on');
+  sheet.querySelector('.folist').onclick=e=>{ const b=e.target.closest('[data-follow]'); if(!b) return;
+    toggleFollowRow(b); };
+  overlay.classList.add('on');
+}
+// in the Following list the button is just the word: unfollowing removes the row
+async function toggleFollowRow(b){
+  const kind=b.dataset.follow, name=b.dataset.name, u=await dbUser(); if(!u || b.disabled) return;
+  b.disabled=true;
+  const { error }=await sb.from('follows').delete().match({ user_id:u.id, kind, key:followKey(name) });
+  if(error){ b.disabled=false; toast("Couldn't save that. Try again in a moment."); return; }
+  S.follows=(S.follows||[]).filter(f=>!(f.kind===kind && f.key===followKey(name))); save();
+  haptic('light'); toast(`Unfollowed ${name}`); renderFollowRow(); openFollowing();
+}
+function renderFollowRow(){ const t=document.getElementById('pfFollowTxt'); if(!t) return;
+  const n=(S.follows||[]).length; t.textContent=S.signedUp? (n? `${n} ${n===1?'place':'places'}` : 'Venues and hosts') : 'Needs an account'; }
 async function loadInvites(force){
   if(!sb) return;
   if(invitesLoading) return invitesLoading;
@@ -4558,7 +4644,7 @@ document.getElementById('passTabs').addEventListener('click',e=>{ const b=e.targ
 
 
 /* ---------- profile / alerts ---------- */
-function renderProfile(){ const lb=document.getElementById('pfLbBtn'); lb.hidden=!(S.signedUp && S.lbShow); document.getElementById('pfLb').textContent=lbLabel(); document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up';
+function renderProfile(){ renderFollowRow(); const lb=document.getElementById('pfLbBtn'); lb.hidden=!(S.signedUp && S.lbShow); document.getElementById('pfLb').textContent=lbLabel(); document.getElementById('pfStamps').textContent=Object.keys(S.places).length+Object.keys(visitedNbhds()).length+Object.keys(visitedCities()).length+(Object.keys(S.places).length?1:0); document.getElementById('pfVisits').textContent=S.visits; document.getElementById('pfStreak').textContent=Object.keys(visitedNbhds()).length; document.getElementById('pfAlerts').textContent=(buildAlerts(),unseen().length)?`${unseen().length} new`:'All caught up';
   const nb=(S.badges||[]).filter(b=>b.earned_at).length; document.getElementById('pfBadgeN').textContent=nb? `${nb} earned${myTitle()?' · '+myTitle():''}` : 'Earn your first'; renderRemindRow(); }
 document.getElementById('pfBadges').onclick=()=>go('badges');
 // reminders for events you RSVP’d to happening in the next 7 days
@@ -5015,7 +5101,7 @@ function boot(){
   history=[];
   tryMapbox(); loadEvents();
   inviteFromUrl();   // ?invite=CODE from an invite link
-  checkAccount().then(flushFeedback).then(()=>loadInvites());   // returning user: keep the profile in sync
+  checkAccount().then(flushFeedback).then(()=>{ loadInvites(); loadFollows(); });   // returning user: keep the profile in sync
   guestSeen(); appSeen();
   refreshLoc();
 
