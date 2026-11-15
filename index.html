@@ -238,6 +238,17 @@ img{ max-width:100% }
 .fseg button{ padding:9px 2px; border-radius:12px; border:1.5px solid #DCCDAE; background:var(--card); font-size:13px; font-weight:600; color:var(--ink) }
 .fseg button.on{ background:var(--green); border-color:var(--green); color:var(--paper) }
 .fseg button:disabled{ opacity:.4 }
+.fcalendar{ margin-top:12px; padding:12px; border:1px solid #DCCDAE; border-radius:14px; background:var(--card) }
+.fcalhead,.fcalactions{ display:flex; align-items:center; justify-content:space-between; gap:12px }
+.fcalhead button{ width:36px; height:36px; font-size:24px; color:var(--green) }
+.fcalgrid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; margin:10px 0; text-align:center }
+.fcalgrid span{ font-size:12px; color:var(--muted); padding:5px 0 }
+.fcalgrid button{ min-height:36px; border-radius:8px; color:var(--ink) }
+.fcalgrid button.on,.fcalactions button:last-child{ background:var(--green); color:var(--paper) }
+.fcalgrid button.between{ background:#DCE5D6 }
+.fcalendar button:disabled{ opacity:.3 }
+.fcalactions{ margin-top:10px }
+.fcalactions button{ padding:10px 14px; border-radius:10px; font-weight:600 }
 .fseg.f3{ grid-template-columns:repeat(3,1fr) }
 .flegend{ display:block; margin:14px auto 0; font-size:13px; font-weight:600; color:var(--muted); text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
 .fhead{ display:flex; align-items:center; justify-content:space-between }
@@ -2145,8 +2156,16 @@ const myCats=()=>Object.keys(CATS).filter(k=>(S.interests||[]).includes(CATS[k].
 const catOK=(ev,c)=> c==='All' || (c==='mine'? myCats().includes(ev.category) : ev.category===c);
 let filter=myCats().length?'mine':'All', when='tonight', tier='any';
 // time filter: next occurrence falls today / within 7 days / within 30 days (rolling windows)
-const WHEN=[['any','Anytime'],['tonight','Today'],['week','This week'],['month','This month']];
+let customStart=null, customEnd=null;
+const WHEN=[['custom','Custom'],['tonight','Today'],['week','This week'],['month','This month']];
 function inWindow(ev,w=when){
+  if(w==='custom'){
+    if(!customStart || !customEnd || !ev.start) return false;
+    const now=eventNow(), first=new Date(customStart);
+    if(first<now) first.setTime(now.getTime());
+    const d=nextDate(ev,first);
+    return !!d && d>=customStart && d<=customEnd;
+  }
   const d=ev.start? nextDate(ev) : null;
   if(!d) return !ev.start && w==='any';
   if(w==='any') return true;
@@ -2458,15 +2477,15 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   else document.getElementById('picks').innerHTML = P.map(cardHtml).join('')
     + (P.length? `<div class="endnote">that's the list. go have fun.</div>` : eventsState==='loading'? `<div class="pick" style="grid-template-columns:44px 1fr">${loaderHtml('events',44)}<div><div class="t">Loading events near you…</div><div class="m2" style="display:block">One sec</div></div></div>`
       : eventsState==='error'? `<button class="pick" id="retryEvents" style="grid-template-columns:1fr"><div><div class="t">Couldn't load events</div><div class="m2" style="display:block">Check your connection, then tap to try again</div></div></button>`
-      : searchQ? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches “${escH(searchQ)}”</div><div class="m2" style="display:block">Try fewer words, or Anytime / Everything</div></div></div>`
-      : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches these filters</div><div class="m2" style="display:block">Try Anytime or Everything</div></div></div>`);
+      : searchQ? `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches “${escH(searchQ)}”</div><div class="m2" style="display:block">Try fewer words, different dates, or Everything</div></div></div>`
+      : `<div class="pick" style="grid-template-columns:1fr"><div><div class="t">Nothing matches these filters</div><div class="m2" style="display:block">Try different dates or Everything</div></div></div>`);
   if(selId!==null && !P.some(ev=>ev.id===selId)) selId=null;
   const first=P[0]; document.getElementById('mapNote').textContent = searchQ && eventsState==='live' ? (!P.length? '' : searchState().exact? `${P.length} ${P.length===1?'match':'matches'}` : `no exact match, ${P.length} close ${P.length===1?'one':'ones'}`)
     : first ? (first.live? `${first.title.split(' ').slice(0,2).join(' ')}: ${first.startsIn}` : '') : '';
   placePins(P);
 }
 // what the map is showing, in words: "Today · Your interests"
-function filterSummary(){ return [WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything', price!=='any'?PRICES.find(p=>p[0]===price)[1]:''].filter(Boolean).join(' · '); }
+function filterSummary(){ return [when==='custom'?customDateLabel():when==='any'?'Anytime':WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything', price!=='any'?PRICES.find(p=>p[0]===price)[1]:''].filter(Boolean).join(' · '); }
 document.getElementById('filtBtn').onclick=openFilters;
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
 function countWith(w,c,t=tier,pr=price){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&priceOK(ev,pr)&&searchOK(ev)).length; when=ow; return n; }
@@ -2536,23 +2555,52 @@ document.getElementById('pfLbBtn').onclick=editLeaderboard;
 document.getElementById('pfSources').onclick=()=>openSources();
 document.getElementById('guestSave').onclick=()=>openAuth('signup');
 // filters: one sheet for when and what, with how many events each choice shows; it stays open so both can be set
+function customDateLabel(){
+  const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  return customStart && customEnd ? ( +customStart===+customEnd ? fmt(customStart) : fmt(customStart)+' – '+fmt(customEnd)) : 'Custom';
+}
 function openFilters(){
+  let calendarOpen=false, draftStart=customStart, draftEnd=customEnd;
+  const today=eventNow(); today.setHours(0,0,0,0);
+  let month=new Date((customStart||today).getFullYear(),(customStart||today).getMonth(),1);
+  const dateKey=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+  const calendar=()=>{
+    const days=new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
+    return `<div class="fcalendar" role="group" aria-label="Custom dates"><div class="fcalhead"><button data-month="-1" aria-label="Previous month" ${month<=new Date(today.getFullYear(),today.getMonth(),1)?'disabled':''}>‹</button><b aria-live="polite">${month.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</b><button data-month="1" aria-label="Next month">›</button></div><p class="sub">Choose a date, or two dates for a range.</p><div class="fcalgrid">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<span>${d}</span>`).join('')}${'<span></span>'.repeat(month.getDay())}${Array.from({length:days},(_,i)=>{
+      const d=new Date(month.getFullYear(),month.getMonth(),i+1), selected=draftStart && +d===+draftStart || draftEnd && +d===+draftEnd;
+      return `<button data-date="${dateKey(d)}" aria-label="${d.toLocaleDateString('en-US',{dateStyle:'full'})}" aria-pressed="${!!selected}" class="${selected?'on':draftStart&&draftEnd&&d>draftStart&&d<draftEnd?'between':''}" ${d<today?'disabled':''}>${i+1}</button>`;
+    }).join('')}</div><p class="sub" aria-live="polite">${draftStart?draftStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})+(draftEnd?' – '+draftEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'}):''):'Select your dates'}</p><div class="fcalactions"><button id="fCalCancel">Cancel</button><button id="fCalApply" ${draftStart?'':'disabled'}>Apply dates</button></div></div>`;
+  };
   const row=(k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" data-opt="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   const draw=()=>{
     const n=countWith(when,filter);
     sheet.innerHTML=`<div class="grab"></div><div id="fWrap"><div class="fhead"><div class="cat">Filters</div><button class="fclear" id="fClear" ${when==='any'&&filter==='All'&&tier==='any'&&price==='any'?'disabled':''}>Clear all</button></div>`
-      + `<div class="psub">When</div><div class="fseg">${WHEN.map(([k,l])=>`<button data-when="${k}" class="${k===when?'on':''}" ${countWith(k,filter)||k==='any'?'':'disabled'}>${l}</button>`).join('')}</div>`
+      + `<div class="psub">When</div><div class="fseg">${WHEN.map(([k,l])=>`<button data-when="${k}" class="${k===when?'on':''}" ${k==='custom'?`aria-expanded="${calendarOpen}"`:''} ${k==='custom'||countWith(k,filter)?'':'disabled'}>${l}</button>`).join('')}</div>`
+      + (calendarOpen?calendar():'')
       + `<div class="psub">Price</div><div class="fseg f3">${PRICES.map(([k,l])=>`<button data-price="${k}" class="${k===price?'on':''}" ${countWith(when,filter,tier,k)||k==='any'?'':'disabled'}>${l}</button>`).join('')}</div>`
       + `<div class="psub" style="display:flex;align-items:center">Category<button class="editint" id="editInt">${myCats().length?'Edit interests':'Pick interests'}</button></div><div class="picklist">`
       + (myCats().length? row('mine',`<span class="ticon">${omark(15)}</span>`,'Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
       + ['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))].map(k=>row(k,k==='All'?'<span class="ticon"></span>':catDot(k,12),k==='All'?'Everything':CATS[k].label,countWith(when,k),k===filter,k==='All')).join('')
       + `</div><button class="flegend" id="fLegend">What the pins mean</button><button class="fshow" id="fShow">${n? `Show ${n} ${n===1?'event':'events'}` : 'No events match'}</button></div>`;
     document.getElementById('editInt').onclick=e=>{ e.stopPropagation(); editInterests(); };
-    document.getElementById('fClear').onclick=()=>{ when='any'; filter='All'; tier='any'; price='any'; renderHome(); draw(); };
+    document.getElementById('fClear').onclick=()=>{ when='any'; customStart=customEnd=null; calendarOpen=false; draftStart=draftEnd=null; filter='All'; tier='any'; price='any'; renderHome(); draw(); };
     document.getElementById('fLegend').onclick=openLegend;
     document.getElementById('fShow').onclick=()=>overlay.classList.remove('on');
-    document.getElementById('fWrap').onclick=e=>{ const w=e.target.closest('[data-when]'), pr=e.target.closest('[data-price]'), o=e.target.closest('[data-opt]'), b=w||pr||o; if(!b||b.disabled) return;
-      if(w) when=w.dataset.when; else if(pr) price=pr.dataset.price; else filter=o.dataset.opt;
+    if(calendarOpen){
+      document.getElementById('fCalCancel').onclick=()=>{ calendarOpen=false; draw(); };
+      document.getElementById('fCalApply').onclick=()=>{ customStart=new Date(draftStart); customEnd=new Date(draftEnd||draftStart); when='custom'; calendarOpen=false; renderHome(); draw(); };
+    }
+    document.getElementById('fWrap').onclick=e=>{
+      const nav=e.target.closest('[data-month]'), day=e.target.closest('[data-date]');
+      if(nav && !nav.disabled){ month.setMonth(month.getMonth()+Number(nav.dataset.month)); draw(); return; }
+      if(day && !day.disabled){ const d=new Date(day.dataset.date+'T00:00:00');
+        if(!draftStart || draftEnd){ draftStart=d; draftEnd=null; }
+        else if(d<draftStart){ draftEnd=draftStart; draftStart=d; } else draftEnd=d;
+        draw(); return;
+      }
+ const w=e.target.closest('[data-when]'), pr=e.target.closest('[data-price]'), o=e.target.closest('[data-opt]'), b=w||pr||o; if(!b||b.disabled) return;
+      if(w && w.dataset.when==='custom'){ calendarOpen=!calendarOpen; draftStart=customStart; draftEnd=customEnd; draw(); return; }
+      if(w){ when=w.dataset.when; calendarOpen=false; } else if(pr) price=pr.dataset.price; else filter=o.dataset.opt;
       renderHome(); draw(); };
   };
   draw(); overlay.classList.add('on');
@@ -2613,7 +2661,7 @@ const tMap=document.getElementById('tMap'), tList=document.getElementById('tList
 const srchQ=document.getElementById('srchQ'), srchSugg=document.getElementById('srchSugg');
 function applySearch(q){
   q=String(q||'').trim().slice(0,120); if(!q){ clearSearch(); return; }
-  if(!searchPrev) searchPrev={when,filter,tier};
+  if(!searchPrev) searchPrev={when,filter,tier,customStart,customEnd};
   when=parseSearch(q).when||'any'; filter='All'; tier='any';
   searchQ=q; searchHits=null; srchQ.value=q; closeSugg(); srchQ.blur();
   userMoved=false; selId=null; fromCards=false; renderHome(); fitToResults(picks());
@@ -2621,7 +2669,7 @@ function applySearch(q){
 }
 function clearSearch(){
   const had=!!searchQ; searchQ=''; searchHits=null; srchQ.value='';
-  if(searchPrev){ ({when,filter,tier}=searchPrev); searchPrev=null; }
+  if(searchPrev){ ({when,filter,tier,customStart,customEnd}=searchPrev); searchPrev=null; }
   closeSugg(); if(!had) return;
   userMoved=false; selId=null; fromCards=false; renderHome(); openCamera(true);
 }
