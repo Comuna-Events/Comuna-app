@@ -2157,8 +2157,13 @@ const catOK=(ev,c)=> c==='All' || (c==='mine'? myCats().includes(ev.category) : 
 let filter=myCats().length?'mine':'All', when='tonight', tier='any';
 // time filter: next occurrence falls today / within 7 days / within 30 days (rolling windows)
 let customStart=null, customEnd=null;
-const WHEN=[['custom','Custom'],['tonight','Today'],['week','This week'],['month','This month']];
+const WHEN=[['tonight','Today'],['tomorrow','Tomorrow'],['week','This Week'],['custom','Custom']];
 function inWindow(ev,w=when){
+  if(w==='tomorrow'){
+    const tomorrow=eventNow(); tomorrow.setHours(0,0,0,0); tomorrow.setDate(tomorrow.getDate()+1);
+    const d=ev.start?nextDate(ev,tomorrow):null;
+    return !!d && +d===+tomorrow;
+  }
   if(w==='custom'){
     if(!customStart || !customEnd || !ev.start) return false;
     const now=eventNow(), first=new Date(customStart);
@@ -2199,7 +2204,7 @@ const VIBE_WORDS={ 'spooky':'halloween horror haunted scary ghost creepy costume
   'late night':'late night owl', 'live music':'live music band concert', 'dance':'dance dancing', 'chill':'chill relaxed low key quiet',
   'creative':'creative make craft diy art', 'cultural':'cultural culture heritage tradition', 'dog-friendly':'dog dogs pet pets' };
 const vibeLabel=v=>v[0].toUpperCase()+v.slice(1);
-const TIME_WORDS={ today:'tonight', tonight:'tonight', tonite:'tonight', now:'tonight', evening:'tonight', week:'week', weekend:'week', saturday:'week', sunday:'week', month:'month' };
+const TIME_WORDS={ today:'tonight', tomorrow:'tomorrow', tonight:'tonight', tonite:'tonight', now:'tonight', evening:'tonight', week:'week', weekend:'week', saturday:'week', sunday:'week', month:'month' };
 const normText=t=>' '+String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim()+' ';
 function parseSearch(q){
   const words=normText(q).trim().split(' ').filter(Boolean);
@@ -2485,7 +2490,7 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   placePins(P);
 }
 // what the map is showing, in words: "Today · Your interests"
-function filterSummary(){ return [when==='custom'?customDateLabel():when==='any'?'Anytime':WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything', price!=='any'?PRICES.find(p=>p[0]===price)[1]:''].filter(Boolean).join(' · '); }
+function filterSummary(){ return [when==='custom'?customDateLabel():when==='any'?'Anytime':when==='month'?'This month':WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything', price!=='any'?PRICES.find(p=>p[0]===price)[1]:''].filter(Boolean).join(' · '); }
 document.getElementById('filtBtn').onclick=openFilters;
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
 function countWith(w,c,t=tier,pr=price){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&priceOK(ev,pr)&&searchOK(ev)).length; when=ow; return n; }
