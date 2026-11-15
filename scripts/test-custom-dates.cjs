@@ -1,5 +1,5 @@
-// Browser checks for the map's search bar. Requires Playwright and Chromium; no production services are contacted.
-// Run: node scripts/test-search.cjs (optional CHROMIUM_PATH, SEARCH_SCREENSHOT=path.png).
+// Browser checks for date filters and the custom calendar. Requires Playwright and Chromium; no production services are contacted.
+// Run: node scripts/test-custom-dates.cjs (optional CHROMIUM_PATH).
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
@@ -30,7 +30,7 @@ const server=http.createServer((req,res)=>{
   page.evaluate=(fn,arg)=>evaluate(code=>window.__comunaTestEval(code),`(${fn.toString()})(${JSON.stringify(arg)||'undefined'})`);
   await page.evaluate(()=>{
    Object.assign(S,{signedUp:true,kitSeen:true,name:'QA',nb:'Silver Lake',loc:{lat:34.0869,lng:-118.2702},rsvp:[],checked:[],places:{},interests:['Arts & Entertainment'],lastPicksDay:new Date().toDateString()});
-   const day=n=>{ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+n); return d; };
+   const day=n=>{ const d=eventNow(); d.setHours(0,0,0,0); d.setDate(d.getDate()+n); return d; };
    const base={venue:'Somewhere',category:'arts',sub:'',kind:'niche',lat:34.0869,lng:-118.2702,area:'Silver Lake',time:'',desc:'',host:'',tags:[],rec:'One-off',recDetail:'',end:null,t0:'19:00',t1:'22:00',mi:0};
    window.mk=(id,o)=>({...base,id,eid:'EVT-'+id,title:'Event '+id,start:day(1),...o});
    events=[
@@ -45,6 +45,17 @@ const server=http.createServer((req,res)=>{
   // Custom opens a compact calendar, applies inclusive ranges, and can be cancelled/reset.
   await page.evaluate(()=>{ closeSugg(); clearSearch(); when='any'; filter='All'; openFilters(); });
   assert.equal(await page.locator('[data-when="any"]').count(),0);
+  assert.deepEqual(await page.locator('[data-when]').allTextContents(),['Today','Tomorrow','This Week','Custom']);
+  await page.click('[data-when="tomorrow"]');
+  assert.equal(await page.evaluate(()=>when),'tomorrow');
+  assert.deepEqual(await page.evaluate(()=>picks().map(ev=>ev.id)),[3]);
+  assert.equal(await page.getAttribute('#filtBtn','aria-label'),'Filters: Tomorrow · Everything');
+  assert.equal(await page.evaluate(()=>parseSearch('tomorrow').when),'tomorrow');
+  assert.deepEqual(await page.evaluate(()=>{
+    const day=n=>{const d=eventNow();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d;};
+    return [-1,0,1,2].map(n=>inWindow(mk(30+n,{start:day(n)}),'tomorrow')).concat(inWindow(mk(40,{start:day(0),rec:'Daily'}),'tomorrow'));
+  }),[false,false,true,false,true]);
+
   await page.click('[data-when="custom"]');
   assert.equal(await page.isVisible('.fcalendar'),true);
   assert.equal(await page.isEnabled('#fCalApply'),false);
