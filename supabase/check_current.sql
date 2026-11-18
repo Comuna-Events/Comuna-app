@@ -28,6 +28,17 @@ from (
   select 'leaderboard_month exists', 'points_rules.sql',
          to_regclass('public.leaderboard_month') is not null,
          'Run points_rules.sql.'
+  union all
+  select 'regions has Los Angeles', 'regions.sql',
+         coalesce((select true from public.regions where id = 'la'), false),
+         'Run regions.sql.'
+  union all
+  select 'events, sources and candidates have a region column', 'regions.sql',
+         (select count(*) from information_schema.columns
+          where column_name = 'region'
+            and ((table_schema = 'public' and table_name = 'events')
+              or (table_schema = 'ingest' and table_name in ('event_sources', 'event_candidates')))) = 3,
+         'Run regions.sql.'
 ) c
 order by 3, 1;
 
