@@ -250,6 +250,7 @@ img{ max-width:100% }
 .fcalactions{ margin-top:10px }
 .fcalactions button{ padding:10px 14px; border-radius:10px; font-weight:600 }
 .fseg.f3{ grid-template-columns:repeat(3,1fr) }
+.fseg.f2{ grid-template-columns:repeat(2,1fr) }
 .flegend{ display:block; margin:14px auto 0; font-size:13px; font-weight:600; color:var(--muted); text-decoration:underline; text-underline-offset:3px; text-decoration-color:#CDBF9F }
 .fhead{ display:flex; align-items:center; justify-content:space-between }
 .fclear{ font-size:13px; font-weight:700; color:var(--green); padding:4px 2px }
@@ -2189,6 +2190,11 @@ const PRICES=[['any','Any price'],['free','Free'],['u25','Under $25']];
 function priceFrom(ev){ const m=String(ev.priceAmt||'').match(/\$\s*(\d+(?:\.\d+)?)/); return m? +m[1] : null; }
 function priceOK(ev,pr=price){ if(pr==='any') return true; const free=/^free/i.test(String(ev.price||'').trim()) && !priceClash(ev); if(pr==='free') return free;
   if(free || /donation|pay.what/i.test(ev.price||'')) return true; const a=priceFrom(ev); return a!==null && a<=25; }
+// Family-friendly: for parents looking for something to do with kids. An event counts when it carries the family-friendly
+// vibe (events.vibes, "good to bring kids of any age to") and isn't 18+ or 21+, whatever its vibes say.
+let kids='any';
+const KIDS=[['any','Anyone'],['family','Family-friendly']];
+function familyOK(ev,k=kids){ return k==='any' || ((ev.vibes||[]).includes('family-friendly') && !/^\s*(18|21)\s*\+/.test(String(ev.age||''))); }
 let searchQ='', searchPrev=null, searchHits=null;   // searchHits: event id -> score for searchQ, rebuilt when events reload
 const STOPWORDS=new Set(('a an and the to of in on at for from near me my i im is are am be any some all thing things stuff '
   +'do does what whats where wheres something anything cool fun good great best nice happening going around there here '
@@ -2244,7 +2250,7 @@ const searchOK=ev=>{ const s=searchState(); return !s || s.hits.has(ev.id); };
 function picks(){
   enrich();
   const s=searchState();
-  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev) && priceOK(ev) && searchOK(ev))
+  let list=events.filter(ev=> catOK(ev,filter) && (tier==='any' || kindOf(ev)===tier) && inWindow(ev) && priceOK(ev) && familyOK(ev) && searchOK(ev))
     .sort((a,b)=> (s? s.hits.get(b.id)-s.hits.get(a.id) : 0) || a.mi-b.mi);
   return list;                                    // all of LA, closest first (best matches first while searching)
 }
@@ -2472,7 +2478,7 @@ function renderEventList(results){
 }
 function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   const cats=['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))];
-  const nf=(when!=='any')+(filter!=='All')+(tier!=='any')+(price!=='any'), fc=document.getElementById('filtCount');
+  const nf=(when!=='any')+(filter!=='All')+(tier!=='any')+(price!=='any')+(kids!=='any'), fc=document.getElementById('filtCount');
   fc.textContent=nf; fc.hidden=!nf;
   document.getElementById('filtBtn').setAttribute('aria-label','Filters: '+filterSummary());
   document.getElementById('homeScreen').classList.toggle('searching',!!searchQ);
@@ -2490,10 +2496,10 @@ function renderHome(){ try{ updateDot(); }catch(e){} setTimeout(syncHeadH,0);
   placePins(P);
 }
 // what the map is showing, in words: "Today · Your interests"
-function filterSummary(){ return [when==='custom'?customDateLabel():when==='any'?'Anytime':when==='month'?'This month':WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything', price!=='any'?PRICES.find(p=>p[0]===price)[1]:''].filter(Boolean).join(' · '); }
+function filterSummary(){ return [when==='custom'?customDateLabel():when==='any'?'Anytime':when==='month'?'This month':WHEN.find(w=>w[0]===when)[1], tier!=='any'?KINDS[tier].plural:'', filter==='mine'?'Your interests':filter!=='All'?CATS[filter].short:'Everything', price!=='any'?PRICES.find(p=>p[0]===price)[1]:'', kids!=='any'?KIDS.find(k=>k[0]===kids)[1]:''].filter(Boolean).join(' · '); }
 document.getElementById('filtBtn').onclick=openFilters;
 // filter picker: a short list in the bottom sheet, with how many events each choice shows
-function countWith(w,c,t=tier,pr=price){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&priceOK(ev,pr)&&searchOK(ev)).length; when=ow; return n; }
+function countWith(w,c,t=tier,pr=price,fm=kids){ const ow=when; when=w; const n=events.filter(ev=>catOK(ev,c)&&(t==='any'||kindOf(ev)===t)&&inWindow(ev)&&priceOK(ev,pr)&&familyOK(ev,fm)&&searchOK(ev)).length; when=ow; return n; }
 // change the interests you picked at sign-up (also drives "Your interests" on the map and the daily picks)
 function editInterests(){
   const pick=new Set(S.interests||[]);
@@ -2579,16 +2585,17 @@ function openFilters(){
   const row=(k,icon,l,n,on,always)=>`<button class="popt ${on?'on':''}" data-opt="${k}" ${n||always?'':'disabled'}>${icon}<span>${l}</span><b>${n}</b>${on?'<em>✓</em>':''}</button>`;
   const draw=()=>{
     const n=countWith(when,filter);
-    sheet.innerHTML=`<div class="grab"></div><div id="fWrap"><div class="fhead"><div class="cat">Filters</div><button class="fclear" id="fClear" ${when==='any'&&filter==='All'&&tier==='any'&&price==='any'?'disabled':''}>Clear all</button></div>`
+    sheet.innerHTML=`<div class="grab"></div><div id="fWrap"><div class="fhead"><div class="cat">Filters</div><button class="fclear" id="fClear" ${when==='any'&&filter==='All'&&tier==='any'&&price==='any'&&kids==='any'?'disabled':''}>Clear all</button></div>`
       + `<div class="psub">When</div><div class="fseg">${WHEN.map(([k,l])=>`<button data-when="${k}" class="${k===when?'on':''}" ${k==='custom'?`aria-expanded="${calendarOpen}"`:''} ${k==='custom'||countWith(k,filter)?'':'disabled'}>${l}</button>`).join('')}</div>`
       + (calendarOpen?calendar():'')
       + `<div class="psub">Price</div><div class="fseg f3">${PRICES.map(([k,l])=>`<button data-price="${k}" class="${k===price?'on':''}" ${countWith(when,filter,tier,k)||k==='any'?'':'disabled'}>${l}</button>`).join('')}</div>`
+      + `<div class="psub">Good for</div><div class="fseg f2">${KIDS.map(([k,l])=>`<button data-kids="${k}" class="${k===kids?'on':''}" aria-pressed="${k===kids}" ${countWith(when,filter,tier,price,k)||k==='any'?'':'disabled'}>${l}</button>`).join('')}</div>`
       + `<div class="psub" style="display:flex;align-items:center">Category<button class="editint" id="editInt">${myCats().length?'Edit interests':'Pick interests'}</button></div><div class="picklist">`
       + (myCats().length? row('mine',`<span class="ticon">${omark(15)}</span>`,'Your interests<small>'+myCats().map(k=>CATS[k].short).join(', ')+'</small>',countWith(when,'mine'),filter==='mine',true) : '')
       + ['All',...Object.keys(CATS).filter(k=>events.some(e=>e.category===k))].map(k=>row(k,k==='All'?'<span class="ticon"></span>':catDot(k,12),k==='All'?'Everything':CATS[k].label,countWith(when,k),k===filter,k==='All')).join('')
       + `</div><button class="flegend" id="fLegend">What the pins mean</button><button class="fshow" id="fShow">${n? `Show ${n} ${n===1?'event':'events'}` : 'No events match'}</button></div>`;
     document.getElementById('editInt').onclick=e=>{ e.stopPropagation(); editInterests(); };
-    document.getElementById('fClear').onclick=()=>{ when='any'; customStart=customEnd=null; calendarOpen=false; draftStart=draftEnd=null; filter='All'; tier='any'; price='any'; renderHome(); draw(); };
+    document.getElementById('fClear').onclick=()=>{ when='any'; customStart=customEnd=null; calendarOpen=false; draftStart=draftEnd=null; filter='All'; tier='any'; price='any'; kids='any'; renderHome(); draw(); };
     document.getElementById('fLegend').onclick=openLegend;
     document.getElementById('fShow').onclick=()=>overlay.classList.remove('on');
     if(calendarOpen){
@@ -2603,9 +2610,9 @@ function openFilters(){
         else if(d<draftStart){ draftEnd=draftStart; draftStart=d; } else draftEnd=d;
         draw(); return;
       }
- const w=e.target.closest('[data-when]'), pr=e.target.closest('[data-price]'), o=e.target.closest('[data-opt]'), b=w||pr||o; if(!b||b.disabled) return;
+ const w=e.target.closest('[data-when]'), pr=e.target.closest('[data-price]'), kd=e.target.closest('[data-kids]'), o=e.target.closest('[data-opt]'), b=w||pr||kd||o; if(!b||b.disabled) return;
       if(w && w.dataset.when==='custom'){ calendarOpen=!calendarOpen; draftStart=customStart; draftEnd=customEnd; draw(); return; }
-      if(w){ when=w.dataset.when; calendarOpen=false; } else if(pr) price=pr.dataset.price; else filter=o.dataset.opt;
+      if(w){ when=w.dataset.when; calendarOpen=false; } else if(pr) price=pr.dataset.price; else if(kd) kids=kd.dataset.kids; else filter=o.dataset.opt;
       renderHome(); draw(); };
   };
   draw(); overlay.classList.add('on');
