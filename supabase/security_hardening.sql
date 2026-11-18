@@ -20,16 +20,9 @@ language sql stable security definer set search_path = public as $$
   select event_id, going from event_going
 $$;
 
--- a neighborhood's monthly top list; is_me marks the signed-in person's own row
-create or replace function public.leaderboard_top(p_board text, p_limit int default 5)
-returns table (display_name text, points int, is_me boolean)
-language sql stable security definer set search_path = public as $$
-  select display_name, points, user_id = auth.uid()
-  from leaderboard_month
-  where neighborhood = p_board
-  order by points desc
-  limit least(greatest(coalesce(p_limit, 5), 1), 50)
-$$;
+-- leaderboard_top() is defined only in leaderboard_names.sql (it returns names, nicknames and titles and leaves
+-- out people who chose "hidden"); that file also sets who can call it. Nothing here touches it, so re-running
+-- this file can't bring back an older, less private version.
 
 -- your points this month, across every board you earned them on
 create or replace function public.my_points_this_month()
@@ -39,12 +32,11 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- Supabase grants new functions to anon and authenticated directly, so revoke from them as well as public
-revoke execute on function public.going_counts(), public.leaderboard_top(text, int), public.my_points_this_month() from public, anon, authenticated;
-grant execute on function public.going_counts(), public.leaderboard_top(text, int) to anon, authenticated;
+revoke execute on function public.going_counts(), public.my_points_this_month() from public, anon, authenticated;
+grant execute on function public.going_counts() to anon, authenticated;
 grant execute on function public.my_points_this_month() to authenticated;
 
 comment on function public.going_counts() is '[App users] How many people saved each event. The app reads this instead of event_going.';
-comment on function public.leaderboard_top(text, int) is '[App users] A neighborhood''s monthly top list, without user ids.';
 comment on function public.my_points_this_month() is '[App users] The signed-in person''s points this month, across all boards.';
 
 -- stamp_board only runs as a trigger; nobody should call it directly

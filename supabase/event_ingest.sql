@@ -138,51 +138,5 @@ grant usage, select on all sequences in schema ingest to service_role;
 alter default privileges in schema ingest grant all on tables to service_role;
 alter default privileges in schema ingest grant usage, select on sequences to service_role;
 
--- Copy a reviewed candidate into events with the next EVT id. Returns that id.
-create or replace function ingest.promote_candidate(p_candidate_id bigint) returns text
-language plpgsql set search_path = '' as $$
-declare
-  c      ingest.event_candidates;
-  new_id text;
-begin
-  select * into c from ingest.event_candidates where id = p_candidate_id for update;
-  if not found then raise exception 'No candidate with id %', p_candidate_id; end if;
-  if c.status = 'promoted' then return c.promoted_event_id; end if;
-  if c.name is null then raise exception 'Candidate % has no name yet', p_candidate_id; end if;
-
-  perform pg_advisory_xact_lock(hashtext('events.event_id'));   -- two promotes at once can't take the same id
-  -- At least 4 digits (EVT-0001), but never cut short: lpad truncates, which turned EVT-10000 into EVT-1000
-  select 'EVT-' || lpad(n::text, greatest(4, length(n::text)), '0')
-    into new_id from (select coalesce(max(substring(event_id from 5)::int), 0) + 1 n from public.events) m;
-
-  insert into public.events (event_id, name, category, tags, vibes, description, start_date, end_date, start_time,
-    end_time, recurrence, recurrence_detail, venue, street_address, city, zip, neighborhood, setting,
-    price_type, rsvp_required, ticket_url, age, host, source, source_url, image_url, lat, lng,
-    status, added_by, notes, vibes_checked_at)
-  values (new_id, c.name, c.category, c.tags, c.vibes, c.description, c.start_date, c.end_date, c.start_time,
-    c.end_time, c.recurrence, c.recurrence_detail, c.venue, c.street_address, c.city, c.zip, c.neighborhood,
-    c.setting, c.price_type, c.rsvp_required, c.ticket_url,
-    case when c.age ~* '^\s*all\s+ages\s*$' then 'All ages'      -- the AI writes 'All Ages', '21 and up', 'Kids'...;
-         when c.age ~* '^\s*21\s*(\+|and (up|over|older))\s*$' then '21+'   -- events.age takes only these three,
-         when c.age ~* '^\s*18\s*(\+|and (up|over|older))\s*$' then '18+'   -- anything else is left blank
-    end, c.host,
-    case c.platform
-      when 'instagram'     then 'Instagram'
-      when 'tiktok'        then 'TikTok'
-      when 'eventbrite'    then 'Eventbrite'
-      when 'luma'          then 'Luma'
-      when 'partiful'      then 'Partiful'
-      when 'meetup'        then 'Meetup'
-      when 'handstamp'     then 'Handstamp'
-      when 'city_calendar' then 'City / library calendar'
-      when 'venue_website' then 'Venue website'
-      when 'newsletter'    then 'Newsletter'
-      else 'Other' end,
-    c.source_url, c.image_url, c.lat, c.lng,
-    'Needs verification', 'nightly ingest', 'From event_candidates #' || c.id,
-    case when cardinality(c.vibes) > 0 then now() end);   -- vibes picked while reading the post; none: ingest-vibes takes a look
-
-  update ingest.event_candidates set status = 'promoted', promoted_event_id = new_id where id = c.id;
-  return new_id;
-end $$;
-revoke execute on function ingest.promote_candidate(bigint) from public, anon, authenticated;
+-- ingest.promote_candidate() is defined only in price_detail.sql (run it after this file): it copies a reviewed
+-- candidate into events with the next EVT id, price_detail included. Re-running this file can't remove price_detail.

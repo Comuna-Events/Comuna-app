@@ -49,12 +49,18 @@ end $$;
 create or replace trigger events_clear_coords before update of street_address, city, zip on public.events
   for each row execute function public.events_clear_coords();
 
--- once per insert / address edit (not per row), so a bulk paste makes one call
-create or replace function public.events_request_geocode() returns trigger
-language plpgsql security definer set search_path = '' as $$
-begin
-  perform public.request_event_geocode();
-  return null;
+-- once per insert / address edit (not per row), so a bulk paste makes one call.
+-- event_autopromote.sql owns this function (it adds a switch so a big promote doesn't fire one request per row); it
+-- is only created here when missing, so re-running this file never takes that switch away.
+do $$ begin
+  if to_regprocedure('public.events_request_geocode()') is null then
+    create function public.events_request_geocode() returns trigger
+    language plpgsql security definer set search_path = '' as $fn$
+    begin
+      perform public.request_event_geocode();
+      return null;
+    end $fn$;
+  end if;
 end $$;
 revoke execute on function public.events_request_geocode() from public, anon, authenticated;
 create or replace trigger events_request_geocode after insert or update of street_address, city, zip on public.events

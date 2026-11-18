@@ -5,7 +5,7 @@
 -- - profiles.nickname: everyone gets a random one ("Golden Coyote 27"), existing accounts too; they can change it.
 -- - profiles.lb_show: 'nickname' (the default), 'name' (first name + last initial, as before) or 'hidden'.
 --   Hidden people still earn points; they just aren't listed.
--- - leaderboard_top() shows whichever they chose and leaves hidden people out.
+-- - leaderboard_top() (defined in leaderboard_names.sql) shows whichever they chose and leaves hidden people out.
 -- - my_month_progress(): your verified check-ins and neighborhoods this month, for the monthly challenge.
 
 create or replace function public.random_nickname() returns text
@@ -32,22 +32,8 @@ comment on column public.profiles.lb_show is 'How the person appears on the lead
 -- profiles are readable and writable column by column; the person can see and change these two on their own row
 grant select (nickname, lb_show), insert (nickname, lb_show), update (nickname, lb_show) on public.profiles to authenticated;
 
-create or replace function public.leaderboard_top(p_board text, p_limit int default 5)
-returns table (display_name text, points int, is_me boolean, title text)
-language sql stable security definer set search_path = public as $$
-  select case when p.lb_show = 'name' then l.display_name else coalesce(nullif(btrim(p.nickname), ''), 'Explorer') end,
-    l.points, l.user_id = auth.uid(), a.title
-  from leaderboard_month l
-  left join profiles p on p.id = l.user_id
-  left join achievements a on a.key = p.title_key
-  where l.neighborhood = p_board and coalesce(p.lb_show, 'nickname') <> 'hidden'
-  order by l.points desc
-  limit least(greatest(coalesce(p_limit, 5), 1), 50)
-$$;
-revoke execute on function public.leaderboard_top(text, int) from public, anon, authenticated;
-grant execute on function public.leaderboard_top(text, int) to anon, authenticated;
-comment on function public.leaderboard_top(text, int) is
-'[App users] A neighborhood''s monthly top list, without user ids: nicknames unless someone chose their name; hidden people left out.';
+-- leaderboard_top() is no longer defined here: leaderboard_names.sql owns it (it needs the lb_show and nickname
+-- columns above, so run that file after this one). Re-running this file leaves the leaderboard as it is.
 
 create or replace function public.my_month_progress()
 returns table (checkins int, neighborhoods int)
