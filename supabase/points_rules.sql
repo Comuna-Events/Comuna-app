@@ -37,12 +37,16 @@ update checkins c          set board = p.neighborhood from profiles p where p.id
 update feedback f          set board = p.neighborhood from profiles p where p.id = f.user_id and f.board is null;
 update event_submissions s set board = p.neighborhood from profiles p where p.id = s.user_id and s.board is null;
 
--- when the leaderboard's points start counting from. '-infinity' = all time, so the board never resets.
--- To go back to monthly boards later, swap the body for: select date_trunc('month', now())
-create or replace function public.leaderboard_start() returns timestamptz
-language sql stable set search_path = pg_catalog as $$
-  select '-infinity'::timestamptz
-$$;
+-- when the leaderboard's points start counting from. leaderboard_all_time.sql owns this setting (and says how to go
+-- back to monthly boards); it is only created here when missing, so re-running this file never undoes that choice.
+do $$ begin
+  if to_regprocedure('public.leaderboard_start()') is null then
+    create function public.leaderboard_start() returns timestamptz
+    language sql stable set search_path = pg_catalog as $fn$
+      select '-infinity'::timestamptz
+    $fn$;
+  end if;
+end $$;
 
 -- drop first: create or replace can't remove a column from an existing view
 drop view if exists leaderboard_month;

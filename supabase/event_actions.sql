@@ -20,18 +20,5 @@ drop policy if exists "insert own actions" on public.event_actions;
 create policy "insert own actions" on public.event_actions
   for insert to authenticated with check (auth.uid() = user_id);
 
--- Summary for you and Mitchell (read it in the Supabase dashboard).
-create or replace view public.event_stats with (security_invoker = true) as
-select event_id,
-       max(event_title)                                              as event_title,
-       count(*) filter (where action = 'view')                       as views,
-       count(distinct user_id) filter (where action = 'view')        as unique_viewers,
-       count(*) filter (where action in ('interested','rsvp'))       as interested,
-       count(*) filter (where action = 'directions')                 as directions,
-       count(*) filter (where action = 'calendar')                   as calendar_adds,
-       count(*) filter (where action = 'link')                       as link_clicks,
-       count(*) filter (where action = 'invite')                     as invites,
-       count(*) filter (where action = 'checkin')                    as checkins,
-       max(created_at)                                               as last_activity
-from public.event_actions
-group by event_id;
+-- The per-event summary view (event_stats) is defined only in guests.sql, which adds the guest columns; run that
+-- file after this one. Defining it here too would make a re-run of this file fail once guests.sql has run.

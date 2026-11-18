@@ -27,18 +27,7 @@ create policy "insert own searches" on public.search_queries
 alter table public.event_actions add column if not exists placement    text;
 alter table public.event_actions add column if not exists search_query text;
 
--- Summary: the most-searched words over the last 30 days, and which ones found nothing (events to go find).
-create or replace view public.search_terms with (security_invoker = true) as
-select lower(trim(query))                                  as query,
-       count(*)                                            as searches,
-       count(distinct user_id)                             as people,
-       count(*) filter (where result_count = 0)            as found_nothing,
-       count(*) filter (where picked_event_id is not null) as picked_from_suggestions,
-       max(created_at)                                     as last_searched
-from public.search_queries
-where created_at > now() - interval '30 days'
-group by 1
-order by searches desc;
+-- The search_terms summary view is defined only in guests.sql, which adds the guest columns; run that file after
+-- this one. Defining it here too would make a re-run of this file fail once guests.sql has run.
 
 comment on table public.search_queries is '[App users] Every search run from the map''s search bar: the words, how many events it found, the filters shown.';
-comment on view  public.search_terms   is '[App users] Last 30 days of searches, most common first, with how often each found nothing.';

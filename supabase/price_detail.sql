@@ -14,7 +14,8 @@ comment on column public.events.price_detail is
 -- events are readable column by column (events.sql); add this one
 grant select (price_detail) on public.events to anon, authenticated;
 
--- Copy a reviewed candidate into events with the next EVT id. Returns that id. Same as event_ingest.sql, plus price_detail.
+-- OWNER of ingest.promote_candidate() (supabase/README.md): copy a reviewed candidate into events with the next EVT id,
+-- price_detail included. Returns that id.
 create or replace function ingest.promote_candidate(p_candidate_id bigint) returns text
 language plpgsql set search_path = '' as $$
 declare

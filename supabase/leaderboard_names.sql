@@ -1,3 +1,4 @@
+-- OWNER of public.leaderboard_top(): this is the only file that defines it (supabase/README.md). Other files must not.
 -- Comuna: the leaderboard shows people by their name (first name + last initial) unless they choose otherwise.
 -- Run once in Supabase > SQL Editor; safe to re-run. Replaces the random nicknames from leaderboard_privacy.sql:
 -- a nickname is now only one a person writes themselves (Profile > Leaderboard name), and they can still hide.
@@ -34,4 +35,4 @@ $$;
 revoke execute on function public.leaderboard_top(text, int) from public, anon, authenticated;
 grant execute on function public.leaderboard_top(text, int) to anon, authenticated;
 comment on function public.leaderboard_top(text, int) is
-'[App users] A neighborhood''s monthly top list, without user ids: first name + last initial, or a nickname the person chose; hidden people left out.';
+'[App users] A neighborhood''s top list (points since leaderboard_start()), without user ids: first name + last initial, or a nickname the person chose; hidden people left out.';

@@ -189,6 +189,7 @@ begin
 end $$;
 revoke execute on function ingest.auto_promote(boolean) from public, anon, authenticated;
 
+-- OWNER of public.events_request_geocode() (supabase/README.md; geocode.sql only creates it if it's missing).
 -- Promoting hundreds of events in one go shouldn't fire a geocode request per insert (see geocode.sql).
 create or replace function public.events_request_geocode() returns trigger
 language plpgsql security definer set search_path = '' as $$

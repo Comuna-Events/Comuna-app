@@ -13,7 +13,8 @@
 --
 -- The app calls my_achievements(): it works out progress from the person's history, saves anything newly earned,
 -- and returns the catalogue with their progress. Past check-ins count, so existing accounts unlock on first open.
--- leaderboard_top() now also returns each person's title.
+-- The leaderboard's title column is read from this file's tables, but leaderboard_top() itself is defined only in
+-- leaderboard_names.sql (see supabase/README.md): re-running this file never touches it.
 --
 -- To add an achievement: insert a row with an existing metric and a new goal. A new kind of rule needs a new
 -- metric in achievement_progress() below.
@@ -251,26 +252,9 @@ end $$;
 revoke execute on function public.my_achievements() from public, anon;
 grant execute on function public.my_achievements() to authenticated;
 
--- the leaderboard, now with each person's title (the return type changed, so it's dropped and made again)
-drop function if exists public.leaderboard_top(text, int);
-create function public.leaderboard_top(p_board text, p_limit int default 5)
-returns table (display_name text, points int, is_me boolean, title text)
-language sql stable security definer set search_path = public as $$
-  select l.display_name, l.points, l.user_id = auth.uid(), a.title
-  from leaderboard_month l
-  left join profiles p on p.id = l.user_id
-  left join achievements a on a.key = p.title_key
-  where l.neighborhood = p_board
-  order by l.points desc
-  limit least(greatest(coalesce(p_limit, 5), 1), 50)
-$$;
-revoke execute on function public.leaderboard_top(text, int) from public;
-grant execute on function public.leaderboard_top(text, int) to anon, authenticated;
-
 comment on table public.achievements is '[Team] The achievement catalogue. Edit name, title, blurb, goal, hidden or active here; the app picks it up.';
 comment on table public.user_achievements is '[App users] Achievements each person has earned. Written only by my_achievements().';
 comment on column public.profiles.title_key is 'The achievement whose title the person shows after their name. Must be one they earned.';
 comment on column public.profiles.title_chosen is 'True once the person picks a title (or none); until then my_achievements() gives them OG or Day One.';
 comment on function public.achievement_progress(uuid) is '[Internal] One person''s progress on every achievement metric, from verified check-ins.';
 comment on function public.my_achievements() is '[App users] The signed-in person''s achievements and progress; saves newly earned ones.';
-comment on function public.leaderboard_top(text, int) is '[App users] A neighborhood''s monthly top list with titles, without user ids.';
