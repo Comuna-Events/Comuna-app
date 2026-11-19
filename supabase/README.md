@@ -16,6 +16,7 @@ If you change one, change it in its owner. Don't copy it into another file, even
 | `ingest.promote_candidate()` | `price_detail.sql` | none. The older copy in `event_ingest.sql` didn't carry `price_detail` |
 | `public.events_request_geocode()` | `event_autopromote.sql` | `geocode.sql` creates it only if it is missing (its trigger needs it) |
 | `event_stats`, `search_terms` (views) | `guests.sql` | none. `event_actions.sql` and `search.sql` had older copies with fewer columns |
+| `public.regions` (table), `public.region_for_zip()` | `regions.sql` | none (new). Also adds the `region` column to `events`, `ingest.event_sources` and `ingest.event_candidates` |
 
 Two ways to handle a dependency, when a file needs an object before the owner has run:
 - **Run order.** The owner runs later, and the older file doesn't define the object at all.
@@ -35,6 +36,7 @@ This is not a full install order, only what the files themselves say:
 - `achievements.sql` before `leaderboard_names.sql` (the leaderboard joins its `achievements` table)
 - `follows.sql` before `push.sql`, then `invites.sql`
 - `event_reports.sql` before `submissions_v2.sql`
+- `regions.sql` after `events.sql` and `event_ingest.sql` (it adds a column to `events` and to the ingest tables)
 - `security_hardening.sql` has two steps; run step 2 only once the app that calls the new functions is live
 
 ## After running any SQL file
